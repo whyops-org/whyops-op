@@ -1,39 +1,41 @@
 import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../database';
-import type { LLMCallEvent as LLMCallEventType } from '../types';
 
-interface EventCreationAttributes extends Optional<LLMCallEventType, 'id' | 'createdAt'> {}
+// Generic Event Type
+export interface TraceEvent {
+  id: string;
+  traceId: string; // was threadId
+  spanId?: string;
+  stepId: number;
+  parentStepId?: number;
+  eventType: 'user_message' | 'llm_response' | 'tool_call' | 'error';
+  userId: string;
+  providerId: string;
+  timestamp: Date;
+  
+  // Generic Payload
+  content: any; // JSONB
+  
+  // Metadata (Model, Provider, Latency, etc.)
+  metadata?: Record<string, any>;
+  
+  createdAt: Date;
+}
 
-export class LLMEvent extends Model<LLMCallEventType, EventCreationAttributes> implements LLMCallEventType {
+interface EventCreationAttributes extends Optional<TraceEvent, 'id' | 'createdAt'> {}
+
+export class LLMEvent extends Model<TraceEvent, EventCreationAttributes> implements TraceEvent {
   declare id: string;
-  declare eventType: 'llm_call';
-  declare threadId: string;
+  declare traceId: string;
+  declare spanId?: string;
   declare stepId: number;
   declare parentStepId?: number;
-  declare spanId?: string;
-  declare timestamp: Date;
-  declare metadata?: Record<string, any>;
+  declare eventType: 'user_message' | 'llm_response' | 'tool_call' | 'error';
   declare userId: string;
   declare providerId: string;
-  declare provider: 'openai' | 'anthropic';
-  declare model: string;
-  declare systemPrompt?: string;
-  declare messages: any[];
-  declare tools?: any[];
-  declare temperature?: number;
-  declare maxTokens?: number;
-  declare response?: {
-    content?: string;
-    toolCalls?: any[];
-    finishReason?: string;
-  };
-  declare usage?: {
-    promptTokens: number;
-    completionTokens: number;
-    totalTokens: number;
-  };
-  declare latencyMs?: number;
-  declare error?: string;
+  declare timestamp: Date;
+  declare content: any;
+  declare metadata?: Record<string, any>;
   declare createdAt: Date;
 }
 
@@ -44,35 +46,30 @@ LLMEvent.init(
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
-    eventType: {
-      type: DataTypes.STRING,
-      defaultValue: 'llm_call',
-      allowNull: false,
-    },
-    threadId: {
+    traceId: {
       type: DataTypes.STRING,
       allowNull: false,
-    },
-    stepId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    parentStepId: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
+      field: 'trace_id',
     },
     spanId: {
       type: DataTypes.STRING,
       allowNull: true,
+      field: 'span_id',
     },
-    timestamp: {
-      type: DataTypes.DATE,
+    stepId: {
+      type: DataTypes.INTEGER,
       allowNull: false,
-      defaultValue: DataTypes.NOW,
+      field: 'step_id',
     },
-    metadata: {
-      type: DataTypes.JSONB,
+    parentStepId: {
+      type: DataTypes.INTEGER,
       allowNull: true,
+      field: 'parent_step_id',
+    },
+    eventType: {
+      type: DataTypes.STRING, // 'user_message', 'llm_response', etc.
+      allowNull: false,
+      field: 'event_type',
     },
     userId: {
       type: DataTypes.UUID,
@@ -81,6 +78,7 @@ LLMEvent.init(
         model: 'users',
         key: 'id',
       },
+      field: 'user_id',
     },
     providerId: {
       type: DataTypes.UUID,
@@ -89,64 +87,35 @@ LLMEvent.init(
         model: 'providers',
         key: 'id',
       },
+      field: 'provider_id',
     },
-    provider: {
-      type: DataTypes.ENUM('openai', 'anthropic'),
+    timestamp: {
+      type: DataTypes.DATE,
       allowNull: false,
+      defaultValue: DataTypes.NOW,
     },
-    model: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    systemPrompt: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-    },
-    messages: {
+    content: {
       type: DataTypes.JSONB,
-      allowNull: false,
+      allowNull: true, // Can be null for certain events? Best to allow null.
     },
-    tools: {
+    metadata: {
       type: DataTypes.JSONB,
-      allowNull: true,
-    },
-    temperature: {
-      type: DataTypes.FLOAT,
-      allowNull: true,
-    },
-    maxTokens: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-    },
-    response: {
-      type: DataTypes.JSONB,
-      allowNull: true,
-    },
-    usage: {
-      type: DataTypes.JSONB,
-      allowNull: true,
-    },
-    latencyMs: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-    },
-    error: {
-      type: DataTypes.TEXT,
       allowNull: true,
     },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
+      field: 'created_at',
     },
   },
   {
     sequelize,
-    tableName: 'llm_events',
+    tableName: 'trace_events', // Rename table to be generic
     timestamps: true,
     updatedAt: false,
     indexes: [
       {
-        fields: ['thread_id'],
+        fields: ['trace_id'],
       },
       {
         fields: ['user_id'],
@@ -158,7 +127,7 @@ LLMEvent.init(
         fields: ['timestamp'],
       },
       {
-        fields: ['thread_id', 'step_id'],
+        fields: ['trace_id', 'step_id'],
       },
     ],
   }

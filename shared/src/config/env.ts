@@ -1,4 +1,17 @@
+import dotenv from 'dotenv';
+import fs from 'fs';
+import path from 'path';
 import { z } from 'zod';
+
+// Try to load .env from current directory or parent directory (monorepo root)
+const envPath = path.resolve(process.cwd(), '.env');
+const parentEnvPath = path.resolve(process.cwd(), '../.env');
+
+if (fs.existsSync(envPath)) {
+  dotenv.config({ path: envPath });
+} else if (fs.existsSync(parentEnvPath)) {
+  dotenv.config({ path: parentEnvPath });
+}
 
 // Environment validation schema
 const envSchema = z.object({
@@ -41,5 +54,7 @@ const envSchema = z.object({
 export type Env = z.infer<typeof envSchema>;
 
 export const env = envSchema.parse(process.env);
+
+
 
 export default env;

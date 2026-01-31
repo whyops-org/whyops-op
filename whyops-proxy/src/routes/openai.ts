@@ -4,6 +4,7 @@ import { generateSpanId, generateThreadId } from '@whyops/shared/utils';
 import { Hono } from 'hono';
 import { stream } from 'hono/streaming';
 import { sendToAnalyse } from '../services/analyse';
+import { OpenAIParser } from '../parsers/openai-parser';
 
 const logger = createServiceLogger('proxy:openai');
 const app = new Hono();
@@ -15,19 +16,36 @@ app.post('/chat/completions', async (c) => {
   const isStreaming = requestBody.stream === true;
 
   const startTime = Date.now();
-  const threadId = c.req.header('X-Thread-ID') || generateThreadId();
-  const spanId = generateSpanId();
+  const traceId = c.req.header('X-Thread-ID') || generateThreadId();
+  // Generate a distinct span ID for this interaction request
+  const requestSpanId = generateSpanId();
 
   logger.info({
     model: requestBody.model,
     stream: isStreaming,
-    threadId,
+    traceId,
   }, 'OpenAI request received');
+
+  // 1. Send Request Event (User Message)
+  sendToAnalyse({
+    traceId,
+    spanId: requestSpanId,
+    eventType: 'user_message',
+    userId: auth.userId,
+    providerId: auth.providerId,
+    content: requestBody.messages,
+    metadata: {
+      model: requestBody.model,
+      provider: 'openai',
+      params: {
+        temperature: requestBody.temperature,
+        maxTokens: requestBody.max_tokens,
+      }
+    }
+  }).catch(err => logger.error({ err }, 'Failed to send request event'));
 
   try {
     const provider = auth.provider;
-    
-    // Build request to OpenAI
     const openaiUrl = `${provider.baseUrl}/chat/completions`;
     const headers = {
       'Authorization': `Bearer ${provider.apiKey}`,
@@ -36,7 +54,6 @@ app.post('/chat/completions', async (c) => {
     };
 
     if (isStreaming) {
-      // Handle streaming response
       return stream(c, async (stream) => {
         const response = await fetch(openaiUrl, {
           method: 'POST',
@@ -48,116 +65,73 @@ app.post('/chat/completions', async (c) => {
           const error = await response.text();
           logger.error({ status: response.status, error }, 'OpenAI API error');
           
-          // Send error to analyse service (non-blocking)
           sendToAnalyse({
-            eventType: 'llm_call',
-            threadId,
-            spanId,
+            traceId,
+            spanId: generateSpanId(), // New span for error response
+            eventType: 'error',
             userId: auth.userId,
             providerId: auth.providerId,
-            provider: 'openai',
-            model: requestBody.model,
-            messages: requestBody.messages,
-            error: error,
-            latencyMs: Date.now() - startTime,
-          }).catch(err => logger.error({ err }, 'Failed to send error to analyse'));
+            content: { error, status: response.status },
+            metadata: { latencyMs: Date.now() - startTime }
+          });
           
           await stream.write(JSON.stringify({ error: 'Provider API error', details: error }));
           return;
         }
 
-        // Collect chunks for logging
-        const chunks: any[] = [];
-        let accumulatedResponse: any = {
-          id: '',
-          object: 'chat.completion.chunk',
-          created: 0,
-          model: requestBody.model,
-          choices: [{ delta: { role: 'assistant', content: '' }, index: 0, finish_reason: null }],
-        };
-
+        let accumulatedState = OpenAIParser.getInitialStreamState();
         const reader = response.body?.getReader();
         const decoder = new TextDecoder();
 
-        if (!reader) {
-          throw new Error('No response body');
-        }
+        if (!reader) throw new Error('No response body');
 
         try {
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
-
             const chunk = decoder.decode(value, { stream: true });
-            
-            // Parse SSE format
             const lines = chunk.split('\n').filter(line => line.trim().startsWith('data: '));
             
             for (const line of lines) {
               const data = line.replace('data: ', '').trim();
-              
               if (data === '[DONE]') {
                 await stream.write(`data: [DONE]\n\n`);
                 continue;
               }
-
               try {
                 const parsed = JSON.parse(data);
-                chunks.push(parsed);
-                
-                // Accumulate content
-                if (parsed.choices?.[0]?.delta?.content) {
-                  accumulatedResponse.choices[0].delta.content += parsed.choices[0].delta.content;
-                }
-                if (parsed.choices?.[0]?.finish_reason) {
-                  accumulatedResponse.choices[0].finish_reason = parsed.choices[0].finish_reason;
-                }
-                if (parsed.id) {
-                  accumulatedResponse.id = parsed.id;
-                }
-                if (parsed.created) {
-                  accumulatedResponse.created = parsed.created;
-                }
-                
-                // Forward to client
+                accumulatedState = OpenAIParser.parseStreamChunk(parsed, accumulatedState);
                 await stream.write(`data: ${data}\n\n`);
-              } catch (e) {
-                // Skip invalid JSON
-                logger.warn({ line }, 'Failed to parse SSE chunk');
-              }
+              } catch (e) { }
             }
           }
 
-          // Send to analyse service (non-blocking)
-          const latencyMs = Date.now() - startTime;
+          // 2. Send Response Event (LLM Response)
           sendToAnalyse({
-            eventType: 'llm_call',
-            threadId,
-            spanId,
+            traceId,
+            spanId: generateSpanId(), // New span for response
+            eventType: 'llm_response',
             userId: auth.userId,
             providerId: auth.providerId,
-            provider: 'openai',
-            model: requestBody.model,
-            systemPrompt: requestBody.messages?.[0]?.role === 'system' ? requestBody.messages[0].content : undefined,
-            messages: requestBody.messages,
-            tools: requestBody.tools,
-            temperature: requestBody.temperature,
-            maxTokens: requestBody.max_tokens,
-            response: {
-              content: accumulatedResponse.choices[0].delta.content,
-              finishReason: accumulatedResponse.choices[0].finish_reason,
+            content: {
+              content: accumulatedState.content,
+              toolCalls: accumulatedState.toolCalls,
+              finishReason: accumulatedState.finishReason,
             },
-            latencyMs,
-          }).catch(err => logger.error({ err }, 'Failed to send to analyse'));
+            metadata: {
+              model: requestBody.model,
+              provider: 'openai',
+              usage: accumulatedState.usage,
+              latencyMs: Date.now() - startTime,
+            }
+          }).catch(err => logger.error({ err }, 'Failed to send response event'));
 
-          logger.info({ threadId, latencyMs, chunksCount: chunks.length }, 'Streaming completed');
-          
         } finally {
           reader.releaseLock();
         }
       });
     } else {
-      // Handle non-streaming response
+      // Non-streaming logic
       const response = await fetch(openaiUrl, {
         method: 'POST',
         headers,
@@ -166,95 +140,56 @@ app.post('/chat/completions', async (c) => {
       });
 
       const latencyMs = Date.now() - startTime;
-      const responseData = await response.json() as {
-        choices?: Array<{
-          message?: {
-            content?: string;
-            tool_calls?: any;
-          };
-          finish_reason?: string;
-        }>;
-        usage?: {
-          prompt_tokens?: number;
-          completion_tokens?: number;
-          total_tokens?: number;
-        };
-        [key: string]: any;
-      };
+      const responseData = await response.json();
 
       if (!response.ok) {
-        logger.error({ status: response.status, responseData }, 'OpenAI API error');
-        
-        // Send error to analyse service (non-blocking)
         sendToAnalyse({
-          eventType: 'llm_call',
-          threadId,
-          spanId,
+          traceId,
+          spanId: generateSpanId(),
+          eventType: 'error',
           userId: auth.userId,
           providerId: auth.providerId,
-          provider: 'openai',
-          model: requestBody.model,
-          messages: requestBody.messages,
-          error: JSON.stringify(responseData),
-          latencyMs,
-        }).catch(err => logger.error({ err }, 'Failed to send error to analyse'));
-        
+          content: responseData,
+          metadata: { latencyMs }
+        });
         return c.json(responseData, response.status as any);
       }
 
-      // Send to analyse service (non-blocking)
+      const parsedResponse = OpenAIParser.parseResponse(responseData);
+
+      // 2. Send Response Event
       sendToAnalyse({
-        eventType: 'llm_call',
-        threadId,
-        spanId,
+        traceId,
+        spanId: generateSpanId(),
+        eventType: 'llm_response',
         userId: auth.userId,
         providerId: auth.providerId,
-        provider: 'openai',
-        model: requestBody.model,
-        systemPrompt: requestBody.messages?.[0]?.role === 'system' ? requestBody.messages[0].content : undefined,
-        messages: requestBody.messages,
-        tools: requestBody.tools,
-        temperature: requestBody.temperature,
-        maxTokens: requestBody.max_tokens,
-        response: {
-          content: responseData.choices?.[0]?.message?.content,
-          toolCalls: responseData.choices?.[0]?.message?.tool_calls,
-          finishReason: responseData.choices?.[0]?.finish_reason,
+        content: {
+          content: parsedResponse.content,
+          toolCalls: parsedResponse.toolCalls,
+          finishReason: parsedResponse.finishReason,
         },
-        usage: responseData.usage &&
-          responseData.usage.prompt_tokens !== undefined &&
-          responseData.usage.completion_tokens !== undefined &&
-          responseData.usage.total_tokens !== undefined ? {
-          promptTokens: responseData.usage.prompt_tokens,
-          completionTokens: responseData.usage.completion_tokens,
-          totalTokens: responseData.usage.total_tokens,
-        } : undefined,
-        latencyMs,
-      }).catch(err => logger.error({ err }, 'Failed to send to analyse'));
+        metadata: {
+          model: requestBody.model,
+          provider: 'openai',
+          usage: parsedResponse.usage,
+          latencyMs,
+        }
+      }).catch(err => logger.error({ err }, 'Failed to send response event'));
 
-      logger.info({ threadId, latencyMs, model: requestBody.model }, 'Request completed');
-
-      // Return response to client
       return c.json(responseData);
     }
   } catch (error: any) {
     const latencyMs = Date.now() - startTime;
-    logger.error({ error, threadId }, 'Request failed');
-
-    // Send error to analyse service (non-blocking)
     sendToAnalyse({
-      eventType: 'llm_call',
-      threadId,
-      spanId,
+      traceId,
+      spanId: generateSpanId(),
+      eventType: 'error',
       userId: auth.userId,
       providerId: auth.providerId,
-      provider: 'openai',
-      model: requestBody.model,
-      messages: requestBody.messages,
-      error: error.message,
-      latencyMs,
-    }).catch(err => logger.error({ err }, 'Failed to send error to analyse'));
-
+      content: { message: error.message },
+      metadata: { latencyMs }
+    });
     return c.json({ error: error.message }, 500);
   }
 });

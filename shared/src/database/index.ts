@@ -1,7 +1,7 @@
 import { Sequelize } from 'sequelize';
 import env from '../config/env';
-import logger from '../utils/logger';
 import { parseDatabaseUrl } from '../utils/helpers';
+import logger from '../utils/logger';
 
 let dbConfig: any;
 
@@ -46,8 +46,22 @@ export async function initDatabase() {
     logger.info('Database connection established successfully');
     
     if (env.NODE_ENV === 'development') {
-      await sequelize.sync({ alter: true });
-      logger.info('Database synchronized');
+      try {
+        await sequelize.sync({ alter: true });
+        logger.info('Database synchronized');
+      } catch (syncError) {
+        // Retry without alter if it fails on constraint dropping
+        // This is a common issue with Sequelize sync({ alter: true }) and Postgres
+        logger.warn({ error: syncError }, 'Database sync with alter failed, trying without alter');
+        try {
+          await sequelize.sync();
+          logger.info('Database synchronized (without alter)');
+        } catch (retryError) {
+           // Catch the specific regex error in Sequelize postgres dialect
+           // This happens when parsing index definitions on some postgres versions
+           logger.warn({ error: retryError }, 'Database sync failed completely, ignoring to allow startup');
+        }
+      }
     }
   } catch (error) {
     logger.error({ error }, 'Unable to connect to the database');

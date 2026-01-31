@@ -18,7 +18,7 @@ User.hasMany(LLMEvent, { foreignKey: 'userId', as: 'events' });
 LLMEvent.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
 Provider.hasMany(LLMEvent, { foreignKey: 'providerId', as: 'events' });
-LLMEvent.belongsTo(Provider, { foreignKey: 'providerId', as: 'provider' });
+LLMEvent.belongsTo(Provider, { foreignKey: 'providerId', as: 'providerDetails' });
 
 export { User, Provider, ApiKey, LLMEvent, RequestLog };
 

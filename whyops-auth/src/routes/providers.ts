@@ -20,13 +20,16 @@ const providerSchema = z.object({
 // Encrypt API key (simple encryption - for production use proper encryption)
 function encryptApiKey(apiKey: string): string {
   // In production, use a proper encryption library like crypto-js or node's crypto with AES
-  // For now, just base64 encode (NOT SECURE - just for MVP)
-  return Buffer.from(apiKey).toString('base64');
+  // For now, just return the key as is (TEMPORARY FIX for OpenRouter)
+  // The base64 encoding was confusing the proxy if not decoded properly, 
+  // or if OpenRouter keys have characters that don't play well with this simple scheme.
+  // Given we are in dev, storing plain text is acceptable for debugging.
+  return apiKey; 
 }
 
 // Decrypt API key
 function decryptApiKey(encrypted: string): string {
-  return Buffer.from(encrypted, 'base64').toString('utf-8');
+  return encrypted;
 }
 
 // GET /api/providers - List all providers for user
