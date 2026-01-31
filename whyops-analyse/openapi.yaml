@@ -1,0 +1,411 @@
+openapi: 3.0.3
+info:
+  title: WhyOps Analyse API
+  version: 1.0.0
+  description: Data persistence and analytics service
+
+servers:
+  - url: http://localhost:8081
+    description: Development server
+  - url: https://analyse.whyops.com
+    description: Production server
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      tags: [Health]
+      responses:
+        '200':
+          description: Service is healthy
+
+  /api/events:
+    get:
+      summary: List events
+      tags: [Events]
+      parameters:
+        - name: threadId
+          in: query
+          schema:
+            type: string
+        - name: userId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: providerId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of events
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LLMEvent'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+    post:
+      summary: Create event (internal use)
+      tags: [Events]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LLMEventInput'
+      responses:
+        '201':
+          description: Event created
+        '202':
+          description: Event acknowledged (not implemented yet)
+
+  /api/events/{id}:
+    get:
+      summary: Get event by ID
+      tags: [Events]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Event details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LLMEvent'
+        '404':
+          description: Event not found
+
+  /api/threads:
+    get:
+      summary: List threads
+      tags: [Threads]
+      parameters:
+        - name: userId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of threads
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  threads:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ThreadSummary'
+
+  /api/threads/{threadId}:
+    get:
+      summary: Get thread details
+      tags: [Threads]
+      parameters:
+        - name: threadId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Thread details with all events
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThreadDetails'
+        '404':
+          description: Thread not found
+
+  /api/threads/{threadId}/graph:
+    get:
+      summary: Get decision graph for thread
+      tags: [Threads]
+      parameters:
+        - name: threadId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Decision graph (DAG)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DecisionGraph'
+
+  /api/analytics/usage:
+    get:
+      summary: Get usage statistics
+      tags: [Analytics]
+      parameters:
+        - name: userId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: providerId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Usage statistics grouped by provider and model
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  stats:
+                    type: array
+                    items:
+                      type: object
+
+  /api/analytics/summary:
+    get:
+      summary: Get high-level summary
+      tags: [Analytics]
+      parameters:
+        - name: userId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: providerId
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Summary metrics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  summary:
+                    type: object
+
+components:
+  schemas:
+    LLMEvent:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        eventType:
+          type: string
+          enum: [llm_call]
+        threadId:
+          type: string
+        stepId:
+          type: integer
+        parentStepId:
+          type: integer
+        spanId:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        userId:
+          type: string
+          format: uuid
+        providerId:
+          type: string
+          format: uuid
+        provider:
+          type: string
+          enum: [openai, anthropic]
+        model:
+          type: string
+        messages:
+          type: array
+        response:
+          type: object
+        usage:
+          type: object
+          properties:
+            promptTokens:
+              type: integer
+            completionTokens:
+              type: integer
+            totalTokens:
+              type: integer
+        latencyMs:
+          type: integer
+        error:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    LLMEventInput:
+      type: object
+      required:
+        - eventType
+        - threadId
+        - userId
+        - providerId
+        - provider
+        - model
+      properties:
+        eventType:
+          type: string
+        threadId:
+          type: string
+        spanId:
+          type: string
+        userId:
+          type: string
+          format: uuid
+        providerId:
+          type: string
+          format: uuid
+        provider:
+          type: string
+        model:
+          type: string
+        messages:
+          type: array
+        response:
+          type: object
+        usage:
+          type: object
+        latencyMs:
+          type: integer
+        error:
+          type: string
+
+    ThreadSummary:
+      type: object
+      properties:
+        threadId:
+          type: string
+        userId:
+          type: string
+          format: uuid
+        providerId:
+          type: string
+          format: uuid
+        lastActivity:
+          type: string
+          format: date-time
+        eventCount:
+          type: integer
+
+    ThreadDetails:
+      type: object
+      properties:
+        threadId:
+          type: string
+        userId:
+          type: string
+          format: uuid
+        providerId:
+          type: string
+          format: uuid
+        eventCount:
+          type: integer
+        firstEvent:
+          type: string
+          format: date-time
+        lastEvent:
+          type: string
+          format: date-time
+        statistics:
+          type: object
+          properties:
+            totalTokens:
+              type: integer
+            totalLatency:
+              type: integer
+            avgLatency:
+              type: number
+            errorCount:
+              type: integer
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/LLMEvent'
+
+    DecisionGraph:
+      type: object
+      properties:
+        threadId:
+          type: string
+        graph:
+          type: object
+          properties:
+            nodes:
+              type: array
+              items:
+                type: object
+            edges:
+              type: array
+              items:
+                type: object
+                properties:
+                  from:
+                    type: string
+                  to:
+                    type: string
+
+    Pagination:
+      type: object
+      properties:
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+        hasMore:
+          type: boolean

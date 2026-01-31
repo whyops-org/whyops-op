@@ -1,0 +1,29 @@
+{
+  "name": "whyops-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "whyops-proxy",
+    "whyops-analyse",
+    "whyops-auth",
+    "shared"
+  ],
+  "scripts": {
+    "dev": "concurrently \"bun run dev:proxy\" \"bun run dev:analyse\" \"bun run dev:auth\"",
+    "dev:proxy": "cd whyops-proxy && bun run dev",
+    "dev:analyse": "cd whyops-analyse && bun run dev",
+    "dev:auth": "cd whyops-auth && bun run dev",
+    "build": "bun run build:shared && bun run build:proxy && bun run build:analyse && bun run build:auth",
+    "build:shared": "cd shared && bun run build",
+    "build:proxy": "cd whyops-proxy && bun run build",
+    "build:analyse": "cd whyops-analyse && bun run build",
+    "build:auth": "cd whyops-auth && bun run build",
+    "db:migrate": "cd shared && bun run db:migrate",
+    "db:seed": "cd shared && bun run db:seed"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "concurrently": "^9.1.0",
+    "typescript": "^5.7.2"
+  }
+}
