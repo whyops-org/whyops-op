@@ -4,11 +4,12 @@ import { z } from 'zod';
 import { createServiceLogger } from '@whyops/shared/logger';
 import { LLMEvent } from '@whyops/shared/models';
 import { nanoid } from 'nanoid';
+import { traceQueue } from '../utils/queue';
 
 const logger = createServiceLogger('analyse:events');
 const app = new Hono();
 
-// Event schema (Updated)
+// ... existing schema ...
 const eventSchema = z.object({
   eventType: z.enum(['user_message', 'llm_response', 'tool_call', 'error']),
   traceId: z.string(),
@@ -27,54 +28,62 @@ app.post('/', zValidator('json', eventSchema), async (c) => {
   const data = c.req.valid('json');
 
   try {
-    // Auto-resolve stepId and parentStepId if not provided
-    let stepId = data.stepId;
-    let parentStepId = data.parentStepId;
-    
-    // Auto-generate spanId if not provided
-    const spanId = data.spanId || `span_${nanoid()}`;
+    // Wrap the critical section (find last step + create) in a per-trace queue
+    // This serializes writes for the same trace, preventing race conditions on stepId
+    const result = await traceQueue.getQueue(data.traceId).add(async () => {
+      
+      // Auto-resolve stepId and parentStepId if not provided
+      let stepId = data.stepId;
+      let parentStepId = data.parentStepId;
+      
+      // Auto-generate spanId if not provided
+      const spanId = data.spanId || `span_${nanoid()}`;
 
-    if (!stepId) {
-      // Find the last event in this trace/thread
-      const lastEvent = await LLMEvent.findOne({
-        where: { traceId: data.traceId },
-        order: [['stepId', 'DESC']],
-        attributes: ['stepId']
+      if (!stepId) {
+        // Find the last event in this trace/thread
+        const lastEvent = await LLMEvent.findOne({
+          where: { traceId: data.traceId },
+          order: [['stepId', 'DESC']], // Use stepId primarily
+        });
+
+        if (lastEvent) {
+          stepId = lastEvent.stepId + 1;
+          // In a linear chain, the parent is the immediately preceding step
+          parentStepId = lastEvent.stepId;
+        } else {
+          // First event in trace
+          stepId = 1;
+          parentStepId = undefined; // No parent for root
+        }
+      } else if (!parentStepId && stepId > 1) {
+         parentStepId = stepId - 1;
+      }
+
+      const event = await LLMEvent.create({
+        eventType: data.eventType,
+        traceId: data.traceId,
+        stepId: stepId,
+        parentStepId: parentStepId,
+        spanId: spanId,
+        timestamp: data.timestamp ? new Date(data.timestamp) : new Date(),
+        content: data.content,
+        metadata: data.metadata,
+        userId: data.userId,
+        providerId: data.providerId,
       });
 
-      if (lastEvent) {
-        stepId = lastEvent.stepId + 1;
-        // In a linear chain, the parent is the immediately preceding step
-        parentStepId = lastEvent.stepId;
-      } else {
-        // First event in trace
-        stepId = 1;
-        parentStepId = undefined; // No parent for root
-      }
-    }
+      logger.info({
+        eventId: event.id,
+        traceId: data.traceId,
+        stepId,
+        eventType: data.eventType,
+        spanId,
+      }, 'Event saved');
 
-    const event = await LLMEvent.create({
-      eventType: data.eventType,
-      traceId: data.traceId,
-      stepId: stepId,
-      parentStepId: parentStepId,
-      spanId: spanId,
-      timestamp: data.timestamp ? new Date(data.timestamp) : new Date(),
-      content: data.content,
-      metadata: data.metadata,
-      userId: data.userId,
-      providerId: data.providerId,
+      return { id: event.id, status: 'saved', stepId, parentStepId, spanId };
     });
 
-    logger.info({
-      eventId: event.id,
-      traceId: data.traceId,
-      stepId,
-      eventType: data.eventType,
-      spanId,
-    }, 'Event saved');
-
-    return c.json({ id: event.id, status: 'saved', stepId, parentStepId, spanId }, 201);
+    return c.json(result, 201);
     
   } catch (error: any) {
     logger.error({ error, data }, 'Failed to save event');

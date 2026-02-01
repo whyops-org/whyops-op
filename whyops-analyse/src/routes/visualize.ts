@@ -30,6 +30,8 @@ app.get('/:traceId/mermaid', async (c) => {
     }
 
     let diagram = 'sequenceDiagram\n    participant User\n    participant Agent\n    participant Tool\n\n';
+    
+    let agentActive = false;
 
     for (const event of events) {
       const type = event.eventType;
@@ -39,25 +41,21 @@ app.get('/:traceId/mermaid', async (c) => {
         // User message
         let msg = '';
         if (Array.isArray(content)) {
-          // Array of messages (common in chat completion request)
+          // Find the last actual user message in the array
           const lastMsg = content[content.length - 1];
           if (lastMsg.role === 'user') {
             msg = lastMsg.content;
-          } else if (lastMsg.role === 'tool') {
-             // This is actually a return from tool execution in the conversation history
-             // We can skip this if we handle 'tool_call' event explicitly, 
-             // but 'user_message' often contains the whole context.
-             // Let's try to extract the actual user text if possible.
-             // If it's just a tool output, maybe don't visualize it here as 'User->Agent'
-             // unless it's a new turn.
-             continue; 
-          }
+          } 
         } else if (typeof content === 'string') {
           msg = content;
         }
         
         if (msg) {
           diagram += `    User->>Agent: ${escapeMermaid(msg)}\n`;
+          if (!agentActive) {
+            diagram += `    activate Agent\n`;
+            agentActive = true;
+          }
         }
       } 
       
@@ -65,14 +63,30 @@ app.get('/:traceId/mermaid', async (c) => {
         // LLM Response
         if (content.toolCalls && content.toolCalls.length > 0) {
           // Tool Call Request
+          if (agentActive) {
+            diagram += `    deactivate Agent\n`;
+            agentActive = false;
+          }
+          
           for (const tool of content.toolCalls) {
             const funcName = tool.function?.name || 'unknown_tool';
-            const args = tool.function?.arguments || '';
+            let args = tool.function?.arguments || '';
+            try {
+               const parsedArgs = JSON.parse(args);
+               delete parsedArgs._whyops_trace_id; 
+               args = JSON.stringify(parsedArgs);
+            } catch {}
+            
             diagram += `    Agent->>Tool: Call ${funcName}(${escapeMermaid(args)})\n`;
+            diagram += `    activate Tool\n`;
           }
         } else if (content.content) {
           // Text Response
           diagram += `    Agent->>User: ${escapeMermaid(content.content)}\n`;
+          if (agentActive) {
+            diagram += `    deactivate Agent\n`;
+            agentActive = false;
+          }
         }
       } 
       
@@ -81,10 +95,20 @@ app.get('/:traceId/mermaid', async (c) => {
         const toolName = content.toolName || 'Tool';
         const output = typeof content.output === 'string' ? content.output : JSON.stringify(content.output);
         diagram += `    Tool-->>Agent: Result from ${toolName}: ${escapeMermaid(output)}\n`;
+        diagram += `    deactivate Tool\n`;
+        
+        if (!agentActive) {
+          diagram += `    activate Agent\n`;
+          agentActive = true;
+        }
       } 
       
       else if (type === 'error') {
         diagram += `    Agent--xUser: Error: ${escapeMermaid(content.message || JSON.stringify(content))}\n`;
+        if (agentActive) {
+          diagram += `    deactivate Agent\n`;
+          agentActive = false;
+        }
       }
     }
 

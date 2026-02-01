@@ -1,6 +1,6 @@
 import env from '@whyops/shared/env';
 import { createServiceLogger } from '@whyops/shared/logger';
-import { generateSpanId, generateThreadId } from '@whyops/shared/utils';
+import { generateSpanId, generateThreadId, decodeSignature, encodeSignature, stripSignature } from '@whyops/shared/utils';
 import { Hono } from 'hono';
 import { stream } from 'hono/streaming';
 import { sendToAnalyse } from '../services/analyse';
@@ -16,9 +16,44 @@ app.post('/chat/completions', async (c) => {
   const isStreaming = requestBody.stream === true;
 
   const startTime = Date.now();
-  const traceId = c.req.header('X-Thread-ID') || generateThreadId();
+  
+  // 1. Try to find traceId from Headers
+  let traceId = c.req.header('X-Thread-ID');
+
+  // 2. If not found, try to extract hidden signature from the last assistant message
+  if (!traceId && requestBody.messages?.length > 0) {
+    // Iterate backwards to find the last assistant message
+    for (let i = requestBody.messages.length - 1; i >= 0; i--) {
+      const msg = requestBody.messages[i];
+      if (msg.role === 'assistant' && msg.content) {
+        const extractedId = decodeSignature(msg.content);
+        if (extractedId) {
+          traceId = extractedId;
+          logger.debug({ traceId }, 'Extracted traceId from invisible signature');
+          break;
+        }
+      }
+    }
+  }
+
+  // 3. Fallback to generating new trace if not provided or found
+  if (!traceId) {
+    traceId = generateThreadId();
+  }
+
   // Generate a distinct span ID for this interaction request
   const requestSpanId = generateSpanId();
+
+  // CLEANUP: Strip signatures from history before sending to OpenAI
+  // This is crucial so the LLM doesn't see the hidden characters
+  if (requestBody.messages) {
+    requestBody.messages = requestBody.messages.map((msg: any) => {
+      if (typeof msg.content === 'string') {
+        return { ...msg, content: stripSignature(msg.content) };
+      }
+      return msg;
+    });
+  }
 
   logger.info({
     model: requestBody.model,
@@ -26,7 +61,7 @@ app.post('/chat/completions', async (c) => {
     traceId,
   }, 'OpenAI request received');
 
-  // 1. Send Request Event (User Message)
+  // ... (Send Request Event logic remains same) ...
   sendToAnalyse({
     traceId,
     spanId: requestSpanId,
@@ -53,6 +88,9 @@ app.post('/chat/completions', async (c) => {
       'User-Agent': 'WhyOps-Proxy/1.0',
     };
 
+    // Prepare the invisible signature to inject into the response
+    const signature = encodeSignature(traceId);
+
     if (isStreaming) {
       return stream(c, async (stream) => {
         const response = await fetch(openaiUrl, {
@@ -62,12 +100,13 @@ app.post('/chat/completions', async (c) => {
         });
 
         if (!response.ok) {
+          // ... error handling ...
           const error = await response.text();
           logger.error({ status: response.status, error }, 'OpenAI API error');
           
           sendToAnalyse({
-            traceId,
-            spanId: generateSpanId(), // New span for error response
+            traceId: traceId!, // Assertion as we ensure it exists
+            spanId: generateSpanId(),
             eventType: 'error',
             userId: auth.userId,
             providerId: auth.providerId,
@@ -82,6 +121,7 @@ app.post('/chat/completions', async (c) => {
         let accumulatedState = OpenAIParser.getInitialStreamState();
         const reader = response.body?.getReader();
         const decoder = new TextDecoder();
+        let signatureSent = false;
 
         if (!reader) throw new Error('No response body');
 
@@ -95,6 +135,23 @@ app.post('/chat/completions', async (c) => {
             for (const line of lines) {
               const data = line.replace('data: ', '').trim();
               if (data === '[DONE]') {
+                // Inject signature in the final chunk (or as a separate chunk before DONE)
+                if (!signatureSent) {
+                   const signatureChunk = {
+                     id: accumulatedState.id || "gen-signature",
+                     object: "chat.completion.chunk",
+                     created: Date.now(),
+                     model: requestBody.model,
+                     choices: [{
+                       index: 0,
+                       delta: { content: signature }, // Inject invisible signature
+                       finish_reason: null
+                     }]
+                   };
+                   await stream.write(`data: ${JSON.stringify(signatureChunk)}\n\n`);
+                   signatureSent = true;
+                }
+
                 await stream.write(`data: [DONE]\n\n`);
                 continue;
               }
@@ -106,10 +163,10 @@ app.post('/chat/completions', async (c) => {
             }
           }
 
-          // 2. Send Response Event (LLM Response)
+          // ... (Send Response Event logic) ...
           sendToAnalyse({
-            traceId,
-            spanId: generateSpanId(), // New span for response
+            traceId: traceId!,
+            spanId: generateSpanId(),
             eventType: 'llm_response',
             userId: auth.userId,
             providerId: auth.providerId,
@@ -140,9 +197,10 @@ app.post('/chat/completions', async (c) => {
       });
 
       const latencyMs = Date.now() - startTime;
-      const responseData = await response.json();
+      const responseData = await response.json() as any;
 
       if (!response.ok) {
+        // ... error handling ...
         sendToAnalyse({
           traceId,
           spanId: generateSpanId(),
@@ -155,7 +213,36 @@ app.post('/chat/completions', async (c) => {
         return c.json(responseData, response.status as any);
       }
 
+      // Inject signature into response content
+      if (responseData.choices && responseData.choices[0] && responseData.choices[0].message) {
+        // 1. Inject Invisible Signature into Content
+        if (responseData.choices[0].message.content) {
+          responseData.choices[0].message.content += signature;
+        }
+
+        // 2. Inject Trace ID into Tool Call Arguments (Non-Streaming)
+        if (responseData.choices[0].message.tool_calls) {
+          try {
+            responseData.choices[0].message.tool_calls = responseData.choices[0].message.tool_calls.map((toolCall: any) => {
+              if (toolCall.function && toolCall.function.arguments) {
+                const args = JSON.parse(toolCall.function.arguments);
+                args._whyops_trace_id = traceId; // Inject Trace ID
+                toolCall.function.arguments = JSON.stringify(args);
+              }
+              return toolCall;
+            });
+          } catch (e) {
+            logger.warn({ error: e }, 'Failed to inject traceId into tool calls');
+          }
+        }
+      }
+
       const parsedResponse = OpenAIParser.parseResponse(responseData);
+      
+      // Strip signature from content before saving to DB
+      if (parsedResponse.content) {
+        parsedResponse.content = stripSignature(parsedResponse.content);
+      }
 
       // 2. Send Response Event
       sendToAnalyse({
@@ -180,9 +267,10 @@ app.post('/chat/completions', async (c) => {
       return c.json(responseData);
     }
   } catch (error: any) {
+    // ... error handling ...
     const latencyMs = Date.now() - startTime;
     sendToAnalyse({
-      traceId,
+      traceId: traceId!,
       spanId: generateSpanId(),
       eventType: 'error',
       userId: auth.userId,
@@ -193,6 +281,8 @@ app.post('/chat/completions', async (c) => {
     return c.json({ error: error.message }, 500);
   }
 });
+
+// Other OpenAI endpoints can be added here (embeddings, images, etc.)
 
 // OpenAI Models endpoint
 app.get('/models', async (c) => {
@@ -213,7 +303,5 @@ app.get('/models', async (c) => {
     return c.json({ error: error.message }, 500);
   }
 });
-
-// Other OpenAI endpoints can be added here (embeddings, images, etc.)
 
 export default app;

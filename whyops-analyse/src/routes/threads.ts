@@ -1,9 +1,58 @@
 import { createServiceLogger } from '@whyops/shared/logger';
 import { LLMEvent } from '@whyops/shared/models';
 import { Hono } from 'hono';
+import { Op } from 'sequelize';
 
 const logger = createServiceLogger('analyse:threads');
 const app = new Hono();
+
+// POST /api/threads/match - Match request history to an existing thread
+app.post('/match', async (c) => {
+  const { messages, providerId } = await c.req.json();
+
+  if (!messages || !Array.isArray(messages) || messages.length < 2) {
+    return c.json({ found: false, reason: 'Insufficient history' });
+  }
+
+  let anchorMessage = null;
+  for (let i = messages.length - 2; i >= 0; i--) {
+    if (messages[i].role === 'assistant') {
+      anchorMessage = messages[i];
+      break;
+    }
+  }
+
+  if (!anchorMessage || !anchorMessage.content) {
+    return c.json({ found: false, reason: 'No anchor message found' });
+  }
+
+  try {
+    const matchedEvent = await LLMEvent.findOne({
+      where: {
+        providerId, 
+        eventType: 'llm_response',
+        content: {
+          [Op.contains]: { content: anchorMessage.content }
+        }
+      },
+      order: [['timestamp', 'DESC']], 
+    });
+
+    if (matchedEvent) {
+      return c.json({ 
+        found: true, 
+        traceId: matchedEvent.traceId,
+        matchEventId: matchedEvent.id 
+      });
+    }
+
+    return c.json({ found: false });
+
+  } catch (error: any) {
+    logger.error({ error }, 'Failed to match thread');
+    return c.json({ error: 'Failed to match thread' }, 500);
+  }
+});
 
 // GET /api/threads - List all threads
 app.get('/', async (c) => {
@@ -18,14 +67,14 @@ app.get('/', async (c) => {
     // Get unique threads with their latest event
     const threads = await LLMEvent.findAll({
       attributes: [
-        'threadId',
-        'userId',
-        'providerId',
+        ['trace_id', 'threadId'], // Rename for API compat
+        ['user_id', 'userId'],
+        ['provider_id', 'providerId'],
         [LLMEvent.sequelize!.fn('MAX', LLMEvent.sequelize!.col('timestamp')), 'lastActivity'],
         [LLMEvent.sequelize!.fn('COUNT', LLMEvent.sequelize!.col('id')), 'eventCount'],
       ],
       where,
-      group: ['threadId', 'userId', 'providerId'],
+      group: ['trace_id', 'user_id', 'provider_id'],
       order: [[LLMEvent.sequelize!.fn('MAX', LLMEvent.sequelize!.col('timestamp')), 'DESC']],
       limit,
       offset,
@@ -45,7 +94,7 @@ app.get('/:threadId', async (c) => {
     const threadId = c.req.param('threadId');
 
     const events = await LLMEvent.findAll({
-      where: { threadId },
+      where: { traceId: threadId },
       order: [['stepId', 'ASC'], ['timestamp', 'ASC']],
     });
 
@@ -53,10 +102,15 @@ app.get('/:threadId', async (c) => {
       return c.json({ error: 'Thread not found' }, 404);
     }
 
-    // Calculate thread statistics
-    const totalTokens = events.reduce((sum, e) => sum + (e.usage?.totalTokens || 0), 0);
-    const totalLatency = events.reduce((sum, e) => sum + (e.latencyMs || 0), 0);
-    const errorCount = events.filter(e => e.error).length;
+    // Calculate thread statistics based on generic content
+    const totalTokens = events.reduce((sum, e) => {
+      const usage = e.metadata?.usage || e.content?.usage; // Access from JSONB
+      return sum + (usage?.totalTokens || 0);
+    }, 0);
+    
+    // Access latency from metadata
+    const totalLatency = events.reduce((sum, e) => sum + (e.metadata?.latencyMs || 0), 0);
+    const errorCount = events.filter(e => e.eventType === 'error').length;
 
     return c.json({
       threadId,
@@ -85,7 +139,7 @@ app.get('/:threadId/graph', async (c) => {
     const threadId = c.req.param('threadId');
 
     const events = await LLMEvent.findAll({
-      where: { threadId },
+      where: { traceId: threadId },
       order: [['stepId', 'ASC'], ['timestamp', 'ASC']],
     });
 
@@ -99,10 +153,10 @@ app.get('/:threadId/graph', async (c) => {
       stepId: e.stepId,
       parentStepId: e.parentStepId,
       type: e.eventType,
-      model: e.model,
+      model: e.metadata?.model, // Access from metadata
       timestamp: e.timestamp,
-      latencyMs: e.latencyMs,
-      hasError: !!e.error,
+      latencyMs: e.metadata?.latencyMs, // Access from metadata
+      hasError: e.eventType === 'error',
     }));
 
     const edges = events
