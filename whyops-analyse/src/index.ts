@@ -9,6 +9,7 @@ import eventsRouter from './routes/events';
 import healthRouter from './routes/health';
 import threadsRouter from './routes/threads';
 import visualizeRouter from './routes/visualize';
+import entitiesRouter from './routes/entities';
 
 const logger = createServiceLogger('analyse');
 const app = new Hono();
@@ -26,6 +27,7 @@ app.route('/api/events', eventsRouter);
 app.route('/api/threads', threadsRouter);
 app.route('/api/analytics', analyticsRouter);
 app.route('/api/visualize', visualizeRouter);
+app.route('/api/entities', entitiesRouter);
 
 // 404 handler
 app.notFound((c) => {

@@ -10,7 +10,9 @@
   "dependencies": {
     "@hono/node-server": "^1.14.0",
     "@hono/zod-validator": "^0.4.1",
+    "@types/crypto-js": "^4.2.2",
     "@whyops/shared": "workspace:*",
+    "crypto-js": "^4.2.0",
     "hono": "^4.7.9",
     "nanoid": "^5.1.6",
     "pino": "^9.6.0",
