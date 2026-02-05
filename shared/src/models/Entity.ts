@@ -2,7 +2,7 @@ import { DataTypes, Model } from 'sequelize';
 import sequelize from '../database';
 
 export interface EntityAttributes {
-  id: string; // UUID
+  id?: string; // UUID - optional for creation, auto-generated
   userId: string;
   name: string; // Agent Name
   hash: string; // Hash of metadata (tools, system prompt, etc.)

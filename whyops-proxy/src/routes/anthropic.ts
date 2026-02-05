@@ -16,6 +16,7 @@ app.post('/messages', async (c) => {
 
   const startTime = Date.now();
   const threadId = c.req.header('X-Thread-ID') || generateThreadId();
+  const entityName = c.req.header('X-Entity-Name');
   const spanId = generateSpanId();
 
   logger.info({
@@ -56,6 +57,7 @@ app.post('/messages', async (c) => {
             spanId,
             userId: auth.userId,
             providerId: auth.providerId,
+            entityName,
             provider: 'anthropic',
             model: requestBody.model,
             messages: requestBody.messages,
@@ -132,6 +134,7 @@ app.post('/messages', async (c) => {
             spanId,
             userId: auth.userId,
             providerId: auth.providerId,
+            entityName,
             provider: 'anthropic',
             model: requestBody.model,
             systemPrompt: requestBody.system,
@@ -183,6 +186,7 @@ app.post('/messages', async (c) => {
           spanId,
           userId: auth.userId,
           providerId: auth.providerId,
+          entityName,
           provider: 'anthropic',
           model: requestBody.model,
           messages: requestBody.messages,
@@ -200,6 +204,7 @@ app.post('/messages', async (c) => {
         spanId,
         userId: auth.userId,
         providerId: auth.providerId,
+        entityName,
         provider: 'anthropic',
         model: requestBody.model,
         systemPrompt: requestBody.system,
@@ -234,6 +239,7 @@ app.post('/messages', async (c) => {
       spanId,
       userId: auth.userId,
       providerId: auth.providerId,
+      entityName,
       provider: 'anthropic',
       model: requestBody.model,
       messages: requestBody.messages,

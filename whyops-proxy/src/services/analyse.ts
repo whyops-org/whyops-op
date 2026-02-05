@@ -11,6 +11,7 @@ interface TraceEventPayload {
   eventType: 'user_message' | 'llm_response' | 'tool_call' | 'tool_call_request' | 'tool_call_response' | 'error';
   userId: string;
   providerId: string;
+  entityName?: string;
   timestamp?: string;
   content: any;
   metadata?: Record<string, any>;

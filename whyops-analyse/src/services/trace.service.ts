@@ -30,11 +30,13 @@ export class TraceService {
       }
 
       // 2. Resolve Entity ID (if name provided)
+      // This will create the entity if it doesn't exist
       let resolvedEntityId: string | undefined;
       if (data.entityName) {
         resolvedEntityId = await EntityService.resolveEntityId(
           data.userId,
-          data.entityName
+          data.entityName,
+          data.metadata // Pass metadata to create/version the entity
         );
       }
 

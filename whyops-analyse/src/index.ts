@@ -10,6 +10,7 @@ import healthRouter from './routes/health';
 import threadsRouter from './routes/threads';
 import visualizeRouter from './routes/visualize';
 import entitiesRouter from './routes/entities';
+import llmCostsRouter from './routes/llmCosts';
 
 const logger = createServiceLogger('analyse');
 const app = new Hono();
@@ -28,6 +29,7 @@ app.route('/api/threads', threadsRouter);
 app.route('/api/analytics', analyticsRouter);
 app.route('/api/visualize', visualizeRouter);
 app.route('/api/entities', entitiesRouter);
+app.route('/api/llm-costs', llmCostsRouter);
 
 // 404 handler
 app.notFound((c) => {

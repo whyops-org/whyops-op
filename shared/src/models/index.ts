@@ -5,6 +5,7 @@ import LLMEvent from './LLMEvent';
 import RequestLog from './RequestLog';
 import Trace from './Trace';
 import Entity from './Entity';
+import LlmCost from './LlmCost';
 
 // Define associations
 User.hasMany(Provider, { foreignKey: 'userId', as: 'providers' });
@@ -39,7 +40,7 @@ LLMEvent.belongsTo(Entity, { foreignKey: 'entityId', as: 'entity' });
 Trace.belongsTo(Entity, { foreignKey: 'entityId', as: 'entity' });
 Entity.hasMany(Trace, { foreignKey: 'entityId', as: 'traces' });
 
-export { User, Provider, ApiKey, LLMEvent, RequestLog, Trace, Entity };
+export { User, Provider, ApiKey, LLMEvent, RequestLog, Trace, Entity, LlmCost };
 
 export const models = {
   User,
@@ -49,6 +50,7 @@ export const models = {
   RequestLog,
   Trace,
   Entity,
+  LlmCost,
 };
 
 export default models;

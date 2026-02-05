@@ -16,6 +16,7 @@ app.post('/chat/completions', async (c) => {
   const isStreaming = requestBody.stream === true;
 
   const startTime = Date.now();
+  const entityName = c.req.header('X-Entity-Name');
   
   // 1. Try to find traceId from Headers
   let traceId = c.req.header('X-Thread-ID');
@@ -68,6 +69,7 @@ app.post('/chat/completions', async (c) => {
     eventType: 'user_message',
     userId: auth.userId,
     providerId: auth.providerId,
+    entityName,
     content: requestBody.messages,
     metadata: {
       model: requestBody.model,
@@ -110,6 +112,7 @@ app.post('/chat/completions', async (c) => {
             eventType: 'error',
             userId: auth.userId,
             providerId: auth.providerId,
+            entityName,
             content: { error, status: response.status },
             metadata: { latencyMs: Date.now() - startTime }
           });
@@ -170,6 +173,7 @@ app.post('/chat/completions', async (c) => {
             eventType: 'llm_response',
             userId: auth.userId,
             providerId: auth.providerId,
+            entityName,
             content: {
               content: accumulatedState.content,
               toolCalls: accumulatedState.toolCalls,
@@ -207,6 +211,7 @@ app.post('/chat/completions', async (c) => {
           eventType: 'error',
           userId: auth.userId,
           providerId: auth.providerId,
+          entityName,
           content: responseData,
           metadata: { latencyMs }
         });
@@ -251,6 +256,7 @@ app.post('/chat/completions', async (c) => {
         eventType: 'llm_response',
         userId: auth.userId,
         providerId: auth.providerId,
+        entityName,
         content: {
           content: parsedResponse.content,
           toolCalls: parsedResponse.toolCalls, // Ensure tool calls are passed
@@ -275,6 +281,7 @@ app.post('/chat/completions', async (c) => {
       eventType: 'error',
       userId: auth.userId,
       providerId: auth.providerId,
+      entityName,
       content: { message: error.message },
       metadata: { latencyMs }
     });
@@ -291,6 +298,7 @@ app.post('/responses', async (c) => {
   const isStreaming = requestBody.stream === true;
 
   const startTime = Date.now();
+  const entityName = c.req.header('X-Entity-Name');
   
   // 1. Try to find traceId from Headers
   let traceId = c.req.header('X-Thread-ID');
@@ -388,6 +396,7 @@ app.post('/responses', async (c) => {
     eventType: 'user_message',
     userId: auth.userId,
     providerId: auth.providerId,
+    entityName,
     content: requestBody.input || requestBody.conversation, // Log input
     metadata: {
       model: requestBody.model,
@@ -428,6 +437,7 @@ app.post('/responses', async (c) => {
             eventType: 'error',
             userId: auth.userId,
             providerId: auth.providerId,
+            entityName,
             content: { error, status: response.status },
             metadata: { latencyMs: Date.now() - startTime }
           });
@@ -485,6 +495,7 @@ app.post('/responses', async (c) => {
             eventType: 'llm_response',
             userId: auth.userId,
             providerId: auth.providerId,
+            entityName,
             content: {
               content: accumulatedState.content,
               // toolCalls: accumulatedState.toolCalls, // Tool calls in streaming /responses tricky to capture perfectly yet
@@ -521,6 +532,7 @@ app.post('/responses', async (c) => {
           eventType: 'error',
           userId: auth.userId,
           providerId: auth.providerId,
+          entityName,
           content: responseData,
           metadata: { latencyMs }
         });
@@ -589,6 +601,7 @@ app.post('/responses', async (c) => {
         eventType: 'llm_response',
         userId: auth.userId,
         providerId: auth.providerId,
+        entityName,
         content: {
           content: parsedResponse.content,
           finishReason: parsedResponse.finishReason,
@@ -611,6 +624,7 @@ app.post('/responses', async (c) => {
       eventType: 'error',
       userId: auth.userId,
       providerId: auth.providerId,
+      entityName,
       content: { message: error.message },
       metadata: { latencyMs }
     });
