@@ -1,8 +1,10 @@
 import env from '@whyops/shared/env';
 import { betterAuth } from 'better-auth';
 import { createAuthMiddleware } from 'better-auth/api';
+import { magicLink } from 'better-auth/plugins';
 import { Kysely, PostgresDialect } from 'kysely';
 import { Pool } from 'pg';
+import { sendMagicLinkEmail } from '../utils/email.util';
 
 // Create Kysely instance for Better Auth
 const db = new Kysely({
@@ -21,9 +23,35 @@ export const auth = betterAuth({
     db,
     type: 'postgres',
   } as any,
-  emailAndPassword: {
-    enabled: true,
-    requireEmailVerification: false, // Set to true when email service is configured
+  baseURL: env.BETTER_AUTH_URL,
+  secret: env.BETTER_AUTH_SECRET,
+  plugins: [
+    magicLink({
+      sendMagicLink: async ({ email, url, token }, ctx) => {
+        // Send magic link email asynchronously (avoid timing attacks)
+        // The 'url' already contains the verification token and callbackURL
+        // When user clicks the link, Better Auth automatically:
+        // 1. Verifies the token
+        // 2. Creates a session
+        // 3. Redirects to the callbackURL (or '/' if not provided)
+        void sendMagicLinkEmail({
+          to: email,
+          magicLinkUrl: url,
+        });
+      },
+      expiresIn: 60 * 15, // 15 minutes
+      disableSignUp: false, // Allow new users to sign up via magic link
+    }),
+  ],
+  socialProviders: {
+    github: env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET ? {
+      clientId: env.GITHUB_CLIENT_ID,
+      clientSecret: env.GITHUB_CLIENT_SECRET,
+    } : undefined,
+    google: env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET ? {
+      clientId: env.GOOGLE_CLIENT_ID,
+      clientSecret: env.GOOGLE_CLIENT_SECRET,
+    } : undefined,
   },
   session: {
     expiresIn: 60 * 60 * 24 * 7, // 7 days
@@ -43,35 +71,34 @@ export const auth = betterAuth({
   },
   hooks: {
     after: createAuthMiddleware(async (ctx) => {
-      // Sync Better Auth user with Sequelize users table after sign-up
-      if (ctx.path.startsWith('/sign-up')) {
-        const newSession = ctx.context.newSession;
-        
-        if (newSession?.user) {
-          const betterAuthUser = newSession.user;
-          try {
-            const { User } = await import('@whyops/shared/models');
-            
-            // Check if Sequelize user already exists
-            const existingUser = await User.findOne({ 
-              where: { email: betterAuthUser.email } 
+      // Sync Better Auth user with Sequelize users table
+      // This catches: sign-up, magic link verification, OAuth sign-ins
+      const newSession = ctx.context.newSession;
+      
+      if (newSession?.user) {
+        const betterAuthUser = newSession.user;
+        try {
+          const { User } = await import('@whyops/shared/models');
+          
+          // Check if Sequelize user already exists
+          const existingUser = await User.findOne({ 
+            where: { email: betterAuthUser.email } 
+          });
+          
+          if (!existingUser) {
+            // Create corresponding Sequelize user with same ID
+            await User.create({
+              id: betterAuthUser.id,
+              email: betterAuthUser.email,
+              name: betterAuthUser.name || undefined,
+              passwordHash: 'managed_by_better_auth', // Placeholder since Better Auth manages auth
+              isActive: true,
+              organizationId: (betterAuthUser as any).organizationId || undefined,
             });
-            
-            if (!existingUser) {
-              // Create corresponding Sequelize user with same ID
-              await User.create({
-                id: betterAuthUser.id,
-                email: betterAuthUser.email,
-                name: betterAuthUser.name || undefined,
-                passwordHash: 'managed_by_better_auth', // Placeholder since Better Auth manages passwords
-                isActive: true,
-                organizationId: (betterAuthUser as any).organizationId || undefined,
-              });
-              console.log(`Synced Better Auth user ${betterAuthUser.id} to Sequelize users table`);
-            }
-          } catch (error) {
-            console.error('Failed to sync user to Sequelize:', error);
+            console.log(`✅ Synced Better Auth user ${betterAuthUser.id} (${betterAuthUser.email}) to Sequelize users table`);
           }
+        } catch (error) {
+          console.error('❌ Failed to sync user to Sequelize:', error);
         }
       }
     }),
@@ -88,6 +115,7 @@ export const auth = betterAuth({
     env.ANALYSE_URL,
     env.AUTH_URL,
     'http://localhost:3000', // Add your frontend URL
+    'http://localhost:5173', // Add Vite default port
   ],
 });
 

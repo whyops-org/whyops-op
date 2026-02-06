@@ -12,6 +12,7 @@ import migrateRouter from './routes/migrate';
 import projectsRouter from './routes/projects';
 import providersRouter from './routes/providers';
 import usersRouter from './routes/users';
+import { verifyEmailConnection } from './utils/email.util';
 
 const logger = createServiceLogger('auth');
 const app = new Hono();
@@ -19,6 +20,15 @@ const app = new Hono();
 // Initialize database
 await initDatabase();
 logger.info('Database initialized');
+
+// Verify email configuration
+const emailConfigured = await verifyEmailConnection();
+if (!emailConfigured) {
+  logger.warn('Maileroo not configured. Magic link authentication will not work.');
+  logger.warn('Please set MAILEROO_API_KEY environment variable.');
+} else {
+  logger.info('Maileroo email service configured successfully');
+}
 
 // Global middleware
 app.use('*', honoLogger());

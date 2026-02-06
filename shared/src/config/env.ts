@@ -49,6 +49,23 @@ const envSchema = z.object({
   // Proxy specific
   PROXY_TIMEOUT_MS: z.coerce.number().default(60000), // 60 seconds
   PROXY_MAX_RETRIES: z.coerce.number().default(3),
+  
+  // Better Auth
+  BETTER_AUTH_URL: z.string().url().default('http://localhost:8082'),
+  BETTER_AUTH_SECRET: z.string().min(32).default('your-better-auth-secret-change-in-production-min-32-chars'),
+  
+  // OAuth - GitHub
+  GITHUB_CLIENT_ID: z.string().optional(),
+  GITHUB_CLIENT_SECRET: z.string().optional(),
+  
+  // OAuth - Google
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
+  
+  // Email - Maileroo
+  MAILEROO_API_KEY: z.string().optional(),
+  MAILEROO_FROM_EMAIL: z.string().email().default('noreply@whyops.com'),
+  MAILEROO_FROM_NAME: z.string().default('WhyOps'),
 });
 
 export type Env = z.infer<typeof envSchema>;
