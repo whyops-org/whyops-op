@@ -9,4 +9,12 @@
 - [x] Ensure Documentation is Complete
 - Work through each checklist item systematically.
 - Keep communication concise and focused.
+- Always try to use the Already avaialble components and utilities in the codebase before creating new ones.
+- If you think some component or utility is missing, create a new one that is resusable and micro in scope, can be reused across the codebase, and is well documented (check if the component is available in shadcn/ui so you can install it from there and customize it if needed, only create from sractch when not there in shadcn/ui).
+- Always use the colors that are available in the globals.css the tokens that are available in the codebase, NEVER use hardcoded hex values (colors) or tailwind colors like bg-blue-500, text-gray-700, etc. Instead, use the tokens defined in the codebase like bg-primary, text-secondary, etc. (VERY IMPORTANT).
+- Follow the existing code style and conventions used in the codebase.
+- If you are have to copy some code that is already present in some file, just make a resuable code and replace in both places instead of copying the code in both places, this way we can avoid code duplication and make the codebase cleaner and more maintainable. (DO NOT COPY CODE, ALWAYS MAKE REUSABLE COMPONENTS AND UTILITIES).
+- Make sure hardcoded data or any text (even in p or div or span) or values are not in the component, always make a CONSTANT file and put all the hardcoded data, text and values in that file and import it in the component and use it from there, this way we can avoid hardcoded values in the component and make the codebase cleaner and more maintainable (ALWAYS).
+- Make sure the files are small and doing one thing at a time. The Utils, controllers, and view should be separated and not mixed together. The components should be small and reusable, and the pages should be mostly composed of components and not have too much logic in them.
+- If you do not have context how other components, pages or utilities are implemented, Check the codebase for specific examples of how to implement similar functionality, and follow the same patterns and conventions used in the codebase.
 - Follow development best practices.

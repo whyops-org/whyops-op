@@ -26,7 +26,7 @@ export function CodeBlock({ code, language, showCopy = true, className }: CodeBl
       {showCopy && (
         <button
           onClick={handleCopy}
-          className="absolute top-3 right-3 z-10 rounded-md p-2 hover:bg-muted/50 transition-colors text-muted-foreground hover:text-foreground min-w-[70px] flex items-center justify-center"
+          className="absolute top-3 right-3 z-10 rounded-md p-2 hover:bg-muted/50 transition-colors text-muted-foreground hover:text-foreground min-w-17.5 flex items-center justify-center"
           aria-label="Copy code"
         >
           {copied ? (

@@ -14,14 +14,14 @@ export function AgentPreview({ direction = "vertical", className }: AgentPreview
   return (
     <Card className={cn(
       "relative w-full overflow-hidden bg-transparent border-none shadow-none",
-      isVertical ? "min-h-[500px] h-[60vh]" : "min-h-[400px] h-[50vh]",
+      isVertical ? "min-h-125 h-[60vh]" : "min-h-100 h-[50vh]",
       className
     )}>
        {/* Container with dark background equivalent to ProviderCard */}
        <div className="absolute inset-0 bg-card border border-border/30 rounded-3xl overflow-hidden">
           {/* Background Effects */}
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(46,230,193,0.05),transparent_70%)]" />
-          <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(46,230,193,0.03)_1px,transparent_1px),linear-gradient(to_bottom,rgba(46,230,193,0.03)_1px,transparent_1px)] bg-[length:2vw_2vw] [mask-image:radial-gradient(ellipse_at_center,black_50%,transparent_100%)]" />
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(46,230,193,0.03)_1px,transparent_1px),linear-gradient(to_bottom,rgba(46,230,193,0.03)_1px,transparent_1px)] bg-size-[2vw_2vw] mask-[radial-gradient(ellipse_at_center,black_50%,transparent_100%)]" />
 
           <div className="relative flex h-full flex-col p-[2vw]">
             {/* Window Controls */}
@@ -42,16 +42,16 @@ export function AgentPreview({ direction = "vertical", className }: AgentPreview
                      </div>
                      
                      {/* Connection Lines (Simulated) */}
-                     <div className="absolute w-px h-[10dvh] bg-gradient-to-t from-primary/20 to-transparent bottom-full left-1/2"></div>
-                     <div className="absolute w-px h-[10dvh] bg-gradient-to-b from-primary/20 to-transparent top-full left-1/2"></div>
-                     <div className="absolute h-px w-[10vw] bg-gradient-to-l from-primary/20 to-transparent right-full top-1/2"></div>
-                     <div className="absolute h-px w-[10vw] bg-gradient-to-r from-primary/20 to-transparent left-full top-1/2"></div>
+                     <div className="absolute w-px h-[10dvh] bg-linear-to-t from-primary/20 to-transparent bottom-full left-1/2"></div>
+                     <div className="absolute w-px h-[10dvh] bg-linear-to-b from-primary/20 to-transparent top-full left-1/2"></div>
+                     <div className="absolute h-px w-[10vw] bg-linear-to-l from-primary/20 to-transparent right-full top-1/2"></div>
+                     <div className="absolute h-px w-[10vw] bg-linear-to-r from-primary/20 to-transparent left-full top-1/2"></div>
                   </div>
                </div>
 
                {/* Floating Particles */}
-               <div className="absolute top-1/4 left-1/4 w-[0.4vw] h-[0.4vw] bg-primary/40 rounded-full animate-bounce duration-[3000ms]"></div>
-               <div className="absolute bottom-1/3 right-1/4 w-[0.4vw] h-[0.4vw] bg-primary/30 rounded-full animate-bounce duration-[4000ms]"></div>
+               <div className="absolute top-1/4 left-1/4 w-[0.4vw] h-[0.4vw] bg-primary/40 rounded-full animate-bounce duration-3000"></div>
+               <div className="absolute bottom-1/3 right-1/4 w-[0.4vw] h-[0.4vw] bg-primary/30 rounded-full animate-bounce duration-4000"></div>
                <div className="absolute top-1/3 right-1/3 w-[0.25vw] h-[0.25vw] bg-primary/50 rounded-full"></div>
 
             </div>

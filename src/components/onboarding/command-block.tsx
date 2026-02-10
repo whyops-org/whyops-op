@@ -25,7 +25,7 @@ export function CommandBlock({ command, className }: CommandBlockProps) {
         <code className="text-primary">{command}</code>
         <button
           onClick={handleCopy}
-          className="rounded-md p-2 hover:bg-muted/50 transition-colors text-muted-foreground hover:text-foreground min-w-[70px] flex items-center justify-center"
+          className="rounded-md p-2 hover:bg-muted/50 transition-colors text-muted-foreground hover:text-foreground min-w-17.5 flex items-center justify-center"
           aria-label="Copy command"
         >
           {copied ? (
