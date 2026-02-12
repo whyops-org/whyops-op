@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Manrope, Sora } from "next/font/google";
 import "./globals.css";
+import { AuthGate } from "@/components/auth/auth-gate";
 
 const bodyFont = Manrope({
   variable: "--font-body",
@@ -25,7 +26,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={`${bodyFont.variable} ${displayFont.variable} antialiased`}>
-        {children}
+        <AuthGate>{children}</AuthGate>
       </body>
     </html>
   );

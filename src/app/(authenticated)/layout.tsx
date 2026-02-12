@@ -1,16 +1,12 @@
 import { DashboardHeader } from "@/components/layout/dashboard-header";
 import { Sidebar } from "@/components/layout/sidebar";
-import { cookies } from "next/headers";
-
-export const dynamic = "force-dynamic";
 
 export default async function AuthenticatedLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const cookieStore = await cookies();
-  const defaultCollapsed = cookieStore.get("sidebar:state")?.value === "true";
+  const defaultCollapsed = false;
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">

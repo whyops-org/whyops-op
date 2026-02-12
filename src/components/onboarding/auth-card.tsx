@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/stores/authStore";
 
 interface AuthCardProps {
   onGithubClick?: () => void;
@@ -14,14 +15,59 @@ interface AuthCardProps {
 }
 
 export function AuthCard({ onGithubClick, onGoogleClick }: AuthCardProps) {
-  const [email, setEmail] = React.useState("");
+  const {
+    email,
+    setEmail,
+    sendMagicLink,
+    resetMagicLink,
+    oauthLogin,
+    status,
+    error,
+    resendAvailableAt,
+  } = useAuthStore();
   const [submitted, setSubmitted] = React.useState(false);
+  const [cooldownMs, setCooldownMs] = React.useState(0);
 
+  const isLoading = status === "loading";
   const canSubmit = email.trim().length > 0;
+  const isResendDisabled = isLoading || cooldownMs > 0;
+  const isSent = status === "sent" || submitted;
 
-  const handleSubmit = () => {
-    if (!canSubmit) return;
-    setSubmitted(true);
+  React.useEffect(() => {
+    if (!resendAvailableAt) {
+      setCooldownMs(0);
+      return;
+    }
+
+    const update = () => {
+      const remaining = Math.max(resendAvailableAt - Date.now(), 0);
+      setCooldownMs(remaining);
+    };
+
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, [resendAvailableAt]);
+
+  React.useEffect(() => {
+    if (status === "sent") {
+      setSubmitted(true);
+    }
+  }, [status]);
+
+  const handleSubmit = async () => {
+    if (!canSubmit || isLoading) return;
+    await sendMagicLink();
+  };
+
+  const handleResend = async () => {
+    if (isLoading) return;
+    await sendMagicLink();
+  };
+
+  const handleReset = () => {
+    setSubmitted(false);
+    resetMagicLink();
   };
 
   return (
@@ -30,7 +76,7 @@ export function AuthCard({ onGithubClick, onGoogleClick }: AuthCardProps) {
         <div
           className={cn(
             "space-y-6 transition-all duration-500",
-            submitted ? "pointer-events-none opacity-0 -translate-y-3" : ""
+            isSent ? "pointer-events-none opacity-0 -translate-y-3" : ""
           )}
         >
           <CardHeader className="space-y-3 pb-3">
@@ -44,7 +90,8 @@ export function AuthCard({ onGithubClick, onGoogleClick }: AuthCardProps) {
               <Button
                 variant="muted"
                 className="w-full justify-center gap-2"
-                onClick={onGithubClick}
+                onClick={onGithubClick ?? (() => oauthLogin("github"))}
+                disabled={isLoading}
               >
                 <Github className="h-4 w-4" />
                 Continue with GitHub
@@ -52,7 +99,8 @@ export function AuthCard({ onGithubClick, onGoogleClick }: AuthCardProps) {
               <Button
                 variant="muted"
                 className="w-full justify-center gap-2"
-                onClick={onGoogleClick}
+                onClick={onGoogleClick ?? (() => oauthLogin("google"))}
+                disabled={isLoading}
               >
                 <Chrome className="h-4 w-4" />
                 Continue with Google
@@ -77,7 +125,7 @@ export function AuthCard({ onGithubClick, onGoogleClick }: AuthCardProps) {
                 />
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
-                <Button size="lg" onClick={handleSubmit} disabled={!canSubmit}>
+                <Button size="lg" onClick={handleSubmit} disabled={!canSubmit} loading={isLoading}>
                   Sign Up
                   <ArrowRight className="h-4 w-4" />
                 </Button>
@@ -86,10 +134,19 @@ export function AuthCard({ onGithubClick, onGoogleClick }: AuthCardProps) {
                   variant="outline"
                   onClick={handleSubmit}
                   disabled={!canSubmit}
+                  loading={isLoading}
                 >
                   Log in
                 </Button>
               </div>
+              <p
+                className={cn(
+                  "min-h-[16px] text-xs transition-opacity",
+                  error ? "text-destructive opacity-100" : "opacity-0"
+                )}
+              >
+                {error ?? ""}
+              </p>
             </div>
             <div className="flex items-center justify-center gap-4 pt-2 text-xs text-muted-foreground">
               <span>SOC 2 compliant</span>
@@ -101,7 +158,7 @@ export function AuthCard({ onGithubClick, onGoogleClick }: AuthCardProps) {
         <div
           className={cn(
             "absolute inset-0 flex flex-col justify-center px-8 py-10 text-center transition-all duration-500",
-            submitted
+            isSent
               ? "opacity-100 translate-y-0"
               : "pointer-events-none opacity-0 translate-y-4"
           )}
@@ -117,11 +174,15 @@ export function AuthCard({ onGithubClick, onGoogleClick }: AuthCardProps) {
             link to finish signing in.
           </p>
           <div className="mt-6 flex flex-col gap-3">
-            <Button variant="muted" onClick={() => setSubmitted(false)}>
+            <Button variant="muted" onClick={handleReset}>
               <RotateCcw className="h-4 w-4" />
               Use another email
             </Button>
-            <Button onClick={() => setSubmitted(false)}>Resend email</Button>
+            <Button onClick={handleResend} disabled={isResendDisabled} loading={isLoading}>
+              {cooldownMs > 0
+                ? `Resend in ${Math.ceil(cooldownMs / 1000)}s`
+                : "Resend email"}
+            </Button>
           </div>
         </div>
       </div>
