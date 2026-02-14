@@ -10,16 +10,18 @@ interface FormFieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'ic
   icon?: LucideIcon;
   iconRight?: ReactNode;
   containerClassName?: string;
+  hint?: string;
 }
 
-export function FormField({ 
-  label, 
-  id, 
-  icon: Icon, 
+export function FormField({
+  label,
+  id,
+  icon: Icon,
   iconRight,
   containerClassName,
+  hint,
   className,
-  ...inputProps 
+  ...inputProps
 }: FormFieldProps) {
   return (
     <div className={cn("space-y-2", containerClassName)}>
@@ -32,7 +34,7 @@ export function FormField({
             <Icon className="h-5 w-5" />
           </div>
         )}
-        <Input 
+        <Input
           id={id}
           className={cn(
             "bg-card border-border h-12 rounded-md focus-visible:ring-primary/20 focus-visible:border-primary/50 text-base",
@@ -48,6 +50,9 @@ export function FormField({
           </div>
         )}
       </div>
+      {hint && (
+        <p className="text-xs text-muted-foreground ml-1">{hint}</p>
+      )}
     </div>
   );
 }

@@ -22,6 +22,7 @@ export interface ProviderInput {
   type: ProviderType;
   baseUrl: string;
   apiKey: string;
+  model: string;
 }
 
 interface ProviderState {

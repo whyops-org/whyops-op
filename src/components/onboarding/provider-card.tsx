@@ -46,6 +46,7 @@ export function ProviderCard({ onBack, onContinue }: ProviderCardProps) {
     type: "openai",
     baseUrl: "",
     apiKey: "",
+    model: "",
   });
   const [isCreating, setIsCreating] = useState(false);
 
@@ -125,7 +126,7 @@ export function ProviderCard({ onBack, onContinue }: ProviderCardProps) {
   };
 
   const handleTestConnection = async () => {
-    if (!formData.apiKey || !formData.baseUrl) {
+    if (!formData.apiKey || !formData.baseUrl || !formData.model) {
       return;
     }
     await testConnection(formData);
@@ -148,6 +149,7 @@ export function ProviderCard({ onBack, onContinue }: ProviderCardProps) {
         type: "openai",
         baseUrl: getDefaultBaseUrl("openai"),
         apiKey: "",
+        model: "",
       });
       setSelectedType(null);
       clearError();
@@ -276,6 +278,18 @@ export function ProviderCard({ onBack, onContinue }: ProviderCardProps) {
             onChange={(e) => handleInputChange("baseUrl", e.target.value)}
           />
 
+          {/* Model for Testing */}
+          <FormField
+            id="test-model"
+            label="Test Model"
+            type="text"
+            placeholder={formData.type === "openai" ? "gpt-4o-mini" : "claude-3-haiku-20240307"}
+            icon={Sparkles}
+            value={formData.model || ""}
+            onChange={(e) => handleInputChange("model", e.target.value)}
+            hint="Enter a model to test the connection (e.g., gpt-4o-mini for OpenAI)"
+          />
+
           {/* API Key */}
           <FormField
             id="api-key"
@@ -302,7 +316,7 @@ export function ProviderCard({ onBack, onContinue }: ProviderCardProps) {
               type="button"
               variant="outline"
               onClick={handleTestConnection}
-              disabled={!formData.apiKey || !formData.baseUrl || testStatus === "testing"}
+              disabled={!formData.apiKey || !formData.baseUrl || !formData.model || testStatus === "testing"}
               className="flex-1"
             >
               {testStatus === "testing" ? (
@@ -321,7 +335,7 @@ export function ProviderCard({ onBack, onContinue }: ProviderCardProps) {
             <Button
               type="button"
               onClick={handleAddProvider}
-              disabled={!formData.name || !formData.slug || !formData.apiKey || !formData.baseUrl || isCreating || testStatus !== "success"}
+              disabled={!formData.name || !formData.slug || !formData.apiKey || !formData.baseUrl || !formData.model || isCreating || testStatus !== "success"}
               className="flex-1"
             >
               {isCreating ? (
