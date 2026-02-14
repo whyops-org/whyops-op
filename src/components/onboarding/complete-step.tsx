@@ -1,17 +1,19 @@
 "use client";
 
-import { ArrowRight, Info } from "lucide-react";
+import { ArrowRight, Info, Zap, Send } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CodeBlock } from "./code-block";
 import { InfoBox } from "./info-box";
 import { StepContainer } from "./step-container";
 import { TabSelector } from "./tab-selector";
 import { useConfigStore } from "@/stores/configStore";
 import { useProjectStore } from "@/stores/projectStore";
-import { getCodeSnippet } from "@/lib/code-snippets";
+import { useProviderStore } from "@/stores/providerStore";
+import { getCodeSnippet, type SnippetType } from "@/lib/code-snippets";
 
 interface CompleteStepProps {
   onFinish?: () => void;
@@ -21,8 +23,10 @@ interface CompleteStepProps {
 export function CompleteStep({ onFinish, isFinishing }: CompleteStepProps) {
   const { config, fetchConfig } = useConfigStore();
   const { masterKeys, currentProject, currentEnvironments } = useProjectStore();
+  const { providers } = useProviderStore();
 
   const [selectedLang, setSelectedLang] = useState<string>("python");
+  const [snippetType, setSnippetType] = useState<SnippetType>("proxy");
 
   // Fetch config on mount
   useEffect(() => {
@@ -32,23 +36,28 @@ export function CompleteStep({ onFinish, isFinishing }: CompleteStepProps) {
   // Get code snippet data from store
   const snippetData = useMemo(() => {
     const activeKey = masterKeys[0];
+    const activeProvider = providers[0];
     return {
       apiKey: activeKey?.key || "YOUR_API_KEY",
       apiKeyPrefix: activeKey?.prefix || "pk_live_",
       projectId: currentProject?.id || "YOUR_PROJECT_ID",
       environmentId: currentEnvironments?.[0]?.id || "YOUR_ENVIRONMENT_ID",
+      providerSlug: activeProvider?.slug || "openai",
     };
-  }, [masterKeys, currentProject, currentEnvironments]);
+  }, [masterKeys, currentProject, currentEnvironments, providers]);
 
   // Get languages from config
   const languages = useMemo(() => config?.sdkLanguages || [], [config?.sdkLanguages]);
 
-  // Get current code snippet based on selected language
+  // Get current code snippet based on selected language and type
   const currentSnippet = useMemo(() => {
-    const apiBaseUrl = config?.apiBaseUrl;
-    if (!apiBaseUrl) return null;
-    return getCodeSnippet(selectedLang, snippetData, apiBaseUrl);
-  }, [selectedLang, snippetData, config?.apiBaseUrl]);
+    if (!config?.proxyBaseUrl || !config?.analyseBaseUrl) return null;
+    return getCodeSnippet(selectedLang, snippetData, {
+      proxyBaseUrl: config.proxyBaseUrl,
+      analyseBaseUrl: config.analyseBaseUrl,
+      authBaseUrl: config.authBaseUrl,
+    }, snippetType);
+  }, [selectedLang, snippetData, config?.proxyBaseUrl, config?.analyseBaseUrl, config?.authBaseUrl, snippetType]);
 
   // Show loading state while config is loading
   if (!config || !currentSnippet) {
@@ -64,6 +73,20 @@ export function CompleteStep({ onFinish, isFinishing }: CompleteStepProps) {
   return (
     <>
       <StepContainer>
+        {/* Snippet Type Tabs (Proxy vs Events) */}
+        <Tabs value={snippetType} onValueChange={(v: string) => setSnippetType(v as SnippetType)} className="mb-6">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="proxy" className="flex items-center gap-2">
+              <Zap className="h-4 w-4" />
+              Via Proxy
+            </TabsTrigger>
+            <TabsTrigger value="events" className="flex items-center gap-2">
+              <Send className="h-4 w-4" />
+              Manual Events
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+
         {/* Language Tabs */}
         <TabSelector
           tabs={languages}
@@ -73,12 +96,7 @@ export function CompleteStep({ onFinish, isFinishing }: CompleteStepProps) {
 
         {/* Content */}
         <div className="space-y-6">
-          {/* Send Events */}
           <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-foreground">
-              Send Events to WhyOps
-            </h3>
-
             {/* File label with badge */}
             <div className="flex items-center gap-3">
               <span className="text-sm font-medium text-muted-foreground">
@@ -92,32 +110,28 @@ export function CompleteStep({ onFinish, isFinishing }: CompleteStepProps) {
             {/* Code block with syntax highlighting */}
             <CodeBlock code={currentSnippet.code} language={selectedLang} />
 
-            {/* Info box */}
-            <InfoBox variant="info" icon={Info} title="">
-              <p className="text-sm">
-                Send events to WhyOps using the REST API. The{" "}
-                <code className="rounded bg-muted/50 font-mono text-xs">
-                  eventType
-                </code>{" "}
-                can be:{" "}
-                <code className="rounded bg-muted/50 font-mono text-xs">
-                  user_message
-                </code>
-                ,{" "}
-                <code className="rounded bg-muted/50 font-mono text-xs">
-                  llm_response
-                </code>
-                ,{" "}
-                <code className="rounded bg-muted/50 font-mono text-xs">
-                  tool_call
-                </code>
-                , or{" "}
-                <code className="rounded bg-muted/50 font-mono text-xs">
-                  error
-                </code>
-                .
-              </p>
-            </InfoBox>
+            {/* Info box based on snippet type */}
+            {snippetType === "proxy" ? (
+              <InfoBox variant="info" icon={Info} title="">
+                <p className="text-sm">
+                  Use the proxy to automatically track all LLM calls. Just add the{" "}
+                  <code className="rounded bg-muted/50 font-mono text-xs">X-Agent-Name</code>{" "}
+                  header to your requests. The proxy automatically sends analytics events.
+                </p>
+              </InfoBox>
+            ) : (
+              <InfoBox variant="info" icon={Info} title="">
+                <p className="text-sm">
+                  Send events manually to WhyOps using the REST API. The{" "}
+                  <code className="rounded bg-muted/50 font-mono text-xs">eventType</code>{" "}
+                  can be:{" "}
+                  <code className="rounded bg-muted/50 font-mono text-xs">user_message</code>,{" "}
+                  <code className="rounded bg-muted/50 font-mono text-xs">llm_response</code>,{" "}
+                  <code className="rounded bg-muted/50 font-mono text-xs">tool_call</code>, or{" "}
+                  <code className="rounded bg-muted/50 font-mono text-xs">error</code>.
+                </p>
+              </InfoBox>
+            )}
           </div>
         </div>
       </StepContainer>

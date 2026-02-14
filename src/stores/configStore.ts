@@ -44,6 +44,10 @@ export interface SdkConfig {
 }
 
 export interface AppConfig {
+  authBaseUrl: string;
+  proxyBaseUrl: string;
+  analyseBaseUrl: string;
+  // Legacy alias
   apiBaseUrl: string;
   providerTypes: ProviderTypeConfig[];
   environments: EnvironmentConfig[];
