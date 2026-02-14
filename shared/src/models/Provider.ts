@@ -8,6 +8,7 @@ export class Provider extends Model<ProviderConfigType, ProviderCreationAttribut
   declare id: string;
   declare userId: string;
   declare name: string;
+  declare slug: string;
   declare type: 'openai' | 'anthropic';
   declare baseUrl: string;
   declare apiKey: string;
@@ -36,6 +37,11 @@ Provider.init(
     name: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    slug: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
     },
     type: {
       type: DataTypes.ENUM('openai', 'anthropic'),
@@ -76,6 +82,10 @@ Provider.init(
       },
       {
         fields: ['type'],
+      },
+      {
+        fields: ['user_id', 'slug'],
+        unique: true,
       },
     ],
   }

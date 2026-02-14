@@ -80,6 +80,15 @@ export class ProjectService {
    * Create a new project with environments and master keys
    */
   static async createProject(data: CreateProjectData): Promise<ProjectWithEnvironments> {
+    // Check for duplicate project name for this user
+    const existing = await Project.findOne({
+      where: { userId: data.userId, name: data.name },
+    });
+
+    if (existing) {
+      throw new Error('A project with this name already exists');
+    }
+
     // Create project
     const project = await Project.create({
       userId: data.userId,

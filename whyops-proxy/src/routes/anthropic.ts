@@ -1,12 +1,73 @@
 import env from '@whyops/shared/env';
 import { createServiceLogger } from '@whyops/shared/logger';
 import { generateSpanId, generateThreadId } from '@whyops/shared/utils';
+import { Provider } from '@whyops/shared/models';
+import { decrypt } from '@whyops/shared/utils';
 import { Hono } from 'hono';
 import { stream } from 'hono/streaming';
 import { sendToAnalyse } from '../services/analyse';
 
 const logger = createServiceLogger('proxy:anthropic');
 const app = new Hono();
+
+/**
+ * Parse model field to extract provider slug and actual model name
+ * Format: "provider-slug/model-name" or just "model-name"
+ * Returns: { providerSlug: string | null, actualModel: string }
+ */
+function parseModelField(model: string): { providerSlug: string | null; actualModel: string } {
+  if (!model || !model.includes('/')) {
+    return { providerSlug: null, actualModel: model };
+  }
+
+  const parts = model.split('/');
+  // If it looks like a slug (contains dash), treat first part as slug
+  if (parts[0].includes('-')) {
+    return { providerSlug: parts[0], actualModel: parts.slice(1).join('/') };
+  }
+
+  // Otherwise, treat as just model name
+  return { providerSlug: null, actualModel: model };
+}
+
+/**
+ * Get provider by slug or return default from auth context
+ */
+async function getProviderBySlugOrDefault(
+  userId: string,
+  providerSlug: string | null,
+  defaultProvider: any
+): Promise<{ provider: any; isCustom: boolean }> {
+  // If no slug provided, use default provider from API key
+  if (!providerSlug) {
+    return { provider: defaultProvider, isCustom: false };
+  }
+
+  // Try to find provider by slug
+  const provider = await Provider.findOne({
+    where: {
+      userId,
+      slug: providerSlug,
+      isActive: true,
+    },
+  });
+
+  if (provider) {
+    // Decrypt the API key
+    const decryptedApiKey = decrypt(provider.apiKey);
+    return {
+      provider: {
+        ...provider.toJSON(),
+        apiKey: decryptedApiKey,
+      },
+      isCustom: true,
+    };
+  }
+
+  // Fall back to default provider if slug not found
+  logger.warn({ providerSlug }, 'Provider slug not found, using default');
+  return { provider: defaultProvider, isCustom: false };
+}
 
 // Anthropic Messages endpoint
 app.post('/messages', async (c) => {
@@ -15,19 +76,33 @@ app.post('/messages', async (c) => {
   const isStreaming = requestBody.stream === true;
 
   const startTime = Date.now();
-  const threadId = c.req.header('X-Thread-ID') || generateThreadId();
   const entityName = c.req.header('X-Entity-Name');
+
+  // Parse provider slug from model field (format: provider-slug/model or just model)
+  const { providerSlug, actualModel } = parseModelField(requestBody.model);
+
+  // Get provider - either by slug or from API key's default
+  const { provider, isCustom } = await getProviderBySlugOrDefault(
+    auth.userId,
+    providerSlug,
+    auth.provider
+  );
+
+  // Use actual model for the API call
+  requestBody.model = actualModel;
+
+  const threadId = c.req.header('X-Thread-ID') || generateThreadId();
   const spanId = generateSpanId();
 
   logger.info({
-    model: requestBody.model,
+    model: actualModel,
+    providerSlug,
+    isCustom,
     stream: isStreaming,
     threadId,
   }, 'Anthropic request received');
 
   try {
-    const provider = auth.provider;
-    
     // Build request to Anthropic
     const anthropicUrl = `${provider.baseUrl}/messages`;
     const headers = {
@@ -56,7 +131,7 @@ app.post('/messages', async (c) => {
             threadId,
             spanId,
             userId: auth.userId,
-            providerId: auth.providerId,
+            providerId: provider?.id,
             entityName,
             provider: 'anthropic',
             model: requestBody.model,
@@ -133,7 +208,7 @@ app.post('/messages', async (c) => {
             threadId,
             spanId,
             userId: auth.userId,
-            providerId: auth.providerId,
+            providerId: provider?.id,
             entityName,
             provider: 'anthropic',
             model: requestBody.model,
@@ -185,7 +260,7 @@ app.post('/messages', async (c) => {
           threadId,
           spanId,
           userId: auth.userId,
-          providerId: auth.providerId,
+          providerId: provider?.id,
           entityName,
           provider: 'anthropic',
           model: requestBody.model,
@@ -203,7 +278,7 @@ app.post('/messages', async (c) => {
         threadId,
         spanId,
         userId: auth.userId,
-        providerId: auth.providerId,
+        providerId: provider?.id,
         entityName,
         provider: 'anthropic',
         model: requestBody.model,
@@ -238,7 +313,7 @@ app.post('/messages', async (c) => {
       threadId,
       spanId,
       userId: auth.userId,
-      providerId: auth.providerId,
+      providerId: provider?.id,
       entityName,
       provider: 'anthropic',
       model: requestBody.model,

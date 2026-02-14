@@ -1,14 +1,16 @@
 import { initDatabase } from '@whyops/shared/database';
 import env from '@whyops/shared/env';
 import { createServiceLogger } from '@whyops/shared/logger';
+import type { Context, MiddlewareHandler } from 'hono';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import type { Context, MiddlewareHandler } from 'hono';
 import { logger as honoLogger } from 'hono/logger';
 import { auth } from './lib/auth';
 import { requireAuth, sessionMiddleware } from './middleware/session';
 import apiKeysRouter from './routes/apiKeys';
 import authRouter from './routes/auth';
+import configRouter from './routes/config';
+import devRouter from './routes/dev';
 import healthRouter from './routes/health';
 import migrateRouter from './routes/migrate';
 import projectsRouter from './routes/projects';
@@ -76,6 +78,7 @@ app.use('/api/auth/sign-in/magic-link', magicLinkLimiter);
 
 // Public routes (no session required)
 app.route('/health', healthRouter);
+app.route('/api/config', configRouter);
 
 // Custom auth routes (no session required)
 app.route('/api/auth', authRouter);
@@ -83,6 +86,7 @@ app.route('/api/auth', authRouter);
 // Better Auth migration endpoint (only in development, no session required)
 if (env.NODE_ENV === 'development') {
   app.route('/migrate', migrateRouter);
+  app.route('/api/dev', devRouter);
 }
 
 // Better Auth handler - handles /api/auth/* endpoints

@@ -9,6 +9,7 @@ export interface ProviderConfig {
   id: string;
   userId: string;
   name: string;
+  slug: string;
   type: ProviderType;
   baseUrl: string;
   apiKey: string; // Encrypted in database

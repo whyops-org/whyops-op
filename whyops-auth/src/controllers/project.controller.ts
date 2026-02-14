@@ -74,6 +74,12 @@ export class ProjectController {
       });
     } catch (error: any) {
       logger.error({ error }, 'Failed to create project');
+
+      // Return specific error messages
+      if (error.message === 'A project with this name already exists') {
+        return ResponseUtil.conflict(c, error.message);
+      }
+
       return ResponseUtil.internalError(c, 'Failed to create project');
     }
   }

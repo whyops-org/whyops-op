@@ -27,7 +27,7 @@ export class ProviderController {
     try {
       const user = c.get('user');
       const data = await c.req.json();
-      
+
       const provider = await ProviderService.createProvider({
         userId: user.id,
         ...data,
@@ -36,6 +36,7 @@ export class ProviderController {
       return ResponseUtil.created(c, {
         id: provider.id,
         name: provider.name,
+        slug: provider.slug,
         type: provider.type,
         baseUrl: provider.baseUrl,
         isActive: provider.isActive,
@@ -43,6 +44,17 @@ export class ProviderController {
       });
     } catch (error: any) {
       logger.error({ error }, 'Failed to create provider');
+
+      // Return specific error messages
+      if (error.message === 'A provider with this name already exists') {
+        return ResponseUtil.conflict(c, error.message);
+      }
+
+      // Connection failed error
+      if (error.message.startsWith('Connection failed:')) {
+        return ResponseUtil.badRequest(c, error.message);
+      }
+
       return ResponseUtil.internalError(c, 'Failed to create provider');
     }
   }
@@ -54,7 +66,7 @@ export class ProviderController {
     try {
       const user = c.get('user');
       const id = c.req.param('id');
-      
+
       const provider = await ProviderService.getProviderById(id, user.id);
 
       if (!provider) {
@@ -76,7 +88,7 @@ export class ProviderController {
       const user = c.get('user');
       const id = c.req.param('id');
       const data = await c.req.json() as UpdateProviderData;
-      
+
       const provider = await ProviderService.updateProvider(id, user.id, data);
 
       return ResponseUtil.success(c, {
@@ -89,11 +101,11 @@ export class ProviderController {
       });
     } catch (error: any) {
       logger.error({ error }, 'Failed to update provider');
-      
+
       if (error.message === 'Provider not found') {
         return ResponseUtil.notFound(c, error.message);
       }
-      
+
       return ResponseUtil.internalError(c, 'Failed to update provider');
     }
   }
@@ -105,17 +117,17 @@ export class ProviderController {
     try {
       const user = c.get('user');
       const id = c.req.param('id');
-      
+
       await ProviderService.deleteProvider(id, user.id);
 
       return ResponseUtil.success(c, { message: 'Provider deleted' });
     } catch (error: any) {
       logger.error({ error }, 'Failed to delete provider');
-      
+
       if (error.message === 'Provider not found') {
         return ResponseUtil.notFound(c, error.message);
       }
-      
+
       return ResponseUtil.internalError(c, 'Failed to delete provider');
     }
   }
@@ -127,18 +139,78 @@ export class ProviderController {
     try {
       const user = c.get('user');
       const id = c.req.param('id');
-      
+
       const isActive = await ProviderService.toggleProvider(id, user.id);
 
       return ResponseUtil.success(c, { isActive });
     } catch (error: any) {
       logger.error({ error }, 'Failed to toggle provider');
-      
+
       if (error.message === 'Provider not found') {
         return ResponseUtil.notFound(c, error.message);
       }
-      
+
       return ResponseUtil.internalError(c, 'Failed to toggle provider');
+    }
+  }
+
+  /**
+   * Test provider connection
+   */
+  static async testProvider(c: Context) {
+    try {
+      const data = await c.req.json();
+      const { type, baseUrl, apiKey } = data;
+
+      let success = false;
+      let message = '';
+
+      if (type === 'openai') {
+        // Test OpenAI connection
+        const response = await fetch(`${baseUrl}/models`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+          },
+          signal: AbortSignal.timeout(10000),
+        });
+        success = response.ok;
+        message = success ? 'Successfully connected to OpenAI' : `Failed to connect: ${response.statusText}`;
+      } else if (type === 'anthropic') {
+        // Test Anthropic connection - make a minimal request
+        const response = await fetch(`${baseUrl}/v1/messages`, {
+          method: 'POST',
+          headers: {
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'claude-3-haiku-20240307',
+            max_tokens: 1,
+            messages: [{ role: 'user', content: 'Hi' }],
+          }),
+          signal: AbortSignal.timeout(10000),
+        });
+        success = response.ok;
+        message = success ? 'Successfully connected to Anthropic' : `Failed to connect: ${response.statusText}`;
+      }
+
+      if (success) {
+        return ResponseUtil.success(c, { success: true, message });
+      } else {
+        return ResponseUtil.badRequest(c, message);
+      }
+    } catch (error: any) {
+      logger.error({ error }, 'Failed to test provider connection');
+
+      if (error.name === 'TimeoutError' || error.code === 'ETIMEDOUT') {
+        return ResponseUtil.badRequest(c, 'Connection timeout - check base URL');
+      } else if (error.cause?.code === 'ENOTFOUND') {
+        return ResponseUtil.badRequest(c, 'Invalid base URL - host not found');
+      }
+
+      return ResponseUtil.internalError(c, 'Connection test failed');
     }
   }
 }

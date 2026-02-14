@@ -1,6 +1,8 @@
 import env from '@whyops/shared/env';
 import { createServiceLogger } from '@whyops/shared/logger';
 import { decodeSignature, encodeSignature, generateSpanId, generateThreadId, stripSignature } from '@whyops/shared/utils';
+import { Provider } from '@whyops/shared/models';
+import { decrypt } from '@whyops/shared/utils';
 import { Hono } from 'hono';
 import { stream } from 'hono/streaming';
 import { OpenAIParser } from '../parsers/openai-parser';
@@ -8,6 +10,65 @@ import { sendToAnalyse } from '../services/analyse';
 
 const logger = createServiceLogger('proxy:openai');
 const app = new Hono();
+
+/**
+ * Parse model field to extract provider slug and actual model name
+ * Format: "provider-slug/model-name" or just "model-name"
+ * Returns: { providerSlug: string | null, model: string }
+ */
+function parseModelField(model: string): { providerSlug: string | null; actualModel: string } {
+  if (!model || !model.includes('/')) {
+    return { providerSlug: null, actualModel: model };
+  }
+
+  const parts = model.split('/');
+  // If it looks like a slug (contains dash), treat first part as slug
+  if (parts[0].includes('-')) {
+    return { providerSlug: parts[0], actualModel: parts.slice(1).join('/') };
+  }
+
+  // Otherwise, treat as just model name
+  return { providerSlug: null, actualModel: model };
+}
+
+/**
+ * Get provider by slug or return default from auth context
+ */
+async function getProviderBySlugOrDefault(
+  userId: string,
+  providerSlug: string | null,
+  defaultProvider: any
+): Promise<{ provider: any; isCustom: boolean }> {
+  // If no slug provided, use default provider from API key
+  if (!providerSlug) {
+    return { provider: defaultProvider, isCustom: false };
+  }
+
+  // Try to find provider by slug
+  const provider = await Provider.findOne({
+    where: {
+      userId,
+      slug: providerSlug,
+      isActive: true,
+    },
+  });
+
+  if (provider) {
+    // Decrypt the API key
+    const decryptedApiKey = decrypt(provider.apiKey);
+    return {
+      provider: {
+        ...provider.toJSON(),
+        apiKey: decryptedApiKey,
+      },
+      isCustom: true,
+    };
+  }
+
+  // Fall back to default provider if slug not found
+  logger.warn({ providerSlug }, 'Provider slug not found, using default');
+  return { provider: defaultProvider, isCustom: false };
+}
 
 // OpenAI Chat Completions endpoint
 app.post('/chat/completions', async (c) => {
@@ -17,7 +78,20 @@ app.post('/chat/completions', async (c) => {
 
   const startTime = Date.now();
   const entityName = c.req.header('X-Entity-Name');
-  
+
+  // Parse provider slug from model field (format: provider-slug/model or just model)
+  const { providerSlug, actualModel } = parseModelField(requestBody.model);
+
+  // Get provider - either by slug or from API key's default
+  const { provider, isCustom } = await getProviderBySlugOrDefault(
+    auth.userId,
+    providerSlug,
+    auth.provider
+  );
+
+  // Use actual model for the API call
+  requestBody.model = actualModel;
+
   // 1. Try to find traceId from Headers
   let traceId = c.req.header('X-Thread-ID');
 
@@ -45,6 +119,14 @@ app.post('/chat/completions', async (c) => {
   // Generate a distinct span ID for this interaction request
   const requestSpanId = generateSpanId();
 
+  logger.info({
+    model: actualModel,
+    providerSlug,
+    isCustom,
+    stream: isStreaming,
+    traceId,
+  }, 'OpenAI request received');
+
   // CLEANUP: Strip signatures from history before sending to OpenAI
   // This is crucial so the LLM doesn't see the hidden characters
   if (requestBody.messages) {
@@ -56,13 +138,7 @@ app.post('/chat/completions', async (c) => {
     });
   }
 
-  logger.info({
-    model: requestBody.model,
-    stream: isStreaming,
-    traceId,
-  }, 'OpenAI request received');
-
-  // ... (Send Request Event logic remains same) ...
+  // Send request event to analyse
   sendToAnalyse({
     traceId,
     spanId: requestSpanId,
@@ -70,12 +146,13 @@ app.post('/chat/completions', async (c) => {
     userId: auth.userId,
     projectId: auth.projectId,
     environmentId: auth.environmentId,
-    providerId: auth.providerId,
+    providerId: provider.id,
     entityName,
     content: requestBody.messages,
     metadata: {
-      model: requestBody.model,
-      provider: 'openai',
+      model: actualModel,
+      provider: isCustom ? 'custom' : 'openai',
+      providerSlug: providerSlug || undefined,
       params: {
         temperature: requestBody.temperature,
         maxTokens: requestBody.max_tokens,
@@ -84,7 +161,6 @@ app.post('/chat/completions', async (c) => {
   }).catch(err => logger.error({ err }, 'Failed to send request event'));
 
   try {
-    const provider = auth.provider;
     const openaiUrl = `${provider.baseUrl}/chat/completions`;
     const headers = {
       'Authorization': `Bearer ${provider.apiKey}`,
@@ -115,7 +191,7 @@ app.post('/chat/completions', async (c) => {
             userId: auth.userId,
             projectId: auth.projectId,
             environmentId: auth.environmentId,
-            providerId: auth.providerId,
+            providerId: provider.id,
             entityName,
             content: { error, status: response.status },
             metadata: { latencyMs: Date.now() - startTime }
@@ -178,7 +254,7 @@ app.post('/chat/completions', async (c) => {
             userId: auth.userId,
             projectId: auth.projectId,
             environmentId: auth.environmentId,
-            providerId: auth.providerId,
+            providerId: provider.id,
             entityName,
             content: {
               content: accumulatedState.content,
@@ -218,7 +294,7 @@ app.post('/chat/completions', async (c) => {
           userId: auth.userId,
           projectId: auth.projectId,
           environmentId: auth.environmentId,
-          providerId: auth.providerId,
+          providerId: provider.id,
           entityName,
           content: responseData,
           metadata: { latencyMs }
@@ -265,7 +341,7 @@ app.post('/chat/completions', async (c) => {
         userId: auth.userId,
         projectId: auth.projectId,
         environmentId: auth.environmentId,
-        providerId: auth.providerId,
+        providerId: provider.id,
         entityName,
         content: {
           content: parsedResponse.content,
@@ -292,7 +368,7 @@ app.post('/chat/completions', async (c) => {
       userId: auth.userId,
       projectId: auth.projectId,
       environmentId: auth.environmentId,
-      providerId: auth.providerId,
+      providerId: provider.id,
       entityName,
       content: { message: error.message },
       metadata: { latencyMs }
@@ -409,7 +485,7 @@ app.post('/responses', async (c) => {
     userId: auth.userId,
     projectId: auth.projectId,
     environmentId: auth.environmentId,
-    providerId: auth.providerId,
+    providerId: provider.id,
     entityName,
     content: requestBody.input || requestBody.conversation, // Log input
     metadata: {
@@ -452,7 +528,7 @@ app.post('/responses', async (c) => {
             userId: auth.userId,
             projectId: auth.projectId,
             environmentId: auth.environmentId,
-            providerId: auth.providerId,
+            providerId: provider.id,
             entityName,
             content: { error, status: response.status },
             metadata: { latencyMs: Date.now() - startTime }
@@ -512,7 +588,7 @@ app.post('/responses', async (c) => {
             userId: auth.userId,
             projectId: auth.projectId,
             environmentId: auth.environmentId,
-            providerId: auth.providerId,
+            providerId: provider.id,
             entityName,
             content: {
               content: accumulatedState.content,
@@ -551,7 +627,7 @@ app.post('/responses', async (c) => {
           userId: auth.userId,
           projectId: auth.projectId,
           environmentId: auth.environmentId,
-          providerId: auth.providerId,
+          providerId: provider.id,
           entityName,
           content: responseData,
           metadata: { latencyMs }
@@ -622,7 +698,7 @@ app.post('/responses', async (c) => {
         userId: auth.userId,
         projectId: auth.projectId,
         environmentId: auth.environmentId,
-        providerId: auth.providerId,
+        providerId: provider.id,
         entityName,
         content: {
           content: parsedResponse.content,
@@ -647,7 +723,7 @@ app.post('/responses', async (c) => {
       userId: auth.userId,
       projectId: auth.projectId,
       environmentId: auth.environmentId,
-      providerId: auth.providerId,
+      providerId: provider.id,
       entityName,
       content: { message: error.message },
       metadata: { latencyMs }
