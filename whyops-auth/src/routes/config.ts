@@ -1,6 +1,6 @@
+import env from '@whyops/shared/env';
 import { Hono } from 'hono';
 import { ResponseUtil } from '../utils';
-import env from '@whyops/shared/env';
 
 const app = new Hono();
 
@@ -10,8 +10,13 @@ const app = new Hono();
  */
 app.get('/', (c) => {
   const config = {
-    // API Base URL for the analyse service
-    apiBaseUrl: env.ANALYSE_URL || 'http://localhost:8081',
+    // API Base URLs for different services
+    authBaseUrl: env.AUTH_URL || 'http://localhost:8082',
+    proxyBaseUrl: env.PROXY_URL || 'http://localhost:8080',
+    analyseBaseUrl: (env.ANALYSE_URL || 'http://localhost:8081') + '/api', // Legacy alias (for backward compatibility)
+
+    // Legacy alias (for backward compatibility)
+    apiBaseUrl: env.PROXY_URL || 'http://localhost:8080',
 
     // Supported LLM providers
     providerTypes: [
