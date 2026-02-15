@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -11,7 +11,13 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { useDashboardStore } from "@/stores/dashboardStore";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Bar, BarChart, CartesianGrid, XAxis } from "recharts";
 import { Activity } from "lucide-react";
 
@@ -22,16 +28,48 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-interface AgentTraceTimelineProps {
-  agentId: string;
+interface ChartData {
+  day: string;
+  value: number;
 }
 
-export function AgentTraceTimeline({ agentId }: AgentTraceTimelineProps) {
-  const { chartData, isLoading } = useDashboardStore();
+interface AgentTraceTimelineProps {
+  successPercentage: Record<string, number> | undefined;
+  successRatePeriod: number | undefined;
+  onPeriodChange?: (period: number) => void;
+  isLoading?: boolean;
+}
 
-  // For now, we'll show the dashboard timeline data
-  // In the future, this could be filtered for a specific agent
-  const hasData = chartData && chartData.length > 0;
+function transformData(
+  successPercentage: Record<string, number> | undefined
+): ChartData[] {
+  if (!successPercentage) return [];
+
+  return Object.entries(successPercentage)
+    .sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
+    .map(([date, value]) => ({
+      day: date,
+      value,
+    }));
+}
+
+export function AgentTraceTimeline({
+  successPercentage,
+  successRatePeriod,
+  onPeriodChange,
+  isLoading = false,
+}: AgentTraceTimelineProps) {
+  const [selectedPeriod, setSelectedPeriod] = useState(
+    successRatePeriod?.toString() || "7"
+  );
+
+  const data = transformData(successPercentage);
+  const hasData = data.length > 0 && data.some((d) => d.value > 0);
+
+  const handlePeriodChange = (value: string) => {
+    setSelectedPeriod(value);
+    onPeriodChange?.(parseInt(value, 10));
+  };
 
   return (
     <Card className="border-border/30 bg-card p-6">
@@ -43,9 +81,16 @@ export function AgentTraceTimeline({ agentId }: AgentTraceTimelineProps) {
               <div className="h-3 w-3 rounded-sm bg-primary" /> Success Rate
             </span>
           </div>
-          <Button variant="outline" size="sm" disabled={!hasData}>
-            Last 7 Days
-          </Button>
+          <Select value={selectedPeriod} onValueChange={handlePeriodChange}>
+            <SelectTrigger className="w-32">
+              <SelectValue placeholder="Last 7 Days" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7">Last 7 Days</SelectItem>
+              <SelectItem value="14">Last 14 Days</SelectItem>
+              <SelectItem value="30">Last 30 Days</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -66,16 +111,27 @@ export function AgentTraceTimeline({ agentId }: AgentTraceTimelineProps) {
         <ChartContainer config={chartConfig} className="h-64 w-full">
           <BarChart
             accessibilityLayer
-            data={chartData}
+            data={data}
             margin={{ top: 20, right: 0, left: 0, bottom: 0 }}
           >
-            <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.5} />
+            <CartesianGrid
+              vertical={false}
+              strokeDasharray="3 3"
+              stroke="var(--border)"
+              strokeOpacity={0.5}
+            />
             <XAxis
               dataKey="day"
               tickLine={false}
               tickMargin={10}
               axisLine={false}
-              tickFormatter={(value) => value}
+              tickFormatter={(value) => {
+                const date = new Date(value);
+                return date.toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                });
+              }}
               stroke="var(--muted-foreground)"
               fontSize={12}
             />

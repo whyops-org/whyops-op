@@ -1,5 +1,6 @@
 import { DashboardHeader } from "@/components/layout/dashboard-header";
 import { Sidebar } from "@/components/layout/sidebar";
+import { ConfigProvider } from "@/components/providers/config-provider";
 
 export default async function AuthenticatedLayout({
   children,
@@ -14,7 +15,9 @@ export default async function AuthenticatedLayout({
       <div className="flex flex-1 flex-col overflow-hidden">
         <DashboardHeader />
         <main className="flex-1 overflow-auto bg-background">
-          {children}
+          <ConfigProvider>
+            {children}
+          </ConfigProvider>
         </main>
       </div>
     </div>

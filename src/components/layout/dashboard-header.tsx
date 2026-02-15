@@ -5,6 +5,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import * as React from "react";
 
+import { useAuthStore } from "@/stores/authStore";
+import { UserDropdown } from "@/components/layout/user-dropdown";
+
 const navItems = [
   { label: "Agents", href: "/agents" },
   { label: "Traces", href: "/traces" },
@@ -15,6 +18,7 @@ type DashboardHeaderProps = React.HTMLAttributes<HTMLDivElement>;
 
 export function DashboardHeader({ className, ...props }: DashboardHeaderProps) {
   const pathname = usePathname();
+  const user = useAuthStore((state) => state.user);
 
   return (
     <header
@@ -53,12 +57,7 @@ export function DashboardHeader({ className, ...props }: DashboardHeaderProps) {
         >
           <BellIcon />
         </button>
-        <button
-          className="grid h-9 w-9 place-items-center rounded-full bg-primary/20 text-primary transition-colors hover:bg-primary/30"
-          aria-label="User profile"
-        >
-          <UserIcon />
-        </button>
+        <UserDropdown userEmail={user?.email} />
       </div>
     </header>
   );
@@ -79,26 +78,6 @@ function BellIcon() {
         strokeWidth="1.5"
         strokeLinecap="round"
         strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function UserIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 16 16"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <circle cx="8" cy="5" r="2.5" stroke="currentColor" strokeWidth="1.5" />
-      <path
-        d="M3 13C3 10.7909 5.01472 9 7.5 9H8.5C10.9853 9 13 10.7909 13 13"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
       />
     </svg>
   );

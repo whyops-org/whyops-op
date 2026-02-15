@@ -72,7 +72,7 @@ export const useTraceDetailStore = create<TraceDetailState>()(
 
         try {
           const response = await apiClient.get<TraceDetail>(
-            `${config.analyseBaseUrl}/api/threads/${traceId}`,
+            `${config.analyseBaseUrl}/threads/${traceId}`,
             {
               headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {},
             }

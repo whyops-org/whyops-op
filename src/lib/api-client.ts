@@ -10,27 +10,53 @@ function getAuthBaseUrl(): string {
   return AUTH_BASE_URL.replace(/\/$/, "");
 }
 
-const apiClient = axios.create({
-  baseURL: getAuthBaseUrl(),
-  withCredentials: true,
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
+let apiClientInstance: ReturnType<typeof axios.create> | null = null;
 
-apiClient.interceptors.response.use(
-  (response) => response,
-  (error: AxiosError) => {
-    if (error.response) {
-      const data = error.response.data as { error?: string; message?: string };
-      const message = data?.error || data?.message || "Request failed";
-      return Promise.reject(new Error(message));
-    }
-    return Promise.reject(error);
+function getApiClient() {
+  if (!apiClientInstance) {
+    apiClientInstance = axios.create({
+      baseURL: getAuthBaseUrl(),
+      withCredentials: true,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    apiClientInstance.interceptors.response.use(
+      (response) => response,
+      (error: AxiosError) => {
+        if (error.response) {
+          const data = error.response.data as { error?: string; message?: string };
+          const message = data?.error || data?.message || "Request failed";
+          return Promise.reject(new Error(message));
+        }
+        return Promise.reject(error);
+      }
+    );
   }
-);
+  return apiClientInstance;
+}
 
-export { apiClient };
+export const apiClient = {
+  get: async function <T>(url: string, config?: AxiosRequestConfig) {
+    return getApiClient().get<T>(url, config);
+  },
+  post: async function <T>(url: string, data?: unknown, config?: AxiosRequestConfig) {
+    return getApiClient().post<T>(url, data, config);
+  },
+  put: async function <T>(url: string, data?: unknown, config?: AxiosRequestConfig) {
+    return getApiClient().put<T>(url, data, config);
+  },
+  patch: async function <T>(url: string, data?: unknown, config?: AxiosRequestConfig) {
+    return getApiClient().patch<T>(url, data, config);
+  },
+  delete: async function <T>(url: string, config?: AxiosRequestConfig) {
+    return getApiClient().delete<T>(url, config);
+  },
+  request: async function <T>(config: AxiosRequestConfig) {
+    return getApiClient().request<T>(config);
+  },
+};
 
 // Extended config to support both 'body' (fetch-like) and 'data' (axios)
 interface ExtendedAxiosRequestConfig extends AxiosRequestConfig {

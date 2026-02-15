@@ -67,7 +67,7 @@ export const useAgentDetailStore = create<AgentDetailState>()(
 
           // Fetch threads
           const threadsResponse = await apiClient.get<{ threads: Thread[] }>(
-            `${config.analyseBaseUrl}/api/threads`,
+            `${config.analyseBaseUrl}/threads`,
             { headers }
           );
 

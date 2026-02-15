@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 
 import { AgentsTable } from "@/components/agents/agents-table";
 import { StatCard } from "@/components/agents/stat-card";
@@ -10,14 +10,34 @@ import { Button } from "@/components/ui/button";
 import { Activity, Clock, Plus, Settings, TrendingUp, Users } from "lucide-react";
 
 import { useAgentsStore } from "@/stores/agentsStore";
+import { useAgentsContext } from "@/components/agents/agents-provider";
 import { useConfigStore } from "@/stores/configStore";
 import { useDashboardStore } from "@/stores/dashboardStore";
 
 export default function AgentsPage() {
-  const { agents, isLoading: agentsLoading, startPolling, stopPolling, setApiKey } = useAgentsStore();
+  const {
+    agents,
+    isLoading,
+    pagination,
+    startPolling,
+    stopPolling,
+    setApiKey,
+    setInitialAgents,
+    fetchAgents
+  } = useAgentsStore();
+  const { initialAgents } = useAgentsContext();
   const { stats, chartData, fetchDashboardStats, setApiKey: setDashboardApiKey } = useDashboardStore();
   const config = useConfigStore((state) => state.config);
-  const fetchConfig = useConfigStore((state) => state.fetchConfig);
+
+  // Use initial agents from server, then fall back to store
+  const displayAgents = agents.length > 0 ? agents : initialAgents;
+
+  // Initialize store with server data
+  useEffect(() => {
+    if (initialAgents.length > 0 && agents.length === 0) {
+      setInitialAgents(initialAgents);
+    }
+  }, [initialAgents, agents.length, setInitialAgents]);
 
   // Initialize API key from localStorage on mount
   useEffect(() => {
@@ -36,23 +56,22 @@ export default function AgentsPage() {
   }, [setApiKey, setDashboardApiKey]);
 
   useEffect(() => {
-    // Ensure config is loaded first to get analyseBaseUrl
-    if (!config) {
-      fetchConfig();
-    }
-  }, [config, fetchConfig]);
-
-  useEffect(() => {
-    // Fetch dashboard stats when config is available
     if (config?.analyseBaseUrl) {
       fetchDashboardStats();
     }
   }, [config?.analyseBaseUrl, fetchDashboardStats]);
 
+  const handlePageChange = useCallback((page: number) => {
+    fetchAgents(page, pagination.count);
+  }, [fetchAgents, pagination.count]);
+
+  const handleCountChange = useCallback((count: number) => {
+    fetchAgents(1, count);
+  }, [fetchAgents]);
+
   useEffect(() => {
-    // Start polling once config is available
     if (config?.analyseBaseUrl) {
-      startPolling(30000); // Poll every 30 seconds
+      startPolling(30000);
     }
 
     return () => {
@@ -61,7 +80,7 @@ export default function AgentsPage() {
   }, [config?.analyseBaseUrl, startPolling, stopPolling]);
 
   // Show empty state if no agents (and not loading)
-  if (agents.length === 0) {
+  if (displayAgents.length === 0 && !isLoading) {
     return (
       <div className="min-h-screen">
         <EmptyState />
@@ -131,7 +150,13 @@ export default function AgentsPage() {
       <SuccessRateChart data={chartData} />
 
       {/* Agents Table */}
-      <AgentsTable agents={agents} />
+      <AgentsTable
+        agents={displayAgents}
+        pagination={pagination}
+        isLoading={isLoading}
+        onPageChange={handlePageChange}
+        onCountChange={handleCountChange}
+      />
     </div>
   );
 }

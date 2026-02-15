@@ -7,6 +7,13 @@ import { Card } from "@/components/ui/card";
 import { EmptyStateSimple } from "@/components/ui/empty-state-simple";
 import { Input } from "@/components/ui/input";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -15,14 +22,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  AlertCircle,
-  AlertTriangle,
   ArrowRight,
-  CheckCircle,
-  ChevronDown,
-  Filter,
+  ChevronLeft,
+  ChevronRight,
   ListRestart,
-  Search,
+  Search
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import * as React from "react";
@@ -35,17 +39,30 @@ interface RecentTracesTableProps {
 
 export function RecentTracesTable({ agentId }: RecentTracesTableProps) {
   const router = useRouter();
-  const { threads, isLoading, fetchThreads } = useThreadsStore();
+  const { threads, pagination, isLoading, isRefetching, fetchThreads } = useThreadsStore();
   const [searchQuery, setSearchQuery] = React.useState("");
+  const [localIsLoading, setLocalIsLoading] = React.useState(false);
 
   useEffect(() => {
-    fetchThreads();
-  }, [fetchThreads]);
+    fetchThreads(agentId, 1, pagination.count);
+  }, [agentId, pagination.count, fetchThreads]);
 
-  // Filter threads by agentId if needed
+  // Filter threads by search query
   const filteredThreads = threads.filter((thread) =>
     thread.threadId.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const handlePageChange = (page: number) => {
+    setLocalIsLoading(true);
+    fetchThreads(agentId, page, pagination.count).finally(() => setLocalIsLoading(false));
+  };
+
+  const handleCountChange = (count: number) => {
+    setLocalIsLoading(true);
+    fetchThreads(agentId, 1, count).finally(() => setLocalIsLoading(false));
+  };
+
+  const currentLoading = isLoading || localIsLoading;
 
   return (
     <Card className="border-border/30 bg-card">
@@ -62,14 +79,24 @@ export function RecentTracesTable({ agentId }: RecentTracesTableProps) {
               className="h-9 w-64 pl-9 pr-4"
             />
           </div>
-          <Button variant="outline" size="sm" className="h-9 gap-2">
-            <Filter className="h-4 w-4" />
-            Filter
-          </Button>
+          <Select
+            value={pagination.count.toString()}
+            onValueChange={(value) => handleCountChange(parseInt(value, 10))}
+          >
+            <SelectTrigger className="h-9 w-32">
+              <SelectValue placeholder="Per page" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="10">10 per page</SelectItem>
+              <SelectItem value="20">20 per page</SelectItem>
+              <SelectItem value="50">50 per page</SelectItem>
+              <SelectItem value="100">100 per page</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
-      {isLoading ? (
+      {currentLoading && !isRefetching ? (
         <div className="flex items-center justify-center p-8">
           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
         </div>
@@ -112,7 +139,7 @@ export function RecentTracesTable({ agentId }: RecentTracesTableProps) {
                 >
                   <TableCell className="px-6 py-4">
                     <div className="flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-primary" />
+                      <span className="h-2 w-2 rounded-full bg-primary" />
                       <span className="capitalize text-sm font-medium text-foreground">
                         Active
                       </span>
@@ -144,11 +171,36 @@ export function RecentTracesTable({ agentId }: RecentTracesTableProps) {
             </TableBody>
           </Table>
 
-          <div className="flex items-center justify-center border-t border-border/30 p-4">
-            <Button variant="ghost" className="gap-2 text-muted-foreground hover:text-foreground">
-              Load more traces
-              <ChevronDown className="h-4 w-4" />
-            </Button>
+          {/* Pagination */}
+          <div className="flex items-center justify-between border-t border-border/30 px-6 py-4">
+            <div className="flex items-center gap-4">
+              <p className="text-xs text-muted-foreground">
+                Showing {filteredThreads.length} of {pagination.total} traces
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 p-0"
+                disabled={pagination.page <= 1 || currentLoading}
+                onClick={() => handlePageChange(pagination.page - 1)}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                Page {pagination.page} of {pagination.totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 p-0"
+                disabled={!pagination.hasMore || currentLoading}
+                onClick={() => handlePageChange(pagination.page + 1)}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </>
       )}
