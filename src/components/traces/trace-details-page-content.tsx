@@ -9,6 +9,7 @@ import { TraceSidebarLeft } from "@/components/traces/trace-sidebar-left";
 import { TraceSidebarRight } from "@/components/traces/trace-sidebar-right";
 import { TraceTimeline } from "@/components/traces/trace-timeline";
 import { useTraceDetailStore } from "@/stores/traceDetailStore";
+import { useConfigStore } from "@/stores/configStore";
 import { ReactFlowProvider } from "reactflow";
 
 export function TraceDetailsPageContent() {
@@ -19,13 +20,14 @@ export function TraceDetailsPageContent() {
   const [rightCollapsed, setRightCollapsed] = useState(false);
   const [view, setView] = useState<"graph" | "timeline">("graph");
 
+  const config = useConfigStore((state) => state.config);
   const { trace, isLoading, fetchTrace } = useTraceDetailStore();
 
   useEffect(() => {
-    if (traceId) {
+    if (traceId && config?.analyseBaseUrl) {
       fetchTrace(traceId);
     }
-  }, [traceId, fetchTrace]);
+  }, [traceId, config?.analyseBaseUrl, fetchTrace]);
 
   if (isLoading) {
     return (

@@ -31,16 +31,20 @@ import {
 import { useRouter } from "next/navigation";
 
 import { useThreadsStore } from "@/stores/threadsStore";
+import { useConfigStore } from "@/stores/configStore";
 
 export function TracesPageContent() {
   const router = useRouter();
   const { threads, pagination, isLoading, isRefetching, fetchThreads } = useThreadsStore();
+  const config = useConfigStore((state) => state.config);
   const [searchQuery, setSearchQuery] = useState("");
   const [localIsLoading, setLocalIsLoading] = useState(false);
 
   useEffect(() => {
-    fetchThreads(undefined, 1, pagination.count);
-  }, []);
+    if (config?.analyseBaseUrl) {
+      fetchThreads(undefined, 1, pagination.count);
+    }
+  }, [config?.analyseBaseUrl, fetchThreads, pagination.count]);
 
   // Filter threads by search query
   const filteredThreads = threads.filter((thread) =>
