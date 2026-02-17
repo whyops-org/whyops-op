@@ -22,3 +22,31 @@ export function getWhyopsCorsOptions(): WhyopsCorsOptions {
     credentials: WHYOPS_CORS_OPTIONS.credentials,
   };
 }
+
+export interface IntegrationCorsOptions {
+  origin: (origin: string) => string;
+  allowMethods: string[];
+  allowHeaders: string[];
+  credentials: boolean;
+}
+
+export function getIntegrationCorsOptions(): IntegrationCorsOptions {
+  return {
+    origin: (origin: string) => origin,
+    allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-API-Key',
+      'X-Session-Key',
+      'X-Agent-Name',
+      'X-Trace-ID',
+      'X-Thread-ID',
+      'X-User-Id',
+      'X-Project-Id',
+      'X-Environment-Id',
+      'X-Provider-Id',
+    ],
+    credentials: true,
+  };
+}

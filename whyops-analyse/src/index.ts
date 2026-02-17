@@ -1,4 +1,4 @@
-import { getWhyopsCorsOptions } from '@whyops/shared/cors';
+import { getIntegrationCorsOptions } from '@whyops/shared/cors';
 import { initDatabase } from '@whyops/shared/database';
 import env from '@whyops/shared/env';
 import { createServiceLogger } from '@whyops/shared/logger';
@@ -22,7 +22,7 @@ await initDatabase();
 
 // Global middleware
 app.use('*', honoLogger());
-app.use('*', cors(getWhyopsCorsOptions()));
+app.use('*', cors(getIntegrationCorsOptions()));
 app.use('*', sessionAuthMiddleware);
 
 // Routes
