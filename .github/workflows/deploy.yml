@@ -56,6 +56,33 @@ jobs:
 
       - name: Deploy to Azure Container Apps (proxy)
         run: |
+          ENV_VARS=(
+            "NODE_ENV=${{ secrets.NODE_ENV || 'production' }}"
+            "LOG_LEVEL=${{ secrets.LOG_LEVEL || 'info' }}"
+            "DATABASE_URL=${{ secrets.DATABASE_URL }}"
+            "PROXY_PORT=${{ secrets.PROXY_PORT || '8080' }}"
+            "ANALYSE_PORT=${{ secrets.ANALYSE_PORT || '8081' }}"
+            "AUTH_PORT=${{ secrets.AUTH_PORT || '8082' }}"
+            "PROXY_URL=${{ secrets.PROXY_URL }}"
+            "ANALYSE_URL=${{ secrets.ANALYSE_URL }}"
+            "AUTH_URL=${{ secrets.AUTH_URL }}"
+            "JWT_SECRET=${{ secrets.JWT_SECRET }}"
+            "API_KEY_PREFIX=${{ secrets.API_KEY_PREFIX || 'whyops' }}"
+            "RATE_LIMIT_WINDOW_MS=${{ secrets.RATE_LIMIT_WINDOW_MS || '60000' }}"
+            "RATE_LIMIT_MAX_REQUESTS=${{ secrets.RATE_LIMIT_MAX_REQUESTS || '100' }}"
+            "PROXY_TIMEOUT_MS=${{ secrets.PROXY_TIMEOUT_MS || '60000' }}"
+            "PROXY_MAX_RETRIES=${{ secrets.PROXY_MAX_RETRIES || '3' }}"
+            "BETTER_AUTH_URL=${{ secrets.BETTER_AUTH_URL }}"
+            "BETTER_AUTH_SECRET=${{ secrets.BETTER_AUTH_SECRET }}"
+            "GITHUB_CLIENT_ID=${{ secrets.GITHUB_CLIENT_ID }}"
+            "GITHUB_CLIENT_SECRET=${{ secrets.GITHUB_CLIENT_SECRET }}"
+            "GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}"
+            "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}"
+            "MAILEROO_API_KEY=${{ secrets.MAILEROO_API_KEY }}"
+            "MAILEROO_FROM_EMAIL=${{ secrets.MAILEROO_FROM_EMAIL || 'noreply@whyops.com' }}"
+            "MAILEROO_FROM_NAME=${{ secrets.MAILEROO_FROM_NAME || 'WhyOps' }}"
+          )
+
           # Check if container app exists, create if not
           if az containerapp show --name whyops-proxy --resource-group ${{ secrets.RESOURCE_GROUP }} &>/dev/null; then
             echo "Updating existing whyops-proxy..."
@@ -66,7 +93,8 @@ jobs:
               --min-replicas 1 \
               --max-replicas 3 \
               --cpu 0.25 \
-              --memory 0.5Gi
+              --memory 0.5Gi \
+              --set-env-vars "${ENV_VARS[@]}"
           else
             echo "Creating whyops-proxy..."
             az containerapp create \
@@ -80,11 +108,7 @@ jobs:
               --max-replicas 3 \
               --cpu 0.25 \
               --memory 0.5Gi \
-              --env-vars \
-                NODE_ENV=production \
-                DATABASE_URL="${{ secrets.DATABASE_URL }}" \
-                ANALYSE_URL="${{ secrets.ANALYSE_URL }}" \
-                AUTH_URL="${{ secrets.AUTH_URL }}"
+              --env-vars "${ENV_VARS[@]}"
           fi
 
   deploy-analyse:
@@ -126,6 +150,33 @@ jobs:
 
       - name: Deploy to Azure Container Apps (analyse)
         run: |
+          ENV_VARS=(
+            "NODE_ENV=${{ secrets.NODE_ENV || 'production' }}"
+            "LOG_LEVEL=${{ secrets.LOG_LEVEL || 'info' }}"
+            "DATABASE_URL=${{ secrets.DATABASE_URL }}"
+            "PROXY_PORT=${{ secrets.PROXY_PORT || '8080' }}"
+            "ANALYSE_PORT=${{ secrets.ANALYSE_PORT || '8081' }}"
+            "AUTH_PORT=${{ secrets.AUTH_PORT || '8082' }}"
+            "PROXY_URL=${{ secrets.PROXY_URL }}"
+            "ANALYSE_URL=${{ secrets.ANALYSE_URL }}"
+            "AUTH_URL=${{ secrets.AUTH_URL }}"
+            "JWT_SECRET=${{ secrets.JWT_SECRET }}"
+            "API_KEY_PREFIX=${{ secrets.API_KEY_PREFIX || 'whyops' }}"
+            "RATE_LIMIT_WINDOW_MS=${{ secrets.RATE_LIMIT_WINDOW_MS || '60000' }}"
+            "RATE_LIMIT_MAX_REQUESTS=${{ secrets.RATE_LIMIT_MAX_REQUESTS || '100' }}"
+            "PROXY_TIMEOUT_MS=${{ secrets.PROXY_TIMEOUT_MS || '60000' }}"
+            "PROXY_MAX_RETRIES=${{ secrets.PROXY_MAX_RETRIES || '3' }}"
+            "BETTER_AUTH_URL=${{ secrets.BETTER_AUTH_URL }}"
+            "BETTER_AUTH_SECRET=${{ secrets.BETTER_AUTH_SECRET }}"
+            "GITHUB_CLIENT_ID=${{ secrets.GITHUB_CLIENT_ID }}"
+            "GITHUB_CLIENT_SECRET=${{ secrets.GITHUB_CLIENT_SECRET }}"
+            "GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}"
+            "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}"
+            "MAILEROO_API_KEY=${{ secrets.MAILEROO_API_KEY }}"
+            "MAILEROO_FROM_EMAIL=${{ secrets.MAILEROO_FROM_EMAIL || 'noreply@whyops.com' }}"
+            "MAILEROO_FROM_NAME=${{ secrets.MAILEROO_FROM_NAME || 'WhyOps' }}"
+          )
+
           if az containerapp show --name whyops-analyse --resource-group ${{ secrets.RESOURCE_GROUP }} &>/dev/null; then
             echo "Updating existing whyops-analyse..."
             az containerapp update \
@@ -135,7 +186,8 @@ jobs:
               --min-replicas 1 \
               --max-replicas 3 \
               --cpu 0.25 \
-              --memory 0.5Gi
+              --memory 0.5Gi \
+              --set-env-vars "${ENV_VARS[@]}"
           else
             echo "Creating whyops-analyse..."
             az containerapp create \
@@ -149,9 +201,7 @@ jobs:
               --max-replicas 3 \
               --cpu 0.25 \
               --memory 0.5Gi \
-              --env-vars \
-                NODE_ENV=production \
-                DATABASE_URL="${{ secrets.DATABASE_URL }}"
+              --env-vars "${ENV_VARS[@]}"
           fi
 
   deploy-auth:
@@ -193,6 +243,33 @@ jobs:
 
       - name: Deploy to Azure Container Apps (auth)
         run: |
+          ENV_VARS=(
+            "NODE_ENV=${{ secrets.NODE_ENV || 'production' }}"
+            "LOG_LEVEL=${{ secrets.LOG_LEVEL || 'info' }}"
+            "DATABASE_URL=${{ secrets.DATABASE_URL }}"
+            "PROXY_PORT=${{ secrets.PROXY_PORT || '8080' }}"
+            "ANALYSE_PORT=${{ secrets.ANALYSE_PORT || '8081' }}"
+            "AUTH_PORT=${{ secrets.AUTH_PORT || '8082' }}"
+            "PROXY_URL=${{ secrets.PROXY_URL }}"
+            "ANALYSE_URL=${{ secrets.ANALYSE_URL }}"
+            "AUTH_URL=${{ secrets.AUTH_URL }}"
+            "JWT_SECRET=${{ secrets.JWT_SECRET }}"
+            "API_KEY_PREFIX=${{ secrets.API_KEY_PREFIX || 'whyops' }}"
+            "RATE_LIMIT_WINDOW_MS=${{ secrets.RATE_LIMIT_WINDOW_MS || '60000' }}"
+            "RATE_LIMIT_MAX_REQUESTS=${{ secrets.RATE_LIMIT_MAX_REQUESTS || '100' }}"
+            "PROXY_TIMEOUT_MS=${{ secrets.PROXY_TIMEOUT_MS || '60000' }}"
+            "PROXY_MAX_RETRIES=${{ secrets.PROXY_MAX_RETRIES || '3' }}"
+            "BETTER_AUTH_URL=${{ secrets.BETTER_AUTH_URL }}"
+            "BETTER_AUTH_SECRET=${{ secrets.BETTER_AUTH_SECRET }}"
+            "GITHUB_CLIENT_ID=${{ secrets.GITHUB_CLIENT_ID }}"
+            "GITHUB_CLIENT_SECRET=${{ secrets.GITHUB_CLIENT_SECRET }}"
+            "GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}"
+            "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}"
+            "MAILEROO_API_KEY=${{ secrets.MAILEROO_API_KEY }}"
+            "MAILEROO_FROM_EMAIL=${{ secrets.MAILEROO_FROM_EMAIL || 'noreply@whyops.com' }}"
+            "MAILEROO_FROM_NAME=${{ secrets.MAILEROO_FROM_NAME || 'WhyOps' }}"
+          )
+
           if az containerapp show --name whyops-auth --resource-group ${{ secrets.RESOURCE_GROUP }} &>/dev/null; then
             echo "Updating existing whyops-auth..."
             az containerapp update \
@@ -202,7 +279,8 @@ jobs:
               --min-replicas 1 \
               --max-replicas 3 \
               --cpu 0.25 \
-              --memory 0.5Gi
+              --memory 0.5Gi \
+              --set-env-vars "${ENV_VARS[@]}"
           else
             echo "Creating whyops-auth..."
             az containerapp create \
@@ -216,10 +294,5 @@ jobs:
               --max-replicas 3 \
               --cpu 0.25 \
               --memory 0.5Gi \
-              --env-vars \
-                NODE_ENV=production \
-                DATABASE_URL="${{ secrets.DATABASE_URL }}" \
-                JWT_SECRET="${{ secrets.JWT_SECRET }}" \
-                BETTER_AUTH_SECRET="${{ secrets.BETTER_AUTH_SECRET }}" \
-                BETTER_AUTH_URL="${{ secrets.AUTH_URL }}"
+              --env-vars "${ENV_VARS[@]}"
           fi
