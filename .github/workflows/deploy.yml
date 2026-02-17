@@ -53,6 +53,15 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      - name: Set Registry Credentials
+        run: |
+          az containerapp registry set \
+            --name whyops-proxy \
+            --resource-group ${{ secrets.RESOURCE_GROUP }} \
+            --server ${{ secrets.REGISTRY_LOGIN_SERVER }} \
+            --username ${{ secrets.REGISTRY_USERNAME }} \
+            --password ${{ secrets.REGISTRY_PASSWORD }} || true
+
       - name: Deploy to Azure Container Apps (proxy)
         run: |
           ENV_VARS=(
@@ -150,6 +159,15 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      - name: Set Registry Credentials
+        run: |
+          az containerapp registry set \
+            --name whyops-analyse \
+            --resource-group ${{ secrets.RESOURCE_GROUP }} \
+            --server ${{ secrets.REGISTRY_LOGIN_SERVER }} \
+            --username ${{ secrets.REGISTRY_USERNAME }} \
+            --password ${{ secrets.REGISTRY_PASSWORD }} || true
+
       - name: Deploy to Azure Container Apps (analyse)
         run: |
           ENV_VARS=(
@@ -245,6 +263,15 @@ jobs:
         uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Set Registry Credentials
+        run: |
+          az containerapp registry set \
+            --name whyops-auth \
+            --resource-group ${{ secrets.RESOURCE_GROUP }} \
+            --server ${{ secrets.REGISTRY_LOGIN_SERVER }} \
+            --username ${{ secrets.REGISTRY_USERNAME }} \
+            --password ${{ secrets.REGISTRY_PASSWORD }} || true
 
       - name: Deploy to Azure Container Apps (auth)
         run: |
