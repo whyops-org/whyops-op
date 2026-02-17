@@ -110,7 +110,7 @@ app.onError((err, c) => {
 
 const port = env.AUTH_PORT;
 
-logger.info(`🚀 WhyOps Auth Server starting on port ${port}`);
+logger.info(`🚀 WhyOps Auth Server starting on port ${port}, working fine...`);
 
 export default {
   port,
