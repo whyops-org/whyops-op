@@ -23,10 +23,14 @@ await initDatabase();
 // Global middleware
 app.use('*', honoLogger());
 app.use('*', cors(getIntegrationCorsOptions()));
-app.use('*', sessionAuthMiddleware);
 
-// Routes
+// Health check (no auth required)
 app.route('/api/health', healthRouter);
+
+// Auth middleware for protected routes
+app.use('/api/*', sessionAuthMiddleware);
+
+// Protected routes
 app.route('/api/events', eventsRouter);
 app.route('/api/threads', threadsRouter);
 app.route('/api/analytics', analyticsRouter);
