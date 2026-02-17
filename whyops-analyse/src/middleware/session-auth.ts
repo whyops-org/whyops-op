@@ -84,22 +84,33 @@ export async function sessionAuthMiddleware(c: Context, next: Next) {
       if (!sessionUserId) {
         const authUrl = env.AUTH_URL.replace(/\/$/, '');
         logger.debug({ authUrl, envAuthUrl: env.AUTH_URL }, 'Fetching session from auth service');
-        const response = await fetch(`${authUrl}/api/auth/get-session`, {
-          method: 'GET',
-          headers: c.req.raw.headers,
-        });
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        
+        try {
+          const response = await fetch(`${authUrl}/api/auth/get-session`, {
+            method: 'GET',
+            headers: c.req.raw.headers,
+            signal: controller.signal,
+          });
+          clearTimeout(timeoutId);
 
-        if (response.ok) {
-          const data = await response.json() as {
-            user?: { id: string };
-            session?: { id: string; userId: string };
-          } | null;
+          if (response.ok) {
+            const data = await response.json() as {
+              user?: { id: string };
+              session?: { id: string; userId: string };
+            } | null;
 
-          sessionUserId = data?.user?.id;
+            sessionUserId = data?.user?.id;
 
-          if (sessionUserId) {
-            c.set('sessionUserId', sessionUserId);
+            if (sessionUserId) {
+              c.set('sessionUserId', sessionUserId);
+            }
           }
+        } catch (fetchError) {
+          clearTimeout(timeoutId);
+          logger.warn({ fetchError, authUrl }, 'Failed to fetch session from auth service');
         }
       }
 

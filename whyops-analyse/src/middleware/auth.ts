@@ -83,22 +83,31 @@ export async function analyseAuthMiddleware(c: Context, next: Next) {
 
         if (sessionToken) {
           const authUrl = env.AUTH_URL.replace(/\/$/, '');
-          const response = await fetch(`${authUrl}/api/auth/get-session`, {
-            method: 'GET',
-            headers: {
-              'Cookie': `better-auth.session_token=${sessionToken}`,
-              'Content-Type': 'application/json',
-            },
-            credentials: 'include',
-          });
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
+          
+          try {
+            const response = await fetch(`${authUrl}/api/auth/get-session`, {
+              method: 'GET',
+              headers: {
+                'Cookie': `better-auth.session_token=${sessionToken}`,
+                'Content-Type': 'application/json',
+              },
+              signal: controller.signal,
+            });
+            clearTimeout(timeoutId);
 
-          if (response.ok) {
-            const data = await response.json() as { user?: { id: string } };
-            sessionUserId = data?.user?.id;
+            if (response.ok) {
+              const data = await response.json() as { user?: { id: string } };
+              sessionUserId = data?.user?.id;
 
-            if (sessionUserId) {
-              c.set('sessionUserId', sessionUserId);
+              if (sessionUserId) {
+                c.set('sessionUserId', sessionUserId);
+              }
             }
+          } catch (fetchError) {
+            clearTimeout(timeoutId);
+            logger.warn({ fetchError, authUrl }, 'Failed to fetch session from auth service');
           }
         }
       }
