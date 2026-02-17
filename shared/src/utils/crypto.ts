@@ -1,3 +1,5 @@
+import { createHash } from 'crypto';
+
 /**
  * Simple encryption/decryption utilities
  * Note: These are placeholder implementations. In production, use proper encryption.
@@ -27,5 +29,5 @@ export function decrypt(encrypted: string): string {
  * Hash data using SHA-256
  */
 export function hash(data: string): string {
-  return crypto.createHash('sha256').update(data).digest('hex');
+  return createHash('sha256').update(data).digest('hex');
 }

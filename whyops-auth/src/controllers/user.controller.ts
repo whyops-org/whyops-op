@@ -84,52 +84,6 @@ export class UserController {
   }
 
   /**
-   * Get onboarding progress
-   */
-  static async getOnboardingProgress(c: Context) {
-    try {
-      const user = c.get('user');
-
-      if (!user) {
-        return ResponseUtil.unauthorized(c, 'Not authenticated');
-      }
-
-      // Check if user has providers
-      const providers = await ProviderService.listProviders(user.id);
-      const hasProvider = providers.length > 0;
-
-      // Check if user has projects
-      const projects = await ProjectService.listProjects(user.id);
-      const hasProject = projects.length > 0;
-
-      // Onboarding is complete if both provider and project exist
-      const onboardingComplete = Boolean(user.metadata?.onboardingComplete);
-
-      // Calculate current step based on progress
-      let currentStep = 0; // welcome
-      if (!hasProvider) {
-        currentStep = 1; // provider step
-      } else if (!hasProject) {
-        currentStep = 2; // workspace step
-      } else if (!onboardingComplete) {
-        currentStep = 3; // complete step
-      } else {
-        currentStep = 4; // fully complete
-      }
-
-      return ResponseUtil.success(c, {
-        hasProvider,
-        hasProject,
-        onboardingComplete,
-        currentStep,
-      });
-    } catch (error: any) {
-      logger.error({ error }, 'Failed to fetch onboarding progress');
-      return ResponseUtil.internalError(c, 'Failed to fetch onboarding progress');
-    }
-  }
-
-  /**
    * Update current user profile
    */
   static async updateCurrentUser(c: Context) {
