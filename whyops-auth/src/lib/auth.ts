@@ -1,5 +1,5 @@
 import { logger } from '@shared/utils';
-import env from '@whyops/shared/env';
+import env, { getTrustedOrigins } from '@whyops/shared/env';
 import { betterAuth } from 'better-auth';
 import { createAuthMiddleware } from 'better-auth/api';
 import { magicLink } from 'better-auth/plugins';
@@ -101,24 +101,25 @@ export const auth = betterAuth({
             logger.info(`✅ Synced Better Auth user ${betterAuthUser.id} (${betterAuthUser.email}) to Sequelize users table`);
           }
         } catch (error) {
-          logger.error('❌ Failed to sync user to Sequelize:', error);
+          logger.error('❌ Failed to sync user to Sequelize:');
         }
       }
     }),
   },
   advanced: {
     defaultCookieAttributes: {
-      sameSite: 'lax',
+      sameSite: env.NODE_ENV === 'production' ? 'none' : 'lax',
       secure: env.NODE_ENV === 'production',
       httpOnly: true,
+      path: '/',
     },
+    useSecureCookies: env.NODE_ENV === 'production',
   },
   trustedOrigins: [
     env.PROXY_URL,
     env.ANALYSE_URL,
     env.AUTH_URL,
-    'http://localhost:3000', // Add your frontend URL
-    'http://localhost:5173', // Add Vite default port
+    ...getTrustedOrigins(),
   ],
 });
 
