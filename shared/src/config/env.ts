@@ -66,12 +66,18 @@ const envSchema = z.object({
   MAILEROO_API_KEY: z.string().optional(),
   MAILEROO_FROM_EMAIL: z.string().email().default('noreply@whyops.com'),
   MAILEROO_FROM_NAME: z.string().default('WhyOps'),
+  
+  // Trusted Origins (for CORS and Better Auth)
+  TRUSTED_ORIGINS: z.string().default('http://localhost:3000,http://localhost:5173'),
 });
 
 export type Env = z.infer<typeof envSchema>;
 
 export const env = envSchema.parse(process.env);
 
-
+export function getTrustedOrigins(): string[] {
+  const origins = env.TRUSTED_ORIGINS.split(',').map(o => o.trim()).filter(Boolean);
+  return origins;
+}
 
 export default env;
