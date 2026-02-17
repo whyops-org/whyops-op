@@ -32,7 +32,7 @@ export async function authMiddleware(c: Context, next: Next) {
   
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     logger.warn('Missing or invalid Authorization header');
-    return c.json({ error: 'Unauthorized: Missing API key' }, 401);
+    return c.json({ error: 'Unauthorized: Missing API key, please provide a valid API key in the Authorization header' }, 401);
   }
 
   const apiKey = authHeader.substring(7); // Remove 'Bearer '
