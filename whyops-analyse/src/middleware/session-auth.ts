@@ -26,6 +26,12 @@ declare module 'hono' {
  * Supports both API key auth and Better Auth session cookie auth.
  */
 export async function sessionAuthMiddleware(c: Context, next: Next) {
+  // Skip auth for health endpoints
+  if (c.req.path === '/api/health' || c.req.path.startsWith('/api/health/')) {
+    await next();
+    return;
+  }
+
   if (c.get('analyseAuth')) {
     await next();
     return;
@@ -75,10 +81,9 @@ export async function sessionAuthMiddleware(c: Context, next: Next) {
     try {
       let sessionUserId = c.get('sessionUserId');
 
-      console.log(c.req.raw.headers)
-
       if (!sessionUserId) {
         const authUrl = env.AUTH_URL.replace(/\/$/, '');
+        logger.debug({ authUrl, envAuthUrl: env.AUTH_URL }, 'Fetching session from auth service');
         const response = await fetch(`${authUrl}/api/auth/get-session`, {
           method: 'GET',
           headers: c.req.raw.headers,
