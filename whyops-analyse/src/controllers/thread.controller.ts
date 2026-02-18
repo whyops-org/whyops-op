@@ -10,7 +10,7 @@ export class ThreadController {
    */
   static async listThreads(c: Context) {
     try {
-      const auth = c.get('analyseAuth');
+      const auth = c.get('whyopsAuth');
       if (!auth) {
         return c.json({ success: false, error: 'Unauthorized: authentication required' }, 401);
       }
@@ -41,7 +41,7 @@ export class ThreadController {
    */
   static async getThreadDetail(c: Context) {
     try {
-      const auth = c.get('analyseAuth');
+      const auth = c.get('whyopsAuth');
       if (!auth) {
         return c.json({ success: false, error: 'Unauthorized: authentication required' }, 401);
       }

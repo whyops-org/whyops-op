@@ -1,3 +1,4 @@
+import type { ApiKeyAuthContext } from '@whyops/shared/middleware';
 import env from '@whyops/shared/env';
 import { createServiceLogger } from '@whyops/shared/logger';
 import { decodeSignature, encodeSignature, generateSpanId, generateThreadId, stripSignature } from '@whyops/shared/utils';
@@ -165,7 +166,7 @@ async function trackResponsesStream(
 
 // OpenAI Chat Completions endpoint
 app.post('/chat/completions', async (c) => {
-  const auth = c.get('auth');
+  const auth = c.get('whyopsAuth') as ApiKeyAuthContext;
   const requestBody = await c.req.json();
   const isStreaming = requestBody.stream === true;
 
@@ -493,7 +494,7 @@ app.post('/chat/completions', async (c) => {
 
 // OpenAI Responses endpoint
 app.post('/responses', async (c) => {
-  const auth = c.get('auth');
+  const auth = c.get('whyopsAuth') as ApiKeyAuthContext;
   const requestBody = await c.req.json();
   const isStreaming = requestBody.stream === true;
 
@@ -802,7 +803,7 @@ app.post('/responses', async (c) => {
 
 // OpenAI Models endpoint
 app.get('/models', async (c) => {
-  const auth = c.get('auth');
+  const auth = c.get('whyopsAuth') as ApiKeyAuthContext;
   
   try {
     const { provider } = await resolveProviderFromModel(auth.userId, 'models', auth.provider);

@@ -1,15 +1,15 @@
+import type { ApiKeyAuthContext } from '@whyops/shared/middleware';
 import type { Context, Next } from 'hono';
 import { createServiceLogger } from '@whyops/shared/logger';
 import env from '@whyops/shared/env';
 
 const logger = createServiceLogger('proxy:ratelimit');
 
-// Simple in-memory rate limiter (for production, use Redis)
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
 
 export async function rateLimitMiddleware(c: Context, next: Next) {
-  const auth = c.get('auth');
-  if (!auth) {
+  const auth = c.get('whyopsAuth') as ApiKeyAuthContext | undefined;
+  if (!auth || auth.authType !== 'api_key') {
     return await next();
   }
 

@@ -1,10 +1,10 @@
 import { getIntegrationCorsOptions } from '@whyops/shared/cors';
 import env from '@whyops/shared/env';
+import { createAuthMiddleware, getAuthContext } from '@whyops/shared/middleware';
 import { createServiceLogger } from '@whyops/shared/logger';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger as honoLogger } from 'hono/logger';
-import { authMiddleware } from './middleware/auth';
 import { errorHandler } from './middleware/error';
 import { rateLimitMiddleware } from './middleware/rateLimit';
 import { requestLogMiddleware } from './middleware/requestLog';
@@ -16,27 +16,29 @@ import openaiRouter from './routes/openai';
 const logger = createServiceLogger('proxy');
 const app = new Hono();
 
-// Global middleware
 app.use('*', honoLogger());
 app.use('*', cors(getIntegrationCorsOptions()));
 app.use('*', requestLogMiddleware);
 
-// Health check (no auth required)
 app.route('/health', healthRouter);
 
-// Protected routes - require authentication
-app.use('/v1/*', authMiddleware);
+const proxyAuthMiddleware = createAuthMiddleware({
+  requireAuth: true,
+  skipPaths: ['/health'],
+  enableApiKeyAuth: true,
+  enableSessionAuth: false,
+  requireProjectEnv: true,
+});
+
+app.use('/v1/*', proxyAuthMiddleware);
 app.use('/v1/*', rateLimitMiddleware);
 
-// Provider routes
 app.route('/v1', openaiRouter);
 app.route('/v1', anthropicRouter);
 app.route('/v1', agentsRouter);
 
-// Error handler
 app.onError(errorHandler);
 
-// 404 handler
 app.notFound((c) => {
   return c.json({ error: 'Not Found' }, 404);
 });

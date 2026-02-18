@@ -83,7 +83,7 @@ app.post(
   }),
   async (c) => {
     const data = await c.req.json();
-    const auth = c.get('analyseAuth');
+    const auth = c.get('whyopsAuth');
 
     // Extract auth info from headers or auth middleware
     const headers = {
@@ -121,7 +121,7 @@ app.post(
   }),
   async (c) => {
     const data = await c.req.json();
-    const auth = c.get('analyseAuth');
+    const auth = c.get('whyopsAuth');
 
     // Extract auth info from headers or auth middleware
     const headers = {

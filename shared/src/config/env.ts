@@ -70,7 +70,7 @@ const envSchema = z.object({
   // Trusted Origins (for CORS and Better Auth)
   TRUSTED_ORIGINS: z.string().default('http://localhost:3000,http://localhost:5173'),
 
-  COOKIE_DOMAIN: z.string().default('.whyops.com')
+  COOKIE_DOMAIN: z.string().default('localhost'),
 });
 
 export type Env = z.infer<typeof envSchema>;

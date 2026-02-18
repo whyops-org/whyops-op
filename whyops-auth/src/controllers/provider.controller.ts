@@ -7,12 +7,12 @@ import { testProvider } from '../providers';
 const logger = createServiceLogger('auth:provider-controller');
 
 export class ProviderController {
-  /**
-   * List all providers for user
-   */
   static async listProviders(c: Context) {
     try {
-      const user = c.get('user');
+      const user = c.get('sessionUser');
+      if (!user) {
+        return ResponseUtil.unauthorized(c, 'Not authenticated');
+      }
       const providers = await ProviderService.listProviders(user.id);
       return ResponseUtil.success(c, { providers });
     } catch (error: any) {
@@ -21,12 +21,12 @@ export class ProviderController {
     }
   }
 
-  /**
-   * Create a new provider
-   */
   static async createProvider(c: Context) {
     try {
-      const user = c.get('user');
+      const user = c.get('sessionUser');
+      if (!user) {
+        return ResponseUtil.unauthorized(c, 'Not authenticated');
+      }
       const data = await c.req.json();
 
       const provider = await ProviderService.createProvider({
@@ -46,12 +46,10 @@ export class ProviderController {
     } catch (error: any) {
       logger.error({ error }, 'Failed to create provider');
 
-      // Return specific error messages
       if (error.message === 'A provider with this name already exists') {
         return ResponseUtil.conflict(c, error.message);
       }
 
-      // Connection failed error
       if (error.message.startsWith('Connection failed:')) {
         return ResponseUtil.badRequest(c, error.message);
       }
@@ -60,12 +58,12 @@ export class ProviderController {
     }
   }
 
-  /**
-   * Get a single provider
-   */
   static async getProvider(c: Context) {
     try {
-      const user = c.get('user');
+      const user = c.get('sessionUser');
+      if (!user) {
+        return ResponseUtil.unauthorized(c, 'Not authenticated');
+      }
       const id = c.req.param('id');
 
       const provider = await ProviderService.getProviderById(id, user.id);
@@ -81,12 +79,12 @@ export class ProviderController {
     }
   }
 
-  /**
-   * Update a provider
-   */
   static async updateProvider(c: Context) {
     try {
-      const user = c.get('user');
+      const user = c.get('sessionUser');
+      if (!user) {
+        return ResponseUtil.unauthorized(c, 'Not authenticated');
+      }
       const id = c.req.param('id');
       const data = await c.req.json() as UpdateProviderData;
 
@@ -111,12 +109,12 @@ export class ProviderController {
     }
   }
 
-  /**
-   * Delete a provider
-   */
   static async deleteProvider(c: Context) {
     try {
-      const user = c.get('user');
+      const user = c.get('sessionUser');
+      if (!user) {
+        return ResponseUtil.unauthorized(c, 'Not authenticated');
+      }
       const id = c.req.param('id');
 
       await ProviderService.deleteProvider(id, user.id);
@@ -133,12 +131,12 @@ export class ProviderController {
     }
   }
 
-  /**
-   * Toggle provider active status
-   */
   static async toggleProvider(c: Context) {
     try {
-      const user = c.get('user');
+      const user = c.get('sessionUser');
+      if (!user) {
+        return ResponseUtil.unauthorized(c, 'Not authenticated');
+      }
       const id = c.req.param('id');
 
       const isActive = await ProviderService.toggleProvider(id, user.id);
@@ -155,9 +153,6 @@ export class ProviderController {
     }
   }
 
-  /**
-   * Test provider connection
-   */
   static async testProvider(c: Context) {
     try {
       const data = await c.req.json();
@@ -167,7 +162,6 @@ export class ProviderController {
         return ResponseUtil.badRequest(c, 'Model is required for testing');
       }
 
-      // Use the scalable provider test implementation
       const result = await testProvider(type, {
         baseUrl,
         apiKey,

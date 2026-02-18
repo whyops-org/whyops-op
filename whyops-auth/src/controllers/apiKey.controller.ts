@@ -6,12 +6,12 @@ import { ResponseUtil } from '../utils';
 const logger = createServiceLogger('auth:apikey-controller');
 
 export class ApiKeyController {
-  /**
-   * List all API keys for user
-   */
   static async listApiKeys(c: Context) {
     try {
-      const user = c.get('user');
+      const user = c.get('sessionUser');
+      if (!user) {
+        return ResponseUtil.unauthorized(c, 'Not authenticated');
+      }
       const projectId = c.req.query('projectId');
       const environmentId = c.req.query('environmentId');
       
@@ -27,12 +27,12 @@ export class ApiKeyController {
     }
   }
 
-  /**
-   * Create a new API key
-   */
   static async createApiKey(c: Context) {
     try {
-      const user = c.get('user');
+      const user = c.get('sessionUser');
+      if (!user) {
+        return ResponseUtil.unauthorized(c, 'Not authenticated');
+      }
       const data = await c.req.json();
       
       const apiKeyRecord = await ApiKeyService.createApiKey({
@@ -68,12 +68,12 @@ export class ApiKeyController {
     }
   }
 
-  /**
-   * Get a single API key
-   */
   static async getApiKey(c: Context) {
     try {
-      const user = c.get('user');
+      const user = c.get('sessionUser');
+      if (!user) {
+        return ResponseUtil.unauthorized(c, 'Not authenticated');
+      }
       const id = c.req.param('id');
       
       const apiKey = await ApiKeyService.getApiKeyById(id, user.id);
@@ -89,16 +89,15 @@ export class ApiKeyController {
     }
   }
 
-  /**
-   * Update an API key
-   */
   static async updateApiKey(c: Context) {
     try {
-      const user = c.get('user');
+      const user = c.get('sessionUser');
+      if (!user) {
+        return ResponseUtil.unauthorized(c, 'Not authenticated');
+      }
       const id = c.req.param('id');
       const data = await c.req.json() as UpdateApiKeyData;
       
-      // Convert expiresAt if present
       if (data.expiresAt) {
         data.expiresAt = new Date(data.expiresAt as any);
       }
@@ -123,12 +122,12 @@ export class ApiKeyController {
     }
   }
 
-  /**
-   * Delete an API key
-   */
   static async deleteApiKey(c: Context) {
     try {
-      const user = c.get('user');
+      const user = c.get('sessionUser');
+      if (!user) {
+        return ResponseUtil.unauthorized(c, 'Not authenticated');
+      }
       const id = c.req.param('id');
       
       await ApiKeyService.deleteApiKey(id, user.id);
@@ -145,12 +144,12 @@ export class ApiKeyController {
     }
   }
 
-  /**
-   * Toggle API key active status
-   */
   static async toggleApiKey(c: Context) {
     try {
-      const user = c.get('user');
+      const user = c.get('sessionUser');
+      if (!user) {
+        return ResponseUtil.unauthorized(c, 'Not authenticated');
+      }
       const id = c.req.param('id');
       
       const isActive = await ApiKeyService.toggleApiKey(id, user.id);

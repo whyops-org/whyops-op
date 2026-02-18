@@ -6,7 +6,7 @@ const logger = createServiceLogger('proxy:agents');
 const app = new Hono();
 
 app.post('/agents/init', async (c) => {
-  const auth = c.get('auth');
+  const auth = c.get('whyopsAuth') as import('@whyops/shared/middleware').ApiKeyAuthContext;
 
   let body: unknown;
   try {

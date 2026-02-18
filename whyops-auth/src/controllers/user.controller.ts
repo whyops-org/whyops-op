@@ -20,7 +20,7 @@ export class UserController {
    */
   static async getOnboardingProgress(c: Context) {
     try {
-      const user = c.get('user');
+      const user = c.get('sessionUser');
 
       if (!user) {
         return ResponseUtil.unauthorized(c, 'Not authenticated');
@@ -63,7 +63,7 @@ export class UserController {
    */
   static async getCurrentUser(c: Context) {
     try {
-      const user = c.get('user');
+      const user = c.get('sessionUser');
 
       if (!user) {
         return ResponseUtil.unauthorized(c, 'Not authenticated');
@@ -88,7 +88,7 @@ export class UserController {
    */
   static async updateCurrentUser(c: Context) {
     try {
-      const user = c.get('user');
+      const user = c.get('sessionUser');
 
       if (!user) {
         return ResponseUtil.unauthorized(c, 'Not authenticated');

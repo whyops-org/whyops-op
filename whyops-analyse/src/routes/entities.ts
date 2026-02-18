@@ -219,7 +219,7 @@ const entityInitSchema = z.object({
 
 app.post('/init', zValidator('json', entityInitSchema), async (c) => {
   const data = c.req.valid('json');
-  const auth = c.get('analyseAuth');
+  const auth = c.get('whyopsAuth');
 
   if (!auth) {
     return c.json({ success: false, error: 'Unauthorized: authentication required' }, 401);
@@ -258,7 +258,7 @@ app.post('/init', zValidator('json', entityInitSchema), async (c) => {
 
 // GET /api/entities - List all agents with their stats
 app.get('/', async (c) => {
-  const auth = c.get('analyseAuth');
+  const auth = c.get('whyopsAuth');
 
   if (!auth) {
     return c.json({ success: false, error: 'Unauthorized: authentication required' }, 401);
@@ -351,7 +351,7 @@ app.get('/', async (c) => {
 // GET /api/entities/:id
 app.get('/:id', async (c) => {
     try {
-        const auth = c.get('analyseAuth');
+        const auth = c.get('whyopsAuth');
         if (!auth) {
       return c.json({ success: false, error: 'Unauthorized: authentication required' }, 401);
         }

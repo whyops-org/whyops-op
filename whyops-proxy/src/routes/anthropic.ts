@@ -1,3 +1,4 @@
+import type { ApiKeyAuthContext } from '@whyops/shared/middleware';
 import env from '@whyops/shared/env';
 import { createServiceLogger } from '@whyops/shared/logger';
 import { generateSpanId, generateThreadId } from '@whyops/shared/utils';
@@ -116,7 +117,7 @@ async function trackAnthropicStream(
 
 // Anthropic Messages endpoint
 app.post('/messages', async (c) => {
-  const auth = c.get('auth');
+  const auth = c.get('whyopsAuth') as ApiKeyAuthContext;
   const requestBody = await c.req.json();
   const isStreaming = requestBody.stream === true;
 

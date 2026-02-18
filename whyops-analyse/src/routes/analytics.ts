@@ -120,7 +120,7 @@ app.get('/timeline', async (c) => {
 
 // GET /api/analytics/summary - Get high-level summary
 app.get('/summary', async (c) => {
-  const auth = c.get('analyseAuth');
+  const auth = c.get('whyopsAuth');
 
   if (!auth) {
     return c.json({ error: 'Unauthorized: authentication required' }, 401);
@@ -154,7 +154,7 @@ app.get('/summary', async (c) => {
 
 // GET /api/analytics/dashboard - Get dashboard-specific stats
 app.get('/dashboard', async (c) => {
-  const auth = c.get('analyseAuth');
+  const auth = c.get('whyopsAuth');
 
   if (!auth) {
     return c.json({ error: 'Unauthorized: authentication required' }, 401);

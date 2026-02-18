@@ -6,12 +6,12 @@ import { ResponseUtil } from '../utils';
 const logger = createServiceLogger('auth:project-controller');
 
 export class ProjectController {
-  /**
-   * List all projects for user
-   */
   static async listProjects(c: Context) {
     try {
-      const user = c.get('user');
+      const user = c.get('sessionUser');
+      if (!user) {
+        return ResponseUtil.unauthorized(c, 'Not authenticated');
+      }
       const projects = await ProjectService.listProjects(user.id);
       return ResponseUtil.success(c, { projects });
     } catch (error: any) {
@@ -20,12 +20,12 @@ export class ProjectController {
     }
   }
 
-  /**
-   * Get a single project
-   */
   static async getProject(c: Context) {
     try {
-      const user = c.get('user');
+      const user = c.get('sessionUser');
+      if (!user) {
+        return ResponseUtil.unauthorized(c, 'Not authenticated');
+      }
       const projectId = c.req.param('id');
       
       const project = await ProjectService.getProjectById(projectId, user.id);
@@ -41,12 +41,12 @@ export class ProjectController {
     }
   }
 
-  /**
-   * Create a new project with environments and master keys
-   */
   static async createProject(c: Context) {
     try {
-      const user = c.get('user');
+      const user = c.get('sessionUser');
+      if (!user) {
+        return ResponseUtil.unauthorized(c, 'Not authenticated');
+      }
       const data = await c.req.json();
       
       const result = await ProjectService.createProject({
@@ -75,7 +75,6 @@ export class ProjectController {
     } catch (error: any) {
       logger.error({ error }, 'Failed to create project');
 
-      // Return specific error messages
       if (error.message === 'A project with this name already exists') {
         return ResponseUtil.conflict(c, error.message);
       }
@@ -84,12 +83,12 @@ export class ProjectController {
     }
   }
 
-  /**
-   * Update a project
-   */
   static async updateProject(c: Context) {
     try {
-      const user = c.get('user');
+      const user = c.get('sessionUser');
+      if (!user) {
+        return ResponseUtil.unauthorized(c, 'Not authenticated');
+      }
       const projectId = c.req.param('id');
       const data = await c.req.json() as UpdateProjectData;
       
@@ -107,12 +106,12 @@ export class ProjectController {
     }
   }
 
-  /**
-   * Delete (deactivate) a project
-   */
   static async deleteProject(c: Context) {
     try {
-      const user = c.get('user');
+      const user = c.get('sessionUser');
+      if (!user) {
+        return ResponseUtil.unauthorized(c, 'Not authenticated');
+      }
       const projectId = c.req.param('id');
       
       await ProjectService.deactivateProject(projectId, user.id);
@@ -129,12 +128,12 @@ export class ProjectController {
     }
   }
 
-  /**
-   * Get environments for a project
-   */
   static async getEnvironments(c: Context) {
     try {
-      const user = c.get('user');
+      const user = c.get('sessionUser');
+      if (!user) {
+        return ResponseUtil.unauthorized(c, 'Not authenticated');
+      }
       const projectId = c.req.param('projectId');
       
       const environments = await ProjectService.getEnvironments(projectId, user.id);
