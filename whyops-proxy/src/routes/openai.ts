@@ -78,6 +78,7 @@ async function trackChatCompletionsStream(
         content: accumulatedState.content,
         toolCalls: accumulatedState.toolCalls,
         finishReason: accumulatedState.finishReason,
+    
       },
       metadata: {
         model,
@@ -274,6 +275,7 @@ app.post('/chat/completions', async (c) => {
         body: JSON.stringify(requestBody),
       });
 
+      // Handle non-200 responses from OpenAI
       if (!response.ok) {
         const errorBody = await response.text();
         logger.error({ status: response.status, errorBody }, 'OpenAI API error');
@@ -291,6 +293,7 @@ app.post('/chat/completions', async (c) => {
         return responseFromUpstreamError(response.status, response.headers.get('content-type'), errorBody);
       }
 
+      // Stream the response back to the client while also tracking analytics
       if (!response.body) {
         throw new Error('No response body');
       }
