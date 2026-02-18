@@ -93,8 +93,8 @@ jobs:
               --image ${{ secrets.REGISTRY_LOGIN_SERVER }}/whyops-proxy:${{ github.sha }} \
               --min-replicas 1 \
               --max-replicas 3 \
-              --cpu 0.25 \
-              --memory 0.5Gi \
+              --cpu 1 \
+              --memory 2Gi \
               --set-env-vars "${ENV_VARS[@]}"
           else
             echo "Creating whyops-proxy (state: $PROVISIONING_STATE)..."
@@ -111,8 +111,8 @@ jobs:
               --ingress external \
               --min-replicas 1 \
               --max-replicas 3 \
-              --cpu 0.25 \
-              --memory 0.5Gi \
+              --cpu 1 \
+              --memory 2Gi \
               --env-vars "${ENV_VARS[@]}"
           fi
 
@@ -192,8 +192,8 @@ jobs:
               --image ${{ secrets.REGISTRY_LOGIN_SERVER }}/whyops-analyse:${{ github.sha }} \
               --min-replicas 1 \
               --max-replicas 3 \
-              --cpu 0.25 \
-              --memory 0.5Gi \
+              --cpu 1 \
+              --memory 2Gi \
               --set-env-vars "${ENV_VARS[@]}"
           else
             echo "Creating whyops-analyse (state: $PROVISIONING_STATE)..."
@@ -210,8 +210,8 @@ jobs:
               --ingress external \
               --min-replicas 1 \
               --max-replicas 3 \
-              --cpu 0.25 \
-              --memory 0.5Gi \
+              --cpu 1 \
+              --memory 2Gi \
               --env-vars "${ENV_VARS[@]}"
           fi
 
@@ -291,8 +291,8 @@ jobs:
               --image ${{ secrets.REGISTRY_LOGIN_SERVER }}/whyops-auth:${{ github.sha }} \
               --min-replicas 1 \
               --max-replicas 3 \
-              --cpu 0.25 \
-              --memory 0.5Gi \
+              --cpu 1 \
+              --memory 2Gi \
               --set-env-vars "${ENV_VARS[@]}"
           else
             echo "Creating whyops-auth (state: $PROVISIONING_STATE)..."
@@ -309,7 +309,7 @@ jobs:
               --ingress external \
               --min-replicas 1 \
               --max-replicas 3 \
-              --cpu 0.25 \
-              --memory 0.5Gi \
+              --cpu 1 \
+              --memory 2Gi \
               --env-vars "${ENV_VARS[@]}"
           fi
