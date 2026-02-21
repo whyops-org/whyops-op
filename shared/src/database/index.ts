@@ -32,10 +32,10 @@ export const sequelize = new Sequelize({
     // which can happen when schema changes or with connection pooling issues in some environments.
     // This forces pg to use simple queries.
     binary: false,
-    ssl: {
-          require: true,
-          rejectUnauthorized: false,
-        },
+    // ssl: {
+    //       require: true,
+    //       rejectUnauthorized: false,
+    //     },
     // ssl: env.DB_SSL ? { rejectUnauthorized: false } : undefined, // Removed as DB_SSL is not in env type
   },
   logging: env.NODE_ENV === 'development' ? (msg) => logger.debug(msg) : false,
@@ -56,22 +56,17 @@ export async function initDatabase() {
     await sequelize.authenticate();
     logger.info('Database connection established successfully');
     
+    // Note: Using migrations for schema changes, not sync({ alter: true })
+    // Sync with alter causes issues with constraint naming in PostgreSQL
+    // Run `bun run db:migrate` to apply schema changes
     if (env.NODE_ENV === 'development') {
       try {
-        await sequelize.sync({ alter: true });
+        // Only sync in development to create tables if they don't exist
+        // This is safe as it won't alter existing tables
+        await sequelize.sync();
         logger.info('Database synchronized');
       } catch (syncError) {
-        // Retry without alter if it fails on constraint dropping
-        // This is a common issue with Sequelize sync({ alter: true }) and Postgres
-        logger.warn({ error: syncError }, 'Database sync with alter failed, trying without alter');
-        try {
-          await sequelize.sync();
-          logger.info('Database synchronized (without alter)');
-        } catch (retryError) {
-           // Catch the specific regex error in Sequelize postgres dialect
-           // This happens when parsing index definitions on some postgres versions
-           logger.warn({ error: retryError }, 'Database sync failed completely, ignoring to allow startup');
-        }
+        logger.warn({ error: syncError }, 'Database sync failed, ignoring to allow startup');
       }
     }
   } catch (error) {
