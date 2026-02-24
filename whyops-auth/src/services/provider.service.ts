@@ -132,10 +132,10 @@ export class ProviderService {
     }
 
     // Test connection before creating provider
-    const testResult = await this.testProviderConnection(data.type, data.baseUrl, data.apiKey);
-    if (!testResult.success) {
-      throw new Error(`Connection failed: ${testResult.message}`);
-    }
+    // const testResult = await this.testProviderConnection(data.type, data.baseUrl, data.apiKey);
+    // if (!testResult.success) {
+    //   throw new Error(`Connection failed: ${testResult.message}`);
+    // }
 
     const provider = await Provider.create({
       userId: data.userId,

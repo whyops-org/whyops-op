@@ -54,10 +54,10 @@ export async function testProvider(input: ProviderTestInput): Promise<ProviderTe
     }
 
     const jsonData = await response.json();
-    const data = jsonData as { content?: Array<{ text?: string }> };
+    const data = jsonData as { content?: Array<{ text?: string; thinking?: boolean }> };
 
     // Verify we got a valid response with content
-    if (!data.content || !data.content[0]?.text) {
+    if (!data.content || (!data.content[0]?.text && !data.content[0]?.thinking)) {
       return {
         success: false,
         message: 'Invalid response format from Anthropic',

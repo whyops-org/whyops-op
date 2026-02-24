@@ -6,6 +6,8 @@ import { Hono } from 'hono';
 import { dispatchAnalyseEvent } from '../services/async-events';
 import { copyProxyResponseHeaders, resolveProviderFromModel, validateResolvedProvider } from '../services/proxy-routing';
 import { SseEventDecoder } from '../services/sse';
+import { AnthropicParser } from '../parsers/anthropic-parser';
+import type { AnthropicMessagesRequest, AnthropicMessageResponse, AnthropicStreamEvent } from '../types/anthropic';
 
 const logger = createServiceLogger('proxy:anthropic');
 const app = new Hono();
@@ -45,22 +47,14 @@ async function trackAnthropicStream(
   providerId: string | undefined,
   agentName: string,
   model: string,
-  requestBody: any,
+  requestBody: AnthropicMessagesRequest,
   startTime: number
 ): Promise<void> {
   const reader = streamBody.getReader();
   const decoder = new TextDecoder();
   const sseDecoder = new SseEventDecoder();
-  const accumulatedResponse: any = {
-    id: '',
-    type: 'message',
-    role: 'assistant',
-    content: [{ type: 'text', text: '' }],
-    model,
-    stop_reason: null,
-    usage: { input_tokens: 0, output_tokens: 0 },
-  };
-  const toolCalls: any[] = [];
+  let accumulatedState = AnthropicParser.getInitialStreamState();
+  const toolCallState = new Map<number, any>();
 
   try {
     while (true) {
@@ -72,49 +66,8 @@ async function trackAnthropicStream(
 
       for (const data of events) {
         try {
-          const parsed = JSON.parse(data);
-
-          if (parsed.type === 'content_block_start' && parsed.content_block?.type === 'tool_use') {
-            const index = typeof parsed.index === 'number' ? parsed.index : toolCalls.length;
-            const input = parsed.content_block.input ?? {};
-            toolCalls[index] = {
-              id: parsed.content_block.id,
-              type: 'function',
-              function: {
-                name: parsed.content_block.name,
-                arguments: JSON.stringify(input),
-              },
-            };
-          }
-
-          if (parsed.type === 'content_block_delta' && parsed.delta?.type === 'input_json_delta') {
-            const index = typeof parsed.index === 'number' ? parsed.index : 0;
-            if (!toolCalls[index]) {
-              toolCalls[index] = {
-                id: undefined,
-                type: 'function',
-                function: {
-                  name: undefined,
-                  arguments: '',
-                },
-              };
-            }
-            toolCalls[index].function.arguments = (toolCalls[index].function.arguments || '') + (parsed.delta.partial_json || '');
-          }
-
-          if (parsed.type === 'content_block_delta' && parsed.delta?.text) {
-            accumulatedResponse.content[0].text += parsed.delta.text;
-          }
-          if (parsed.type === 'message_delta' && parsed.delta?.stop_reason) {
-            accumulatedResponse.stop_reason = parsed.delta.stop_reason;
-          }
-          if (parsed.type === 'message_start' && parsed.message) {
-            accumulatedResponse.id = parsed.message.id;
-            accumulatedResponse.usage = parsed.message.usage;
-          }
-          if (parsed.type === 'message_stop' && parsed.usage) {
-            accumulatedResponse.usage = parsed.usage;
-          }
+          const parsed = JSON.parse(data) as AnthropicStreamEvent;
+          accumulatedState = AnthropicParser.parseStreamEvent(parsed, accumulatedState, toolCallState);
         } catch {
           // Ignore malformed chunks for analytics only path
         }
@@ -124,10 +77,8 @@ async function trackAnthropicStream(
     const finalEvents = sseDecoder.flush();
     for (const data of finalEvents) {
       try {
-        const parsed = JSON.parse(data);
-        if (parsed.type === 'content_block_delta' && parsed.delta?.text) {
-          accumulatedResponse.content[0].text += parsed.delta.text;
-        }
+        const parsed = JSON.parse(data) as AnthropicStreamEvent;
+        accumulatedState = AnthropicParser.parseStreamEvent(parsed, accumulatedState, toolCallState);
       } catch {
         // Ignore malformed chunks for analytics only path
       }
@@ -141,9 +92,9 @@ async function trackAnthropicStream(
       providerId,
       agentName,
       content: {
-        content: accumulatedResponse.content[0].text,
-        finishReason: accumulatedResponse.stop_reason,
-        toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+        content: accumulatedState.content,
+        finishReason: accumulatedState.finishReason,
+        toolCalls: accumulatedState.toolCalls,
       },
       metadata: {
         provider: 'anthropic',
@@ -151,11 +102,7 @@ async function trackAnthropicStream(
         systemPrompt: requestBody.system,
         temperature: requestBody.temperature,
         maxTokens: requestBody.max_tokens,
-        usage: accumulatedResponse.usage ? {
-          promptTokens: accumulatedResponse.usage.input_tokens,
-          completionTokens: accumulatedResponse.usage.output_tokens,
-          totalTokens: accumulatedResponse.usage.input_tokens + accumulatedResponse.usage.output_tokens,
-        } : undefined,
+        usage: accumulatedState.usage,
         latencyMs,
       }
     });
@@ -167,7 +114,7 @@ async function trackAnthropicStream(
 // Anthropic Messages endpoint
 app.post('/messages', async (c) => {
   const auth = c.get('whyopsAuth') as ApiKeyAuthContext;
-  const requestBody = await c.req.json();
+  const requestBody = await c.req.json() as AnthropicMessagesRequest;
   const isStreaming = requestBody.stream === true;
 
   const startTime = Date.now();
@@ -204,7 +151,8 @@ app.post('/messages', async (c) => {
 
   try {
     // Build request to Anthropic
-    const anthropicUrl = `${provider.baseUrl}/messages`;
+    const baseUrl = provider.baseUrl.endsWith('/v1') ? provider.baseUrl : `${provider.baseUrl}/v1`;
+    const anthropicUrl = `${baseUrl}/messages`;
     const headers = {
       'x-api-key': provider.apiKey,
       'anthropic-version': '2023-06-01',
@@ -226,6 +174,11 @@ app.post('/messages', async (c) => {
         systemPrompt: requestBody.system,
         temperature: requestBody.temperature,
         maxTokens: requestBody.max_tokens,
+        topP: requestBody.top_p,
+        topK: requestBody.top_k,
+        stopSequences: requestBody.stop_sequences,
+        toolChoice: requestBody.tool_choice,
+        thinking: requestBody.thinking,
       }
     });
 
@@ -292,12 +245,7 @@ app.post('/messages', async (c) => {
       });
 
       const latencyMs = Date.now() - startTime;
-      const responseData = await response.json() as {
-        content?: { text?: string }[],
-        stop_reason?: string,
-        usage?: { input_tokens: number, output_tokens: number }
-        [key: string]: any
-      };
+      const responseData = await response.json() as AnthropicMessageResponse;
 
       if (!response.ok) {
         logger.error({ status: response.status, responseData }, 'Anthropic API error');
@@ -319,18 +267,7 @@ app.post('/messages', async (c) => {
         return c.json(responseData, response.status as any);
       }
 
-      const toolCalls = Array.isArray(responseData.content)
-        ? responseData.content
-            .filter((item: any) => item?.type === 'tool_use')
-            .map((item: any) => ({
-              id: item.id,
-              type: 'function',
-              function: {
-                name: item.name,
-                arguments: JSON.stringify(item.input ?? {}),
-              },
-            }))
-        : [];
+      const parsedResponse = AnthropicParser.parseResponse(responseData);
 
       dispatchAnalyseEvent(auth.apiKey, {
         eventType: 'llm_response',
@@ -339,9 +276,9 @@ app.post('/messages', async (c) => {
         providerId: provider?.id,
         agentName,
         content: {
-          content: responseData.content?.[0]?.text,
-          finishReason: responseData.stop_reason,
-          toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+          content: parsedResponse.content,
+          finishReason: parsedResponse.finishReason,
+          toolCalls: parsedResponse.toolCalls,
         },
         metadata: {
           provider: 'anthropic',
@@ -349,11 +286,7 @@ app.post('/messages', async (c) => {
           systemPrompt: requestBody.system,
           temperature: requestBody.temperature,
           maxTokens: requestBody.max_tokens,
-          usage: responseData.usage ? {
-            promptTokens: responseData.usage.input_tokens,
-            completionTokens: responseData.usage.output_tokens,
-            totalTokens: responseData.usage.input_tokens + responseData.usage.output_tokens,
-          } : undefined,
+          usage: parsedResponse.usage,
           latencyMs,
         },
       });

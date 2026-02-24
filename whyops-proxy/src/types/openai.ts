@@ -167,9 +167,13 @@ export interface OpenAIChatCompletionChunk {
 export type OpenAIResponsesInputContentPart =
   | { type: 'input_text'; text: string }
   | { type: 'input_image'; image_url?: string; file_id?: string; detail?: 'auto' | 'low' | 'high' }
-  | { type: 'input_file'; file_id: string };
+  | { type: 'input_file'; file_id: string }
+  // Some providers echo output-style parts back into history; we accept for sanitization.
+  | { type: 'output_text'; text: string }
+  | { type: 'text'; text: string };
 
 export interface OpenAIResponsesInputMessage {
+  type?: 'message';
   role: OpenAIRole;
   content: string | OpenAIResponsesInputContentPart[];
 }
@@ -210,7 +214,7 @@ export interface OpenAIResponsesRequest {
 }
 
 export type OpenAIResponsesOutputItem =
-  | { type: 'message'; id: string; status: string; role: 'assistant'; content: Array<{ type: 'output_text'; text: string; annotations?: any[]; logprobs?: any } | { type: 'refusal'; refusal: string } | { type: 'output_audio'; id: string; data?: string; transcript?: string }> }
+  | { type: 'message'; id: string; status: string; role: 'assistant'; content: Array<{ type: 'output_text'; text: string; annotations?: any[]; logprobs?: any } | { type: 'refusal'; refusal: string } | { type: 'output_audio'; id: string; data?: string; transcript?: string }>; tool_calls?: OpenAIToolCall[] | null }
   | { type: 'reasoning'; id: string; status: string; summary?: Array<{ type: 'summary_text'; text: string }>; encrypted_content?: string }
   | { type: 'function_call'; id: string; call_id: string; status?: string; name: string; arguments: string }
   | { type: 'function_call_output'; id: string; call_id: string; status?: string; output: string }

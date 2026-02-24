@@ -19,33 +19,121 @@ import { SseEventDecoder } from '../services/sse';
 const logger = createServiceLogger('proxy:openai');
 const app = new Hono();
 
-function determineOpenAIRequestEventType(messages: any[] | undefined): 'user_message' | 'tool_result' {
+function determineOpenAIRequestEventType(messages: any[] | undefined): 'user_message' | 'tool_call_response' {
   if (!messages || !Array.isArray(messages)) return 'user_message';
 
   for (let i = messages.length - 1; i >= 0; i--) {
     const msg = messages[i];
     const role = msg?.role;
     if (role === 'system') continue;
-    if (role === 'tool' || role === 'function') return 'tool_result';
+    if (role === 'tool' || role === 'function') return 'tool_call_response';
     return 'user_message';
   }
 
   return 'user_message';
 }
 
-function determineResponsesRequestEventType(input: OpenAIResponsesRequest['input']): 'user_message' | 'tool_result' {
+function determineResponsesRequestEventType(input: OpenAIResponsesRequest['input']): 'user_message' | 'tool_call_response' {
   if (!input || typeof input === 'string') return 'user_message';
   if (!Array.isArray(input)) return 'user_message';
 
   for (let i = input.length - 1; i >= 0; i--) {
     const msg = input[i] as any;
+    if (msg?.type === 'function_call_output') return 'tool_call_response';
     const role = msg?.role;
     if (role === 'system') continue;
-    if (role === 'tool') return 'tool_result';
+    if (role === 'tool') return 'tool_call_response';
     return 'user_message';
   }
 
   return 'user_message';
+}
+
+function normalizeResponsesInput(input: OpenAIResponsesRequest['input']): OpenAIResponsesRequest['input'] {
+  if (!input || typeof input === 'string' || !Array.isArray(input)) return input;
+
+  return input.map((item: any) => {
+    if (!item || typeof item !== 'object') return item;
+
+    // Normalize function_call items missing call_id (some providers only return id)
+    if (item.type === 'function_call') {
+      if (!item.call_id && item.id) {
+        return { ...item, call_id: item.id };
+      }
+      return item;
+    }
+
+    // Normalize function_call_output items with chat-style fields
+    if (item.type === 'function_call_output') {
+      const callId = item.call_id ?? item.tool_call_id ?? item.id;
+      const output = item.output ?? (item.content !== undefined
+        ? (typeof item.content === 'string' ? item.content : JSON.stringify(item.content))
+        : undefined);
+
+      const normalized: any = { ...item };
+      if (callId && !normalized.call_id) normalized.call_id = callId;
+      if (output !== undefined && normalized.output === undefined) normalized.output = output;
+      if ('content' in normalized && normalized.output !== undefined) delete normalized.content;
+      if ('tool_call_id' in normalized) delete normalized.tool_call_id;
+      return normalized;
+    }
+
+    // Convert chat-style tool messages into Responses API tool outputs
+    if ((item.role === 'tool' || item.role === 'function') && item.content !== undefined) {
+      const callId = item.tool_call_id ?? item.call_id ?? item.id;
+      const output = typeof item.content === 'string' ? item.content : JSON.stringify(item.content);
+      const { role, content, tool_call_id, ...rest } = item;
+      return {
+        type: 'function_call_output',
+        ...(callId ? { call_id: callId } : {}),
+        output,
+        ...rest,
+      };
+    }
+
+    return item;
+  });
+}
+
+function summarizeResponsesInput(input: OpenAIResponsesRequest['input']) {
+  if (typeof input === 'string') {
+    return { kind: 'string', length: input.length };
+  }
+  if (!Array.isArray(input)) {
+    return { kind: 'unknown', type: typeof input };
+  }
+
+  const items = input.slice(0, 20).map((item: any, index) => {
+    if (!item || typeof item !== 'object') {
+      return { index, type: typeof item };
+    }
+
+    const content = (item as any).content;
+    const contentType = Array.isArray(content) ? 'array' : typeof content;
+    const contentPreview = typeof content === 'string'
+      ? content.slice(0, 120)
+      : undefined;
+
+    return {
+      index,
+      type: item.type,
+      role: item.role,
+      keys: Object.keys(item).sort(),
+      has_call_id: item.call_id !== undefined,
+      has_tool_call_id: item.tool_call_id !== undefined,
+      has_output: item.output !== undefined,
+      has_content: item.content !== undefined,
+      content_type: contentType,
+      content_preview: contentPreview,
+    };
+  });
+
+  return {
+    kind: 'array',
+    length: input.length,
+    items,
+    truncated: input.length > 20,
+  };
 }
 
 function responseFromUpstreamError(status: number, contentType: string | null, body: string): Response {
@@ -241,11 +329,25 @@ app.post('/chat/completions', async (c) => {
     for (let i = requestBody.messages.length - 1; i >= 0; i--) {
       const msg = requestBody.messages[i];
       if (msg.role === 'assistant' && msg.content) {
-        const extractedId = decodeSignature(msg.content);
-        if (extractedId) {
-          traceId = extractedId;
-          logger.debug({ traceId }, 'Extracted traceId from invisible signature');
-          break;
+        if (typeof msg.content === 'string') {
+          const extractedId = decodeSignature(msg.content);
+          if (extractedId) {
+            traceId = extractedId;
+            logger.debug({ traceId }, 'Extracted traceId from invisible signature');
+            break;
+          }
+        } else if (Array.isArray(msg.content)) {
+          for (const part of msg.content) {
+            if (part.type === 'text' && part.text) {
+              const extractedId = decodeSignature(part.text);
+              if (extractedId) {
+                traceId = extractedId;
+                logger.debug({ traceId }, 'Extracted traceId from invisible signature');
+                break;
+              }
+            }
+          }
+          if (traceId) break;
         }
       }
     }
@@ -566,6 +668,9 @@ app.post('/responses', async (c) => {
     return c.json({ error: providerValidation.message }, 400);
   }
   requestBody.model = actualModel;
+  const originalInput = requestBody.input;
+  const normalizedInput = normalizeResponsesInput(requestBody.input);
+  requestBody.input = normalizedInput;
   
   // 1. Try to find traceId from Headers
   let traceId = c.req.header('X-Trace-ID') || c.req.header('X-Thread-ID');
@@ -591,8 +696,8 @@ app.post('/responses', async (c) => {
         } else if (Array.isArray(item.content)) {
            // Check text parts
            for (const part of item.content) {
-             // Support both output_text (from response) and generic text parts
-             if ((part.type === 'output_text' || part.type === 'text') && part.text) {
+             // Support output_text, input_text, and generic text parts
+             if ((part.type === 'output_text' || part.type === 'input_text' || part.type === 'text') && part.text) {
                const extractedId = decodeSignature(part.text);
                if (extractedId) {
                  traceId = extractedId;
@@ -635,7 +740,7 @@ app.post('/responses', async (c) => {
           return {
             ...item,
             content: item.content.map((part: any) => {
-              if ((part.type === 'output_text' || part.type === 'text') && part.text) {
+              if ((part.type === 'output_text' || part.type === 'input_text' || part.type === 'text') && part.text) {
                 return { ...part, text: stripSignature(part.text) };
               }
               return part;
@@ -701,7 +806,13 @@ app.post('/responses', async (c) => {
 
       if (!response.ok) {
         const errorBody = await response.text();
-        logger.error({ status: response.status, errorBody }, 'OpenAI API error');
+        logger.error({
+          status: response.status,
+          errorBody,
+          traceId,
+          inputSummary: summarizeResponsesInput(originalInput),
+          normalizedInputSummary: summarizeResponsesInput(normalizedInput),
+        }, 'OpenAI API error');
 
         dispatchAnalyseEvent(auth.apiKey, {
           traceId,
@@ -754,6 +865,13 @@ app.post('/responses', async (c) => {
       const responseData = await response.json() as OpenAIResponsesResponse;
 
       if (!response.ok) {
+        logger.error({
+          status: response.status,
+          traceId,
+          inputSummary: summarizeResponsesInput(originalInput),
+          normalizedInputSummary: summarizeResponsesInput(normalizedInput),
+          responseData,
+        }, 'OpenAI API error');
         dispatchAnalyseEvent(auth.apiKey, {
           traceId,
           spanId: generateSpanId(),
@@ -775,7 +893,9 @@ app.post('/responses', async (c) => {
             if (item.type === 'message') {
                 if (item.content) {
                     // Find the first text output to append signature
-                    const textPart = item.content.find((part: any) => part.type === 'output_text');
+                    const textPart = item.content.find(
+                      (part: any): part is { type: 'output_text'; text: string } => part.type === 'output_text'
+                    );
                     if (textPart && !signatureInjected) {
                         textPart.text += signature;
                         signatureInjected = true; 
