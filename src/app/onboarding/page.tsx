@@ -18,7 +18,6 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useAuthStore } from "@/stores/authStore";
 import { useConfigStore } from "@/stores/configStore";
-import { useProjectStore } from "@/stores/projectStore";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 
@@ -32,7 +31,6 @@ const iconMap: Record<string, typeof LinkIcon> = {
 export default function OnboardingPage() {
   const router = useRouter();
   const { user, loadSession, completeOnboarding, fetchOnboardingProgress, onboardingProgress } = useAuthStore();
-  const { masterKeys } = useProjectStore();
   const { config, fetchConfig } = useConfigStore();
   const [currentStep, setCurrentStep] = React.useState(0);
   const [hasScroll, setHasScroll] = React.useState(false);

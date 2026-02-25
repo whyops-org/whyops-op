@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useRef } from 'react';
+import { createContext, useContext } from 'react';
 
 import type { Agent, Pagination } from '@/types/global';
 
@@ -25,12 +25,6 @@ interface AgentsProviderProps {
 }
 
 export function AgentsProvider({ children, initialAgents, initialPagination }: AgentsProviderProps) {
-  const initialized = useRef(false);
-
-  if (!initialized.current && initialAgents.length > 0) {
-    initialized.current = true;
-  }
-
   return (
     <AgentsContext.Provider value={{ initialAgents, initialPagination }}>
       {children}

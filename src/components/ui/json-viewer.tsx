@@ -32,7 +32,7 @@ function tryParseJson(value: string): { parsed: unknown; success: boolean } {
 
 function parseJsonIterative(input: string): unknown {
   const initial = tryParseJson(input);
-  let root: unknown = initial.success ? initial.parsed : input;
+  const root: unknown = initial.success ? initial.parsed : input;
 
   const stack: Array<{
     parent: JsonContainer;
@@ -62,7 +62,13 @@ function parseJsonIterative(input: string): unknown {
     if (typeof value === "string") {
       const parsed = tryParseJson(value);
       if (parsed.success) {
-        parent[key] = parsed.parsed;
+        if (Array.isArray(parent)) {
+          if (typeof key === "number") {
+            parent[key] = parsed.parsed;
+          }
+        } else {
+          parent[key as string] = parsed.parsed;
+        }
         if (isContainer(parsed.parsed)) {
           pushChildren(parsed.parsed);
         }

@@ -11,12 +11,29 @@ export interface TraceEvent {
   spanId?: string;
   eventType: string;
   timestamp: string;
-  content: any;
-  metadata: any;
+  content: TraceEventContent;
+  metadata?: TraceEventMetadata | null;
   duration?: number;
   timeSinceStart?: number;
   isLateEvent?: boolean;
 }
+
+export interface TraceEventMetadata {
+  tool?: string;
+  totalRecords?: number;
+  model?: string;
+  provider?: string;
+  providerSlug?: string;
+  usage?: {
+    totalTokens?: number;
+    promptTokens?: number;
+    completionTokens?: number;
+  };
+  latencyMs?: number;
+  [key: string]: unknown;
+}
+
+export type TraceEventContent = unknown;
 
 export interface TraceCostRate {
   id: string;
@@ -36,7 +53,7 @@ export interface TraceDetail {
   entityName?: string;
   model?: string;
   systemPrompt?: string;
-  tools?: any[];
+  tools?: unknown[];
   firstEventTimestamp: string;
   lastEventTimestamp: string;
   duration: number;

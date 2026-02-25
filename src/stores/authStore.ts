@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-import { apiClient, apiRequest } from "@/lib/api-client";
+import { apiRequest } from "@/lib/api-client";
 
 type AuthStatus = "idle" | "loading" | "sent" | "error";
 

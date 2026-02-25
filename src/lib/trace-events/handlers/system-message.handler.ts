@@ -1,6 +1,10 @@
 import type { EventHandler, CanvasNodeData, SidebarData, TimelineData } from "../types";
 import type { TraceEvent } from "@/stores/traceDetailStore";
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 function extractSystemText(content: TraceEvent["content"]): { text: string; preview: string } {
   if (!content) {
     return { text: "", preview: "" };
@@ -14,11 +18,14 @@ function extractSystemText(content: TraceEvent["content"]): { text: string; prev
   }
 
   if (Array.isArray(content)) {
-    const systemMessages = content.filter((msg) => msg.role === "system");
-    if (systemMessages.length > 0 && systemMessages[0].content) {
-      const text = typeof systemMessages[0].content === "string"
-        ? systemMessages[0].content
-        : JSON.stringify(systemMessages[0].content);
+    const systemMessage = content.find(
+      (msg) => isRecord(msg) && typeof msg.role === "string" && msg.role === "system"
+    ) as Record<string, unknown> | undefined;
+    if (systemMessage && "content" in systemMessage) {
+      const messageContent = systemMessage.content;
+      const text = typeof messageContent === "string"
+        ? messageContent
+        : JSON.stringify(messageContent);
       return {
         text,
         preview: text.length > 100 ? text.slice(0, 100) + "..." : text,
@@ -104,7 +111,7 @@ export const SystemMessageHandler: EventHandler = {
       status: "completed",
       timestamp: event.timestamp,
       duration: event.duration ?? undefined,
-      metadata: event.metadata,
+      metadata: event.metadata ?? undefined,
     };
   },
 };

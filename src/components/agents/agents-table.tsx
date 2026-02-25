@@ -30,6 +30,7 @@ import {
   MoreHorizontal,
   Search
 } from "lucide-react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 
@@ -58,9 +59,16 @@ const AGENTS_TABLE_TEXT = {
 };
 
 function AgentIcon({ name }: { name: string }) {
-    return (
-      <img src={getPlaceHolderImage(name)} className="h-full w-full" />
-    )
+  return (
+    <Image
+      src={getPlaceHolderImage(name)}
+      alt={`${name} avatar`}
+      width={40}
+      height={40}
+      sizes="40px"
+      className="h-full w-full object-cover"
+    />
+  );
 }
 
 function MoreIcon() {
@@ -116,6 +124,7 @@ export function AgentsTable({
   onCountChange
 }: AgentsTableProps) {
   const [searchQuery, setSearchQuery] = React.useState("");
+  const isTableLoading = Boolean(isLoading);
   // TODO: Enable sort functionality when API supports it
   // const [sortBy, setSortBy] = React.useState(
   //   AGENTS_TABLE_TEXT.sortOptions[0]?.value ?? ""
@@ -157,6 +166,7 @@ export function AgentsTable({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="h-9 w-64 pl-9 pr-4"
+                disabled={isTableLoading}
               />
             </div>
             {/* Sort Dropdown - TODO: Implement sort functionality */}
@@ -224,7 +234,11 @@ export function AgentsTable({
                 <TableRow
                   key={agent.id}
                   className="hover:bg-surface-2/50 cursor-pointer transition-colors"
-                  onClick={() => router.push(`/agents/${agent.id}`)}
+                  onClick={() => {
+                    if (!isTableLoading) {
+                      router.push(`/agents/${agent.id}`);
+                    }
+                  }}
                 >
                   <TableCell className="px-6 py-4">
                     <div className="flex items-center gap-3">
@@ -281,6 +295,7 @@ export function AgentsTable({
                     <button
                       className="text-muted-foreground transition-colors hover:text-foreground"
                       aria-label={AGENTS_TABLE_TEXT.actionLabel}
+                      disabled={isTableLoading}
                       onClick={(e) => e.stopPropagation()}
                     >
                       <MoreIcon />
@@ -307,6 +322,7 @@ export function AgentsTable({
             <Select
               value={pagination?.count?.toString() ?? "20"}
               onValueChange={(value) => onCountChange?.(parseInt(value, 10))}
+              disabled={isTableLoading}
             >
               <SelectTrigger className="h-8 w-20">
                 <SelectValue />
@@ -324,7 +340,7 @@ export function AgentsTable({
               variant="outline"
               size="sm"
               className="h-8 w-8 p-0"
-              disabled={!pagination || pagination.page <= 1}
+              disabled={isTableLoading || !pagination || pagination.page <= 1}
               onClick={handlePrevPage}
             >
               <ChevronLeft className="h-4 w-4" />
@@ -336,7 +352,7 @@ export function AgentsTable({
               variant="outline"
               size="sm"
               className="h-8 w-8 p-0"
-              disabled={!pagination || !pagination.hasMore}
+              disabled={isTableLoading || !pagination || !pagination.hasMore}
               onClick={handleNextPage}
             >
               <ChevronRight className="h-4 w-4" />

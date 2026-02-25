@@ -58,13 +58,6 @@ export const useAgentDetailStore = create<AgentDetailState>()(
         const headers = apiKey ? { Authorization: `Bearer ${apiKey}` } : {};
 
         try {
-          // Fetch entity details
-          const entityResponse = await apiClient.get<{
-            id: string;
-            name: string;
-            metadata: Record<string, unknown>;
-          }>(`${config.analyseBaseUrl}/entities/${agentId}`, { headers });
-
           // Fetch threads
           const threadsResponse = await apiClient.get<{ threads: Thread[] }>(
             `${config.analyseBaseUrl}/threads`,

@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { Clock, DollarSign, ChevronDown, ChevronRight, MessageSquare, Copy } from "lucide-react";
+import { Clock, DollarSign, ChevronDown, ChevronRight, Copy } from "lucide-react";
 
 export function StepHeader({ 
   step, 

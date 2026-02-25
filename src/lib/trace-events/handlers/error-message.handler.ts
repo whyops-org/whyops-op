@@ -1,6 +1,10 @@
 import type { EventHandler, CanvasNodeData, SidebarData, TimelineData } from "../types";
 import type { TraceEvent } from "@/stores/traceDetailStore";
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 function extractErrorText(content: TraceEvent["content"]): { text: string; preview: string } {
   if (!content) {
     return { text: "Unknown error", preview: "Unknown error" };
@@ -13,7 +17,7 @@ function extractErrorText(content: TraceEvent["content"]): { text: string; previ
     };
   }
 
-  if (typeof content === "object") {
+  if (isRecord(content)) {
     const errorText = (content.error as string) || (content.message as string) || (content.errorMessage as string);
 
     if (errorText) {
@@ -104,7 +108,7 @@ export const ErrorMessageHandler: EventHandler = {
       status: "error",
       timestamp: event.timestamp,
       duration: event.duration ?? undefined,
-      metadata: event.metadata,
+      metadata: event.metadata ?? undefined,
     };
   },
 };

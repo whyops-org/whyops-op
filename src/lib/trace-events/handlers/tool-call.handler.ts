@@ -144,7 +144,7 @@ export const ToolCallHandler: EventHandler = {
       status: "running",
       timestamp: event.timestamp,
       duration: event.duration ?? undefined,
-      metadata: event.metadata,
+      metadata: event.metadata ?? undefined,
     };
   },
 };

@@ -1,6 +1,7 @@
 import type { Node, Edge, MarkerType } from "reactflow";
 
 import type { TraceEvent } from "@/stores/traceDetailStore";
+import { parseTraceEvents, type TraceEventParserInput } from "@/lib/trace-event-parsers";
 import { eventHandlerRegistry, type CanvasNodeData, type SidebarData, type TimelineData, type TraceNodeDataBase } from "./trace-events";
 
 export type { CanvasNodeData, SidebarData, TimelineData };
@@ -19,9 +20,10 @@ export interface ConvertTraceOptions {
   startY?: number;
   edgeOptions?: Partial<Pick<Edge, "type" | "style" | "markerEnd">>;
   nodeWidth?: number;
+  parser?: TraceEventParserInput;
 }
 
-const DEFAULT_OPTIONS: Required<ConvertTraceOptions> = {
+const DEFAULT_OPTIONS: Required<Omit<ConvertTraceOptions, "parser">> = {
   nodeSpacing: 150,
   startX: 250,
   startY: 50,
@@ -44,14 +46,15 @@ export function convertEventsToNodesAndEdges(
   options: ConvertTraceOptions = {}
 ): { nodes: Node<TraceNodeData>[]; edges: Edge[] } {
   const opts = { ...DEFAULT_OPTIONS, ...options };
+  const normalizedEvents = options.parser ? parseTraceEvents(events, options.parser) : events;
   const nodes: Node<TraceNodeData>[] = [];
   const edges: Edge[] = [];
 
-  if (!events || events.length === 0) {
+  if (!normalizedEvents || normalizedEvents.length === 0) {
     return { nodes, edges };
   }
 
-  const sortedEvents = [...events].sort(
+  const sortedEvents = [...normalizedEvents].sort(
     (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
   );
 

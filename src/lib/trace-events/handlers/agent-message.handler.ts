@@ -122,7 +122,7 @@ export const AgentMessageHandler: EventHandler = {
       status: event.isLateEvent ? "error" : "completed",
       timestamp: event.timestamp,
       duration: event.duration ?? undefined,
-      metadata: event.metadata,
+      metadata: event.metadata ?? undefined,
     };
   },
 };

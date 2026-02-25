@@ -22,6 +22,7 @@ import {
   Edge, MarkerType, Node, ReactFlow
 } from "reactflow";
 import "reactflow/dist/style.css";
+import { defaultTraceEventParsers } from "@/lib/trace-event-parsers";
 
 // Register all custom node types
 const nodeTypes = {
@@ -62,9 +63,16 @@ export function TraceCanvas({ trace }: TraceCanvasProps) {
     const filteredEvents = trace.events.map((event) => {
       //if content is array remove content with role system
       if (Array.isArray(event.content)) {
+        const filteredContent = event.content.filter((item) => {
+          if (!isRecord(item)) {
+            return true;
+          }
+          const role = typeof item.role === "string" ? item.role : null;
+          return role !== "system";
+        });
         return {
           ...event,
-          content: event.content.filter((c) => c.role !== "system"),
+          content: filteredContent,
         };
       }
       return event;
@@ -82,7 +90,9 @@ export function TraceCanvas({ trace }: TraceCanvasProps) {
         },
       };
     });
-    const convertedData = convertEventsToNodesAndEdges(enrichedEvents);
+    const convertedData = convertEventsToNodesAndEdges(enrichedEvents, {
+      parser: defaultTraceEventParsers,
+    });
     const layoutedNodes = applyAutoLayout(convertedData.nodes, convertedData.edges);
     return { nodes: layoutedNodes, edges: convertedData.edges };
   }, [trace.events, trace.cost]);
@@ -112,6 +122,10 @@ export function TraceCanvas({ trace }: TraceCanvasProps) {
       </ReactFlow>
     </div>
   );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }
 
 const NODE_DIMENSIONS: Record<string, { width: number; height: number }> = {

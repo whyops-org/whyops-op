@@ -1,7 +1,6 @@
 "use client";
 
-import { useParams } from "next/navigation";
-import type { TraceDetail } from "@/stores/traceDetailStore";
+import type { TraceDetail, TraceEvent } from "@/stores/traceDetailStore";
 import { formatDuration } from "@/lib/trace-format";
 
 interface TraceTimelineProps {
@@ -79,11 +78,15 @@ function getEventTypeLabel(eventType: string): string {
   }
 }
 
-function getEventDescription(event: any): string {
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function getEventDescription(event: TraceEvent): string {
   if (Array.isArray(event.content)) {
     return `Tool results (${event.content.length})`;
   }
-  if (event.content?.content) {
+  if (isRecord(event.content) && "content" in event.content) {
     const content = event.content.content;
     if (typeof content === "string") {
       return content.substring(0, 100) + (content.length > 100 ? "..." : "");

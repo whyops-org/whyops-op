@@ -76,7 +76,7 @@ export const LlmResponseHandler: EventHandler = {
 
   getSidebarData(event: TraceEvent): SidebarData {
     const typedContent = event.content as LlmResponseContent;
-    const { text, toolCalls } = extractResponseText(event.content);
+    const { text } = extractResponseText(event.content);
     const usage = event.metadata?.usage as { totalTokens?: number; promptTokens?: number; completionTokens?: number } | undefined;
 
     const metrics: SidebarMetric[] = [];

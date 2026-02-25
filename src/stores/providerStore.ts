@@ -48,7 +48,7 @@ const DEFAULT_BASE_URLS: Record<ProviderType, string> = {
   anthropic: "https://api.anthropic.com",
 };
 
-export const useProviderStore = create<ProviderState>((set, get) => ({
+export const useProviderStore = create<ProviderState>((set) => ({
   providers: [],
   selectedProvider: null,
   isLoading: false,

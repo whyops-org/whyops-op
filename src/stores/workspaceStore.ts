@@ -46,7 +46,7 @@ export interface WorkspaceState {
   clearError: () => void;
 }
 
-export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
+export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   projects: [],
   currentProject: null,
   masterKeys: null,

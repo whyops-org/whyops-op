@@ -6,7 +6,7 @@ import { Brain, CheckCircle, Sparkles, StopCircle, Terminal, User, XCircle } fro
 import { Handle, NodeProps, Position } from "reactflow";
 
 // Start Node
-export function StartNode({ data }: NodeProps) {
+export function StartNode() {
   return (
     <div className="flex flex-col items-center">
       <div className="flex h-10 w-24 items-center justify-center rounded-full border-2 border-primary/50 bg-background ">
@@ -248,7 +248,7 @@ export function RejectedNode({ data }: NodeProps) {
 }
 
 // End Node
-export function EndNode({ data }: NodeProps) {
+export function EndNode() {
   return (
     <div className="flex flex-col items-center">
       <Handle type="target" position={Position.Top}  />

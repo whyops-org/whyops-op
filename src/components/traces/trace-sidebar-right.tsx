@@ -150,7 +150,7 @@ export function TraceSidebarRight({ trace, isCollapsed, onToggle }: TraceSidebar
                 {expandedEvents.has(event.id) && (
                   <div className="px-3 pb-3 space-y-3 border-t border-border/30 pt-3">
                     {/* Content */}
-                    {event.content && (
+                    {event.content != null ? (
                       <div>
                         <div className="flex items-center justify-between mb-1">
                           <label className="text-xs font-medium text-muted-foreground">Content</label>
@@ -172,7 +172,7 @@ export function TraceSidebarRight({ trace, isCollapsed, onToggle }: TraceSidebar
                           />
                         </div>
                       </div>
-                    )}
+                    ) : null}
 
                     {/* Metadata */}
                     {event.metadata && Object.keys(event.metadata).length > 0 && (

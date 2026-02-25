@@ -1,6 +1,10 @@
 import type { EventHandler, CanvasNodeData, SidebarData, TimelineData } from "../types";
 import type { TraceEvent } from "@/stores/traceDetailStore";
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 function extractUserText(content: TraceEvent["content"]): { text: string; preview: string } {
   if (!content) {
     return { text: "", preview: "" };
@@ -16,12 +20,18 @@ function extractUserText(content: TraceEvent["content"]): { text: string; previe
   if (Array.isArray(content)) {
     const textParts: string[] = [];
     for (const part of content) {
-      if (part.role === "user" && typeof part.content === "string") {
-        textParts.push(part.content);
-      } else if (part.type === "text" && part.text) {
-        textParts.push(part.text);
-      } else if ("content" in part && typeof part.content === "string") {
-        textParts.push(part.content);
+      if (!isRecord(part)) {
+        continue;
+      }
+      const role = typeof part.role === "string" ? part.role : "";
+      const contentValue = part.content;
+      const textValue = typeof part.text === "string" ? part.text : "";
+      if (role === "user" && typeof contentValue === "string") {
+        textParts.push(contentValue);
+      } else if (part.type === "text" && textValue) {
+        textParts.push(textValue);
+      } else if (typeof contentValue === "string") {
+        textParts.push(contentValue);
       }
     }
     const text = textParts.join("\n");
@@ -118,7 +128,7 @@ export const UserMessageHandler: EventHandler = {
       status: "completed",
       timestamp: event.timestamp,
       duration: event.duration ?? undefined,
-      metadata: event.metadata,
+      metadata: event.metadata ?? undefined,
     };
   },
 };

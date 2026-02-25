@@ -13,6 +13,10 @@ interface ToolResultItem {
   tool_call_id?: string;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 function extractResultText(content: TraceEvent["content"], metadata?: TraceEvent["metadata"]): { text: string; preview: string; isError: boolean } {
   const metadataTool = metadata && typeof metadata === "object" && "tool" in metadata
     ? (metadata.tool as string)
@@ -52,7 +56,7 @@ function extractResultText(content: TraceEvent["content"], metadata?: TraceEvent
     };
   }
 
-  if (typeof content === "object") {
+  if (isRecord(content)) {
     if ("extractedData" in content) {
       const extracted = content.extractedData;
       const keys = extracted && typeof extracted === "object" ? Object.keys(extracted as object) : [];
@@ -182,7 +186,7 @@ export const ToolResultHandler: EventHandler = {
       status: isError ? "error" : "completed",
       timestamp: event.timestamp,
       duration: event.duration ?? undefined,
-      metadata: event.metadata,
+      metadata: event.metadata ?? undefined,
     };
   },
 };
