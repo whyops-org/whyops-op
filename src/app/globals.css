@@ -98,7 +98,37 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) var(--surface-2);
   }
+
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: var(--surface-2);
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border: 2px solid var(--surface-2);
+    border-radius: 9999px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: var(--muted-foreground);
+  }
+
+  *::-webkit-scrollbar-corner {
+    background: var(--surface-2);
+  }
+
+  html {
+    scrollbar-gutter: stable both-edges;
+  }
+
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-body);
@@ -113,7 +143,7 @@
     letter-spacing: -0.02em;
   }
   
-  /* Custom scrollbar styles */
+  /* Optional utility for fully hidden scrollbars when explicitly needed */
   .scrollbar-thin::-webkit-scrollbar {
     width: 0px;
     height: 0px;
@@ -136,7 +166,6 @@
     background: transparent;
   }
   
-  /* Firefox scrollbar */
   .scrollbar-thin {
     scrollbar-width: none;
     -ms-overflow-style: none;
@@ -167,15 +196,22 @@
     line-height: 1.5;
     font-family: var(--font-body), var(--font-mono, ui-monospace);
     color: var(--foreground);
+    max-width: 100%;
+    overflow-x: auto;
   }
 
   .json-viewer :where(.w-rjv) {
     background: transparent !important;
     color: var(--foreground);
+    max-width: 100%;
+    min-width: 0;
   }
 
   .json-viewer :where(.w-rjv-row) {
     padding: 0.15rem 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: anywhere;
   }
 
   .json-viewer :where(.w-rjv-type) {

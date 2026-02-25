@@ -193,12 +193,12 @@ function toJsonViewerValue(value: unknown): string {
 
 function SchemaPanel({ title, value, emptyText }: { title: string; value: unknown | null; emptyText: string }) {
   return (
-    <div className="space-y-2">
+    <div className="min-w-0 space-y-2">
       <p className="text-xs font-medium text-muted-foreground">
         {title}
       </p>
       {value !== null ? (
-        <JsonViewer value={toJsonViewerValue(value)} />
+        <JsonViewer value={toJsonViewerValue(value)} className="max-w-full" />
       ) : (
         <div className="rounded-sm border border-border/60 bg-surface-2/30 p-3 text-xs text-muted-foreground">
           {emptyText}
@@ -230,9 +230,11 @@ function ToolSchemaDialog({ tool }: { tool: ToolInfo }) {
             Input and output schema for this tool.
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 p-4 md:grid-cols-2">
-          <SchemaPanel title="Input Schema" value={tool.inputSchema} emptyText="No input schema available." />
-          <SchemaPanel title="Output Schema" value={tool.outputSchema} emptyText="No output schema available." />
+        <div className="max-h-[70vh] overflow-y-auto p-4">
+          <div className="grid gap-4 md:grid-cols-2 [&>*]:min-w-0">
+            <SchemaPanel title="Input Schema" value={tool.inputSchema} emptyText="No input schema available." />
+            <SchemaPanel title="Output Schema" value={tool.outputSchema} emptyText="No output schema available." />
+          </div>
         </div>
       </DialogContent>
     </Dialog>

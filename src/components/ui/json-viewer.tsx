@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import JsonView from "@uiw/react-json-view";
 import { darkTheme } from "@uiw/react-json-view/dark";
+import { ChevronsDown, ChevronsUp } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -111,14 +112,60 @@ const jsonTheme = {
 };
 
 export function JsonViewer({ value, className, variant = "default" }: JsonViewerProps) {
+  const [viewMode, setViewMode] = useState<"default" | "expandAll" | "collapseAll">("default");
   const parsed = useMemo(() => parseJsonIterative(value), [value]);
   const data = isContainer(parsed) ? parsed : { value: parsed };
+  const collapsed =
+    viewMode === "expandAll"
+      ? false
+      : viewMode === "collapseAll"
+        ? true
+        : variant === "compact"
+          ? 1
+          : 2;
 
   return (
-    <div className={cn("json-viewer", variant === "compact" && "json-viewer-compact", className)}>
+    <div
+      className={cn(
+        "json-viewer group relative max-w-full overflow-x-auto",
+        variant === "compact" && "json-viewer-compact",
+        className
+      )}
+    >
+      <div
+        className={cn(
+          "absolute right-1 top-1 z-10 flex items-center gap-1 rounded-sm border border-border/60 bg-background/90 p-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100",
+          variant === "compact" && "right-0 top-0"
+        )}
+      >
+        <button
+          type="button"
+          className="inline-flex h-5 w-5 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground"
+          onClick={(event) => {
+            event.stopPropagation();
+            setViewMode("expandAll");
+          }}
+          title="Expand all"
+          aria-label="Expand all JSON nodes"
+        >
+          <ChevronsDown className="h-3.5 w-3.5" />
+        </button>
+        <button
+          type="button"
+          className="inline-flex h-5 w-5 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground"
+          onClick={(event) => {
+            event.stopPropagation();
+            setViewMode("collapseAll");
+          }}
+          title="Collapse all"
+          aria-label="Collapse all JSON nodes"
+        >
+          <ChevronsUp className="h-3.5 w-3.5" />
+        </button>
+      </div>
       <JsonView
         value={data as object}
-        collapsed={variant === "compact" ? 1 : 2}
+        collapsed={collapsed}
         displayDataTypes={false}
         displayObjectSize={false}
         enableClipboard={false}
