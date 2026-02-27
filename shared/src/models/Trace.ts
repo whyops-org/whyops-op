@@ -6,6 +6,7 @@ export interface TraceAttributes {
   userId: string;
   providerId?: string;
   entityId?: string;
+  sampledIn?: boolean;
   model?: string;
   systemMessage?: string;
   tools?: any; // JSON array of tool definitions
@@ -19,6 +20,7 @@ export class Trace extends Model<TraceAttributes> implements TraceAttributes {
   declare userId: string;
   declare providerId?: string;
   declare entityId?: string;
+  declare sampledIn?: boolean;
   declare model?: string;
   declare systemMessage?: string;
   declare tools?: any;
@@ -52,6 +54,12 @@ Trace.init(
         key: 'id',
       },
       field: 'entity_id',
+    },
+    sampledIn: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+      defaultValue: true,
+      field: 'sampled_in',
     },
     model: {
       type: DataTypes.STRING,

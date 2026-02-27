@@ -622,6 +622,7 @@ export class ThreadService {
    * Match messages to existing thread
    */
   static async matchThread(
+    userId: string,
     messages: any[],
     providerId: string
   ): Promise<{ found: boolean; traceId?: string; matchEventId?: string; reason?: string }> {
@@ -645,6 +646,7 @@ export class ThreadService {
     try {
       const matchedEvent = await LLMEvent.findOne({
         where: {
+          userId,
           providerId,
           eventType: 'llm_response',
           content: {
@@ -664,7 +666,7 @@ export class ThreadService {
 
       return { found: false, reason: 'No matching thread found' };
     } catch (error) {
-      logger.error({ error, providerId }, 'Failed to match thread');
+      logger.error({ error, userId, providerId }, 'Failed to match thread');
       throw new Error('Failed to match thread');
     }
   }

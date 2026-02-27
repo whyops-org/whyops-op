@@ -1,5 +1,5 @@
 import { createServiceLogger } from '@whyops/shared/logger';
-import { LLMEvent } from '@whyops/shared/models';
+import { LLMEvent, Trace } from '@whyops/shared/models';
 import { nanoid } from 'nanoid';
 import { Op } from 'sequelize';
 import { traceQueue } from '../utils/queue';
@@ -72,7 +72,33 @@ export class EventService {
 
     // Wrap in per-trace queue for sequential processing
     return traceQueue.getQueue(data.traceId).add(async () => {
-      // 1. Ensure Trace Exists
+      // 1. Resolve trace-level sampling (all events in a trace are either kept or dropped)
+      const existingTrace = await Trace.findByPk(data.traceId, {
+        attributes: ['id', 'sampledIn'],
+      });
+
+      let sampledIn = existingTrace?.sampledIn;
+      let samplingReason: string | undefined;
+      if (sampledIn === null || sampledIn === undefined) {
+        const traceHash = SamplingService.generateTraceHash({
+          traceId: data.traceId,
+          userId: data.userId,
+          environmentId: data.environmentId,
+          agentName: data.agentName,
+        });
+
+        const samplingResult = await SamplingService.shouldSampleTrace(
+          data.userId,
+          data.environmentId,
+          data.agentName,
+          traceHash
+        );
+
+        sampledIn = samplingResult.shouldSample;
+        samplingReason = samplingResult.reason;
+      }
+
+      // 2. Ensure Trace Exists (also persists sampledIn on first write)
       await TraceService.ensureTraceExists({
         traceId: data.traceId,
         userId: data.userId,
@@ -80,12 +106,29 @@ export class EventService {
         environmentId: data.environmentId,
         providerId: data.providerId,
         agentName: data.agentName,
+        sampledIn,
         content: data.content,
         metadata: data.metadata,
         timestamp: data.timestamp,
       });
 
-      // 2. Sampling Check
+      if (!sampledIn) {
+        logger.debug(
+          {
+            traceId: data.traceId,
+            eventType: data.eventType,
+          },
+          'Trace rejected by sampling'
+        );
+
+        return {
+          id: null,
+          status: 'sampled_out',
+          message: samplingReason || 'Trace rejected by sampling',
+        };
+      }
+
+      // 3. Idempotency Check
       const eventHash = SamplingService.generateContentHash({
         traceId: data.traceId,
         eventType: data.eventType,
@@ -94,31 +137,6 @@ export class EventService {
         content: data.content,
       });
 
-      const samplingResult = await SamplingService.shouldSampleEvent(
-        data.userId,
-        data.environmentId,
-        data.agentName,
-        eventHash
-      );
-
-      if (!samplingResult.shouldSample) {
-        logger.debug(
-          {
-            traceId: data.traceId,
-            samplingRate: samplingResult.samplingRate,
-            hashValue: samplingResult.hashValue,
-          },
-          'Event rejected by sampling'
-        );
-
-        return {
-          id: null,
-          status: 'sampled_out',
-          message: samplingResult.reason,
-        };
-      }
-
-      // 3. Idempotency Check
       // Skip content-hash based idempotency for tool_call_request and tool_call_response
       // These events may have the same parentStepId but represent different tool calls
       // They should use explicit idempotencyKey if deduplication is needed

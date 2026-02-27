@@ -14,8 +14,12 @@ export class AnthropicParser implements MetadataParser {
     // 2. System Message (Anthropic top-level 'system' field)
     if (content?.system) {
       result.systemMessage = content.system;
+    } else if (metadata?.systemPrompt) {
+      // Proxy emits metadata.systemPrompt for Anthropic requests/responses
+      result.systemMessage = metadata.systemPrompt;
     } else if (metadata?.system) {
-        result.systemMessage = metadata.system;
+      // Backward-compat fallback
+      result.systemMessage = metadata.system;
     }
 
     // 3. Tools (Anthropic 'tools' field)

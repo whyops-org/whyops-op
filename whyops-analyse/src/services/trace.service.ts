@@ -12,6 +12,7 @@ export interface TraceCreationData {
   environmentId: string;
   providerId?: string;
   agentName: string;
+  sampledIn?: boolean;
   content?: any;
   metadata?: Record<string, any>;
   timestamp?: string;
@@ -48,6 +49,12 @@ export class TraceService {
 
       if (!trace.providerId && data.providerId) {
         trace.providerId = data.providerId;
+      }
+
+      if (trace.sampledIn === null || trace.sampledIn === undefined) {
+        if (data.sampledIn !== null && data.sampledIn !== undefined) {
+          trace.sampledIn = data.sampledIn;
+        }
       }
 
       const fallbackMetadata = this.extractBestEffortMetadata(data.content, data.metadata);
@@ -97,6 +104,7 @@ export class TraceService {
         userId: data.userId,
         providerId: data.providerId,
         entityId: resolvedAgentVersion.agentVersionId,
+        sampledIn: data.sampledIn ?? true,
         model: metadata.model,
         systemMessage: metadata.systemMessage,
         tools: metadata.tools,

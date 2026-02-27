@@ -7,6 +7,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger as honoLogger } from 'hono/logger';
 import analyticsRouter from './routes/analytics';
+import analysesRouter from './routes/analyses';
 import entitiesRouter from './routes/entities';
 import eventsRouter from './routes/events';
 import healthRouter from './routes/health';
@@ -44,6 +45,7 @@ app.use('/api/*', async (c, next) => {
 
 app.route('/api/events', eventsRouter);
 app.route('/api/threads', threadsRouter);
+app.route('/api/analyses', analysesRouter);
 app.route('/api/analytics', analyticsRouter);
 app.route('/api/visualize', visualizeRouter);
 app.route('/api/entities', entitiesRouter);

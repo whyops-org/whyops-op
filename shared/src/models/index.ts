@@ -1,4 +1,5 @@
 import Agent from './Agent';
+import AnalysisExperiment from './AnalysisExperiment';
 import ApiKey from './ApiKey';
 import Entity from './Entity';
 import { Environment } from './Environment';
@@ -8,6 +9,8 @@ import { Project } from './Project';
 import Provider from './Provider';
 import RequestLog from './RequestLog';
 import Trace from './Trace';
+import TraceAnalysis from './TraceAnalysis';
+import TraceAnalysisFinding from './TraceAnalysisFinding';
 import User from './User';
 
 // Define associations
@@ -59,6 +62,15 @@ User.hasMany(Trace, { foreignKey: 'userId', as: 'traces' });
 Trace.hasMany(LLMEvent, { foreignKey: 'traceId', sourceKey: 'id', as: 'events' });
 LLMEvent.belongsTo(Trace, { foreignKey: 'traceId', targetKey: 'id', as: 'trace' });
 
+Trace.hasMany(TraceAnalysis, { foreignKey: 'traceId', sourceKey: 'id', as: 'analyses' });
+TraceAnalysis.belongsTo(Trace, { foreignKey: 'traceId', targetKey: 'id', as: 'trace' });
+
+TraceAnalysis.hasMany(TraceAnalysisFinding, { foreignKey: 'analysisId', as: 'findings' });
+TraceAnalysisFinding.belongsTo(TraceAnalysis, { foreignKey: 'analysisId', as: 'analysis' });
+
+TraceAnalysis.hasMany(AnalysisExperiment, { foreignKey: 'analysisId', as: 'experiments' });
+AnalysisExperiment.belongsTo(TraceAnalysis, { foreignKey: 'analysisId', as: 'analysis' });
+
 // Entity associations
 User.hasMany(Entity, { foreignKey: 'userId', as: 'entities' });
 Entity.belongsTo(User, { foreignKey: 'userId', as: 'user' });
@@ -88,16 +100,34 @@ LLMEvent.belongsTo(Entity, { foreignKey: 'entityId', as: 'entity' });
 Trace.belongsTo(Entity, { foreignKey: 'entityId', as: 'entity' });
 Entity.hasMany(Trace, { foreignKey: 'entityId', as: 'traces' });
 
-export { Agent, ApiKey, Entity, Environment, LlmCost, LLMEvent, Project, Provider, RequestLog, Trace, User };
+export {
+  Agent,
+  AnalysisExperiment,
+  ApiKey,
+  Entity,
+  Environment,
+  LlmCost,
+  LLMEvent,
+  Project,
+  Provider,
+  RequestLog,
+  Trace,
+  TraceAnalysis,
+  TraceAnalysisFinding,
+  User,
+};
 
 export const models = {
   User,
   Agent,
+  AnalysisExperiment,
   Provider,
   ApiKey,
   LLMEvent,
   RequestLog,
   Trace,
+  TraceAnalysis,
+  TraceAnalysisFinding,
   Entity,
   LlmCost,
   Project,

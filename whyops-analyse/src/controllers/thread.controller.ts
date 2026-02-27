@@ -133,8 +133,13 @@ export class ThreadController {
    */
   static async matchThread(c: Context) {
     try {
+      const auth = c.get('whyopsAuth');
+      if (!auth) {
+        return c.json({ error: 'Unauthorized: authentication required' }, 401);
+      }
+
       const { messages, providerId } = await c.req.json();
-      const result = await ThreadService.matchThread(messages, providerId);
+      const result = await ThreadService.matchThread(auth.userId, messages, providerId);
       return c.json(result);
     } catch (error: any) {
       logger.error({ error }, 'Failed to match thread');

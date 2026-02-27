@@ -96,6 +96,26 @@ function determineOpenAIRequestEventType(messages: any[] | undefined): 'user_mes
   return 'user_message';
 }
 
+function extractSystemPromptFromChatMessages(messages: any[] | undefined): string | undefined {
+  if (!Array.isArray(messages)) return undefined;
+
+  const systemMsg = messages.find((msg) => msg?.role === 'system' || msg?.role === 'developer');
+  if (!systemMsg) return undefined;
+
+  const content = systemMsg.content;
+  if (typeof content === 'string') return content;
+  if (!Array.isArray(content)) return undefined;
+
+  const text = content
+    .filter((part: any) => part && (part.type === 'text' || part.type === 'input_text' || part.type === 'output_text'))
+    .map((part: any) => part.text)
+    .filter((part: any) => typeof part === 'string')
+    .join('\n')
+    .trim();
+
+  return text || undefined;
+}
+
 function determineResponsesRequestEventType(input: OpenAIResponsesRequest['input']): 'user_message' | 'tool_result' {
   if (!input || typeof input === 'string') return 'user_message';
   if (!Array.isArray(input)) return 'user_message';
@@ -495,6 +515,8 @@ app.post('/chat/completions', async (c) => {
       model: actualModel,
       provider: isCustom ? 'custom' : 'openai',
       providerSlug: providerSlug || undefined,
+      systemPrompt: extractSystemPromptFromChatMessages(requestBody.messages),
+      tools: requestBody.tools,
       params: {
         temperature: requestBody.temperature,
         maxTokens: (requestBody as any).max_tokens ?? requestBody.max_completion_tokens,
@@ -878,6 +900,8 @@ app.post('/responses', async (c) => {
       model: requestBody.model,
       provider: isCustom ? 'custom' : 'openai',
       providerSlug: providerSlug || undefined,
+      systemPrompt: requestBody.instructions || undefined,
+      tools: requestBody.tools,
       params: {
         temperature: requestBody.temperature,
         maxOutputTokens: requestBody.max_output_tokens,

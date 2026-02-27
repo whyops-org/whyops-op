@@ -13,14 +13,15 @@ export interface SamplingResult {
 
 export class SamplingService {
   /**
-   * Determines if an event should be sampled based on entity's sampling rate
-   * Uses deterministic hash-based sampling for consistency
+   * Determines if a trace should be sampled based on entity's sampling rate.
+   * Uses deterministic hash-based sampling for consistency.
+   * Trace-level sampling ensures all events in a sampled trace are kept.
    */
-  static async shouldSampleEvent(
+  static async shouldSampleTrace(
     userId: string,
     environmentId: string,
     entityName: string | undefined,
-    eventHash: string
+    traceHash: string
   ): Promise<SamplingResult> {
     // If no entity name, always sample
     if (!entityName) {
@@ -40,7 +41,7 @@ export class SamplingService {
       }
 
       // Generate deterministic value from hash (0-1 range)
-      const hashValue = this.hashToNormalizedValue(eventHash);
+      const hashValue = this.hashToNormalizedValue(traceHash);
 
       // Sample if hash value is within sampling rate
       const shouldSample = hashValue <= entity.samplingRate;
@@ -58,12 +59,25 @@ export class SamplingService {
         hashValue,
         reason: shouldSample 
           ? undefined 
-          : `Event rejected by sampling (rate: ${entity.samplingRate}, hash: ${hashValue.toFixed(4)})`,
+          : `Trace rejected by sampling (rate: ${entity.samplingRate}, hash: ${hashValue.toFixed(4)})`,
       };
     } catch (error) {
       logger.error({ error, userId, environmentId, entityName }, 'Error in sampling decision, defaulting to sample');
       return { shouldSample: true, reason: 'Error in sampling, defaulting to accept' };
     }
+  }
+
+  /**
+   * Backward-compatible alias.
+   * Deprecated: use shouldSampleTrace for trace-level sampling semantics.
+   */
+  static async shouldSampleEvent(
+    userId: string,
+    environmentId: string,
+    entityName: string | undefined,
+    eventHash: string
+  ): Promise<SamplingResult> {
+    return this.shouldSampleTrace(userId, environmentId, entityName, eventHash);
   }
 
   /**
@@ -92,6 +106,25 @@ export class SamplingService {
       userId: data.userId,
       parentStepId: data.parentStepId,
       content: data.content,
+    };
+    const rawString = JSON.stringify(payload);
+    return CryptoJS.SHA256(rawString).toString();
+  }
+
+  /**
+   * Generates a trace-level hash used for sampling decisions.
+   */
+  static generateTraceHash(data: {
+    traceId: string;
+    userId: string;
+    environmentId: string;
+    agentName?: string;
+  }): string {
+    const payload = {
+      traceId: data.traceId,
+      userId: data.userId,
+      environmentId: data.environmentId,
+      agentName: data.agentName,
     };
     const rawString = JSON.stringify(payload);
     return CryptoJS.SHA256(rawString).toString();

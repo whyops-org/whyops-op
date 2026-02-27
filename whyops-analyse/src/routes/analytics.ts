@@ -14,7 +14,19 @@ interface DashboardDailySuccessRow {
 
 const providerExpr = `COALESCE(NULLIF("metadata"->>'provider', ''), 'unknown')`;
 const modelExpr = `COALESCE(NULLIF("metadata"->>'model', ''), 'unknown')`;
-const totalTokensExpr = `COALESCE(NULLIF("metadata"->'usage'->>'totalTokens', '')::bigint, NULLIF("metadata"->>'totalTokens', '')::bigint, 0)`;
+const totalTokensExpr = `
+  COALESCE(
+    NULLIF("metadata"->'usage'->>'totalTokens', '')::bigint,
+    NULLIF("metadata"->'usage'->>'total_tokens', '')::bigint,
+    NULLIF("metadata"->>'totalTokens', '')::bigint,
+    NULLIF("metadata"->>'total_tokens', '')::bigint,
+    NULLIF("content"->'usage'->>'totalTokens', '')::bigint,
+    NULLIF("content"->'usage'->>'total_tokens', '')::bigint,
+    NULLIF("content"->>'totalTokens', '')::bigint,
+    NULLIF("content"->>'total_tokens', '')::bigint,
+    0
+  )
+`;
 const latencyMsExpr = `
   NULLIF(
     REGEXP_REPLACE(
@@ -52,14 +64,22 @@ const latencyMsExprEvents = `
 
 // GET /api/analytics/usage - Get usage statistics
 app.get('/usage', async (c) => {
+  const auth = c.get('whyopsAuth');
+  if (!auth) {
+    return c.json({ error: 'Unauthorized: authentication required' }, 401);
+  }
+
   try {
     const userId = c.req.query('userId');
     const providerId = c.req.query('providerId');
     const startDate = c.req.query('startDate');
     const endDate = c.req.query('endDate');
 
-    const where: any = {};
-    if (userId) where.userId = userId;
+    if (userId && userId !== auth.userId) {
+      return c.json({ error: 'Forbidden: cross-user query is not allowed' }, 403);
+    }
+
+    const where: any = { userId: auth.userId };
     if (providerId) where.providerId = providerId;
     
     if (startDate || endDate) {
@@ -91,6 +111,11 @@ app.get('/usage', async (c) => {
 
 // GET /api/analytics/timeline - Get timeline data
 app.get('/timeline', async (c) => {
+  const auth = c.get('whyopsAuth');
+  if (!auth) {
+    return c.json({ error: 'Unauthorized: authentication required' }, 401);
+  }
+
   try {
     const userId = c.req.query('userId');
     const providerId = c.req.query('providerId');
@@ -98,8 +123,11 @@ app.get('/timeline', async (c) => {
     const endDate = c.req.query('endDate');
     const interval = c.req.query('interval') || 'hour'; // hour, day, week
 
-    const where: any = {};
-    if (userId) where.userId = userId;
+    if (userId && userId !== auth.userId) {
+      return c.json({ error: 'Forbidden: cross-user query is not allowed' }, 403);
+    }
+
+    const where: any = { userId: auth.userId };
     if (providerId) where.providerId = providerId;
     
     if (startDate || endDate) {
@@ -120,7 +148,7 @@ app.get('/timeline', async (c) => {
       attributes: [
         [LLMEvent.sequelize!.literal(dateTrunc), 'interval'],
         [LLMEvent.sequelize!.fn('COUNT', LLMEvent.sequelize!.col('id')), 'requestCount'],
-        [LLMEvent.sequelize!.fn('SUM', LLMEvent.sequelize!.literal("(usage->>'totalTokens')::int")), 'totalTokens'],
+        [LLMEvent.sequelize!.fn('SUM', LLMEvent.sequelize!.literal(totalTokensExpr)), 'totalTokens'],
       ],
       where,
       group: ['interval'],
