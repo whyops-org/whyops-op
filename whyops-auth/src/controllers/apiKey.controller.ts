@@ -6,6 +6,54 @@ import { ResponseUtil } from '../utils';
 const logger = createServiceLogger('auth:apikey-controller');
 
 export class ApiKeyController {
+  static async listApiKeysMaskedByStage(c: Context) {
+    try {
+      const user = c.get('sessionUser');
+      if (!user) {
+        return ResponseUtil.unauthorized(c, 'Not authenticated');
+      }
+
+      const apiKeys = await ApiKeyService.listApiKeysMaskedByStage(user.id);
+
+      return ResponseUtil.success(c, { apiKeys });
+    } catch (error: any) {
+      logger.error({ error }, 'Failed to fetch masked API keys');
+      return ResponseUtil.internalError(c, 'Failed to fetch masked API keys');
+    }
+  }
+
+  static async getUnmaskedApiKey(c: Context) {
+    try {
+      const user = c.get('sessionUser');
+      if (!user) {
+        return ResponseUtil.unauthorized(c, 'Not authenticated');
+      }
+      const id = c.req.param('id');
+
+      const apiKey = await ApiKeyService.getUnmaskedApiKeyById(id, user.id);
+
+      return ResponseUtil.success(c, { id, apiKey });
+    } catch (error: any) {
+      if (error.message === 'API key not found') {
+        logger.warn({ apiKeyId: c.req.param('id') }, 'Unmasked API key lookup failed: not found');
+        return ResponseUtil.notFound(c, error.message);
+      }
+
+      if (error.message === 'API key cannot be revealed. Rotate/regenerate this key.') {
+        logger.warn({ apiKeyId: c.req.param('id') }, 'Unmasked API key lookup failed: key not revealable');
+        return ResponseUtil.badRequest(c, error.message);
+      }
+
+      if (error.message === 'API key reveal is not available yet. Please run the latest database migration first.') {
+        logger.warn({ apiKeyId: c.req.param('id') }, 'Unmasked API key lookup failed: migration missing');
+        return ResponseUtil.badRequest(c, error.message);
+      }
+
+      logger.error({ error }, 'Failed to fetch unmasked API key');
+      return ResponseUtil.internalError(c, 'Failed to fetch unmasked API key');
+    }
+  }
+
   static async listApiKeys(c: Context) {
     try {
       const user = c.get('sessionUser');
@@ -163,6 +211,31 @@ export class ApiKeyController {
       }
       
       return ResponseUtil.internalError(c, 'Failed to toggle API key');
+    }
+  }
+
+  static async regenerateApiKey(c: Context) {
+    try {
+      const user = c.get('sessionUser');
+      if (!user) {
+        return ResponseUtil.unauthorized(c, 'Not authenticated');
+      }
+      const id = c.req.param('id');
+
+      const regenerated = await ApiKeyService.regenerateApiKey(id, user.id);
+
+      return ResponseUtil.success(c, {
+        ...regenerated,
+        warning: 'Save this regenerated API key securely. You will not be able to retrieve it again.',
+      });
+    } catch (error: any) {
+      logger.error({ error }, 'Failed to regenerate API key');
+
+      if (error.message === 'API key not found') {
+        return ResponseUtil.notFound(c, error.message);
+      }
+
+      return ResponseUtil.internalError(c, 'Failed to regenerate API key');
     }
   }
 }

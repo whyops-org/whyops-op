@@ -12,6 +12,7 @@ export class ApiKey extends Model<ApiKeyType, ApiKeyCreationAttributes> implemen
   declare providerId?: string;
   declare name: string;
   declare keyHash: string;
+  declare keyEncrypted?: string;
   declare keyPrefix: string;
   declare isMaster: boolean;
   declare entityId?: string;
@@ -84,6 +85,11 @@ ApiKey.init(
       type: DataTypes.STRING,
       allowNull: false,
       unique: true,
+    },
+    keyEncrypted: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      comment: 'Encrypted full API key for explicit user reveal action',
     },
     keyPrefix: {
       type: DataTypes.STRING(20),

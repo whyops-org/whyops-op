@@ -28,6 +28,7 @@ export interface ApiKey {
   providerId?: string; // Optional now, master keys don't need provider
   name: string;
   keyHash: string; // SHA-256 hash of the actual key
+  keyEncrypted?: string; // Encrypted full key for secure retrieval in settings
   keyPrefix: string; // First 12 chars for identification (YOPS-xxxxx)
   isMaster: boolean; // True if this is an environment master key
   entityId?: string; // Optional: specific entity this key is for

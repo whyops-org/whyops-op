@@ -1,8 +1,14 @@
 import { createServiceLogger } from '@whyops/shared/logger';
 import { ApiKey, Environment, Project } from '@whyops/shared/models';
-import { generateApiKey, hashApiKey } from '@whyops/shared/utils';
+import { encrypt, generateApiKey, hashApiKey } from '@whyops/shared/utils';
 
 const logger = createServiceLogger('auth:project-service');
+
+function isMissingEncryptedColumnError(error: any): boolean {
+  const code = error?.original?.code || error?.parent?.code;
+  const sql = String(error?.sql || error?.parent?.sql || '');
+  return code === '42703' && sql.includes('"key_encrypted"');
+}
 
 export interface CreateProjectData {
   userId: string;
@@ -130,16 +136,36 @@ export class ProjectService {
         const keyHash = hashApiKey(apiKey);
         const keyPrefix = apiKey.substring(0, 12);
 
-        const masterKey = await ApiKey.create({
-          userId: data.userId,
-          projectId: project.id,
-          environmentId: env.id,
-          name: `${env.name} Master Key`,
-          keyHash,
-          keyPrefix,
-          isMaster: true,
-          isActive: true,
-        });
+        let masterKey: ApiKey;
+        try {
+          masterKey = await ApiKey.create({
+            userId: data.userId,
+            projectId: project.id,
+            environmentId: env.id,
+            name: `${env.name} Master Key`,
+            keyHash,
+            keyEncrypted: encrypt(apiKey),
+            keyPrefix,
+            isMaster: true,
+            isActive: true,
+          });
+        } catch (error: any) {
+          if (!isMissingEncryptedColumnError(error)) {
+            throw error;
+          }
+
+          // Backward compatibility for DBs where key_encrypted migration is not applied yet.
+          masterKey = await ApiKey.create({
+            userId: data.userId,
+            projectId: project.id,
+            environmentId: env.id,
+            name: `${env.name} Master Key`,
+            keyHash,
+            keyPrefix,
+            isMaster: true,
+            isActive: true,
+          });
+        }
 
         logger.info(
           { apiKeyId: masterKey.id, environmentId: env.id, projectId: project.id },
