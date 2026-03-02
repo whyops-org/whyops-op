@@ -55,7 +55,7 @@ export function TraceDetailsPageContent() {
         trace={trace}
         view={view}
         onViewChange={setView}
-        agentId={agentId}
+        agentId={trace.agentId || agentId}
       />
 
       <div className="flex flex-1 overflow-hidden">

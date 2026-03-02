@@ -10,6 +10,8 @@ export interface DashboardStats {
   activeTraces: number;
   successRate: number;
   avgLatency: string;
+  successRateDelta?: number | null;
+  avgLatencyDeltaMs?: number | null;
 }
 
 export interface ChartDataPoint {
@@ -66,6 +68,8 @@ export const useDashboardStore = create<DashboardState>()(
             activeTraces: number;
             successRate: number;
             avgLatency: string;
+            successRateDelta?: number | null;
+            avgLatencyDeltaMs?: number | null;
             timeline: ChartDataPoint[];
             agentUsage?: AgentUsageData;
             agentsUsage?: AgentUsageData;
@@ -95,6 +99,8 @@ export const useDashboardStore = create<DashboardState>()(
               activeTraces: data.activeTraces,
               successRate: data.successRate,
               avgLatency: data.avgLatency,
+              successRateDelta: data.successRateDelta ?? null,
+              avgLatencyDeltaMs: data.avgLatencyDeltaMs ?? null,
             },
             chartData: data.timeline || [],
             agentUsage: normalizedUsage,

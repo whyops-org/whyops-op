@@ -243,9 +243,9 @@ export function ApiKeysPanel({ className }: ApiKeysPanelProps) {
           </Button>
         </div>
 
-        {isLoadingKeys ? (
+        {isLoadingKeys && apiKeys.length === 0 ? (
           <div className="py-10 text-center text-sm text-muted-foreground">Loading API keys...</div>
-        ) : keysError ? (
+        ) : keysError && apiKeys.length === 0 ? (
           <div className="py-10 text-center text-sm text-destructive">{keysError}</div>
         ) : apiKeys.length === 0 ? (
           <EmptyStateSimple
@@ -264,7 +264,7 @@ export function ApiKeysPanel({ className }: ApiKeysPanelProps) {
                   <TableHead>Key</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead>Monthly Usage</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead className="w-[19rem]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -287,11 +287,12 @@ export function ApiKeysPanel({ className }: ApiKeysPanelProps) {
                     <TableCell className="py-4 text-sm text-muted-foreground">
                       {SETTINGS_COPY.apiKeysUsagePlaceholder}
                     </TableCell>
-                    <TableCell className="py-4">
+                    <TableCell className="w-[19rem] py-4">
                       <div className="flex items-center gap-2">
                         <Button
                           variant="outline"
                           size="sm"
+                          className="w-36 justify-center whitespace-nowrap"
                           onClick={() => handleRegenerateKey(key)}
                           disabled={regeneratingKeyId === key.id}
                         >
@@ -306,6 +307,7 @@ export function ApiKeysPanel({ className }: ApiKeysPanelProps) {
                         <Button
                           variant="outline"
                           size="sm"
+                          className="w-32 justify-center whitespace-nowrap"
                           onClick={() => handleCopyKey(key)}
                           disabled={
                             revealingKeyId === key.id ||
@@ -448,7 +450,13 @@ function EndpointCard({ label, description, value }: EndpointCardProps) {
           <p className="text-sm font-medium text-foreground">{label}</p>
           <p className="text-xs text-muted-foreground">{description}</p>
         </div>
-        <Button variant="outline" size="sm" onClick={handleCopy} disabled={value === "-"}>
+        <Button
+          variant="outline"
+          size="sm"
+          className="min-w-24 justify-center"
+          onClick={handleCopy}
+          disabled={value === "-"}
+        >
           <Copy className="h-4 w-4" />
           {copied ? "Copied" : "Copy"}
         </Button>

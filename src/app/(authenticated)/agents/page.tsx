@@ -14,6 +14,20 @@ import { useAgentsContext } from "@/components/agents/agents-provider";
 import { useConfigStore } from "@/stores/configStore";
 import { useDashboardStore } from "@/stores/dashboardStore";
 
+function formatPercentDelta(delta: number): string {
+  const rounded = Math.round(delta * 10) / 10;
+  return `${rounded >= 0 ? "+" : ""}${rounded.toFixed(1)}%`;
+}
+
+function formatLatencyDelta(deltaMs: number): string {
+  const abs = Math.abs(deltaMs);
+  if (abs >= 1000) {
+    const seconds = abs / 1000;
+    return `${deltaMs >= 0 ? "+" : "-"}${seconds.toFixed(1)}s`;
+  }
+  return `${deltaMs >= 0 ? "+" : "-"}${Math.round(abs)}ms`;
+}
+
 export default function AgentsPage() {
   const {
     agents,
@@ -101,6 +115,22 @@ export default function AgentsPage() {
     );
   }
 
+  const successRateTrend =
+    typeof stats?.successRateDelta === "number"
+      ? {
+          value: formatPercentDelta(stats.successRateDelta),
+          isPositive: stats.successRateDelta >= 0,
+        }
+      : undefined;
+
+  const avgLatencyTrend =
+    typeof stats?.avgLatencyDeltaMs === "number"
+      ? {
+          value: formatLatencyDelta(stats.avgLatencyDeltaMs),
+          isPositive: stats.avgLatencyDeltaMs <= 0,
+        }
+      : undefined;
+
   return (
     <div className="space-y-5 p-6 lg:p-7">
       {/* Page Header */}
@@ -130,21 +160,15 @@ export default function AgentsPage() {
         <StatCard
           title="Success Rate"
           value={`${stats?.successRate ?? 100}%`}
-          trend={{
-            value: "+1.6%",
-            isPositive: true,
-          }}
+          trend={successRateTrend}
           subtitle="vs previous week"
           icon={<TrendingUp className="h-6 w-6 text-primary" />}
         />
         <StatCard
           title="Avg Latency"
           value={stats?.avgLatency ?? "0ms"}
-          trend={{
-            value: "+0.4s",
-            isPositive: false,
-          }}
-          subtitle="High load detected"
+          trend={avgLatencyTrend}
+          subtitle="vs previous week"
           icon={<Clock className="h-6 w-6 text-primary" />}
         />
       </div>

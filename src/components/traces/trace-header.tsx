@@ -34,6 +34,8 @@ export function TraceHeader({ trace, view, onViewChange, agentId }: TraceHeaderP
   const cost = formatCostUsd(total);
   const agentHref = agentId
     ? `/agents/${agentId}`
+      : trace.agentId
+      ? `/agents/${trace.agentId}`
       : trace.entityId
       ? `/agents/${trace.entityId}`
       : "/agents";

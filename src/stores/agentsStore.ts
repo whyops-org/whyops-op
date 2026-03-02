@@ -6,6 +6,15 @@ import { apiClient } from "@/lib/api-client";
 import { useConfigStore } from "./configStore";
 import type { Agent, AgentsResponse, Pagination, SingleAgentResponse } from "@/types/global";
 
+interface UpdateSamplingRateResponse {
+  success: boolean;
+  agentId: string;
+  samplingRate: number;
+  updatedVersions: number;
+  latestVersionId: string;
+  updatedAt: string;
+}
+
 interface AgentsState {
   agents: Agent[];
   currentAgent: Agent | null;
@@ -25,6 +34,7 @@ interface AgentsState {
     traceCountPeriod?: number,
     isRefetch?: boolean
   ) => Promise<Agent | null>;
+  updateAgentSamplingRate: (agentId: string, samplingRate: number) => Promise<number | null>;
   startPolling: (intervalMs: number) => void;
   stopPolling: () => void;
 }
@@ -113,6 +123,71 @@ export const useAgentsStore = create<AgentsState>()(
         } catch (error) {
           const message = error instanceof Error ? error.message : "Failed to fetch agent";
           set({ error: message, isLoading: false, isRefetching: false });
+          return null;
+        }
+      },
+
+      updateAgentSamplingRate: async (agentId: string, samplingRate: number) => {
+        const config = useConfigStore.getState().config;
+        const { apiKey } = get();
+
+        if (!config?.analyseBaseUrl) {
+          set({ error: "Analyse base URL not configured" });
+          return null;
+        }
+
+        try {
+          const response = await apiClient.patch<UpdateSamplingRateResponse>(
+            `${config.analyseBaseUrl}/entities/${agentId}/sampling-rate`,
+            { samplingRate },
+            {
+              headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {},
+            }
+          );
+
+          const nextRate = Number(response.data.samplingRate);
+          const nextUpdatedAt = response.data.updatedAt;
+          const nextLatestVersionId = response.data.latestVersionId;
+
+          set((state) => ({
+            agents: state.agents.map((agent) =>
+              agent.id === agentId
+                ? {
+                    ...agent,
+                    latestVersion: agent.latestVersion
+                      ? {
+                          ...agent.latestVersion,
+                          samplingRate: nextRate,
+                          updatedAt: nextUpdatedAt,
+                        }
+                      : agent.latestVersion,
+                  }
+                : agent
+            ),
+            currentAgent:
+              state.currentAgent && state.currentAgent.id === agentId
+                ? {
+                    ...state.currentAgent,
+                    latestVersion: state.currentAgent.latestVersion
+                      ? {
+                          ...state.currentAgent.latestVersion,
+                          samplingRate: nextRate,
+                          updatedAt: nextUpdatedAt,
+                        }
+                      : state.currentAgent.latestVersion,
+                    versions: state.currentAgent.versions?.map((version) => ({
+                      ...version,
+                      samplingRate: nextRate,
+                      updatedAt: version.id === nextLatestVersionId ? nextUpdatedAt : version.updatedAt,
+                    })),
+                  }
+                : state.currentAgent,
+          }));
+
+          return nextRate;
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Failed to update sampling rate";
+          set({ error: message });
           return null;
         }
       },

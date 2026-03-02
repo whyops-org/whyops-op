@@ -8,6 +8,7 @@ export interface Thread {
   threadId: string;
   userId: string;
   providerId?: string | null;
+  agentId?: string | null;
   entityId?: string | null;
   entityName?: string | null;
   model?: string | null;
@@ -92,6 +93,7 @@ export const useThreadsStore = create<ThreadsState>()(
             threadId: t.threadId,
             userId: t.userId,
             providerId: t.providerId,
+            agentId: t.agentId,
             entityId: t.entityId,
             entityName: t.entityName,
             model: t.model,

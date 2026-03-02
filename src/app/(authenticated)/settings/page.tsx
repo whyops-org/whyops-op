@@ -43,7 +43,7 @@ export default function SettingsPage() {
             <ProvidersPanel />
           </TabsContent>
 
-          <TabsContent value="api-keys">
+          <TabsContent value="api-keys" forceMount>
             <ApiKeysPanel />
           </TabsContent>
 

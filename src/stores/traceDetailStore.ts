@@ -49,6 +49,7 @@ export interface TraceDetail {
   threadId: string;
   userId: string;
   providerId?: string;
+  agentId?: string;
   entityId?: string;
   entityName?: string;
   model?: string;

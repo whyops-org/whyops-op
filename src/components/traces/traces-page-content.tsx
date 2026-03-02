@@ -62,6 +62,14 @@ export function TracesPageContent() {
     fetchThreads(undefined, 1, count).finally(() => setLocalIsLoading(false));
   };
 
+  const openTrace = (thread: (typeof threads)[number]) => {
+    const resolvedAgentId = thread.agentId || thread.entityId;
+    if (!resolvedAgentId) {
+      return;
+    }
+    router.push(`/agents/${resolvedAgentId}/traces/${thread.threadId}`);
+  };
+
   const currentLoading = isLoading || localIsLoading;
 
   return (
@@ -139,7 +147,7 @@ export function TracesPageContent() {
                     <TableRow
                       key={thread.threadId}
                       className="hover:bg-surface-2/50 cursor-pointer transition-colors"
-                      onClick={() => router.push(`/agents/${thread.entityId}/traces/${thread.threadId}`)}
+                      onClick={() => openTrace(thread)}
                     >
                       <TableCell className="px-6 py-4">
                         <div className="flex items-center gap-2">
