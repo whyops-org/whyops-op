@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getCodeSnippet, type SnippetType } from "@/lib/code-snippets";
+import { goToDocumentation } from "@/lib/helper";
 import { useConfigStore } from "@/stores/configStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { useProviderStore } from "@/stores/providerStore";
@@ -144,7 +145,7 @@ export function CompleteStep({ onFinish, isFinishing }: CompleteStepProps) {
       <div className="fixed bottom-0 left-0 right-0 px-12 py-4 z-50">
         <div className="mx-auto max-w-7xl flex items-center justify-between">
           <button
-            onClick={() => window.open("/docs", "_blank")}
+            onClick={() => goToDocumentation()}
             className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
           >
             View Documentation

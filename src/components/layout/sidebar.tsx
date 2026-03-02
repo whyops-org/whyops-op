@@ -1,6 +1,7 @@
 "use client";
 
 import { LogoMark } from "@/components/brand/logo-mark";
+import { goToDocumentation } from "@/lib/helper";
 import { cn } from "@/lib/utils";
 import {
   BookOpen,
@@ -50,7 +51,7 @@ export function Sidebar({ className, defaultCollapsed = false, ...props }: Sideb
   };
 
   const handleDocumentationClick = () => {
-    window.open("/docs", "_blank", "noopener,noreferrer");
+    goToDocumentation();
   };
 
   const navItems = [

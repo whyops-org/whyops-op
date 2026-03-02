@@ -1,5 +1,5 @@
 export const goToDocumentation = () => {
-   window.open("/docs", "_blank");
+   window.open("https://whyops.com/docs", "_blank", "noopener,noreferrer");
 };
 
 export const getPlaceHolderImage = (name: string, style: string = "notionists-neutral") => {
