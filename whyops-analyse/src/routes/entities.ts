@@ -9,6 +9,8 @@ import { parseInclude } from '../utils/query';
 
 const logger = createServiceLogger('analyse:entities');
 const app = new Hono();
+const ENTITIES_LIST_CACHE_TTL_MS = 15_000;
+const entitiesListCache = new Map<string, { expiresAtMs: number; payload: unknown }>();
 
 interface EntityMetricRow {
   entityId: string;
@@ -49,16 +51,33 @@ async function getEntityMetrics(entityIds: string[]): Promise<Map<string, Entity
 
   const rows = await Entity.sequelize!.query<EntityMetricRow>(
     `
+      WITH trace_stats AS (
+        SELECT
+          t.entity_id AS "entityId",
+          COUNT(*)::bigint AS "traceCount",
+          MAX(t.created_at) AS "lastActiveAt"
+        FROM traces t
+        WHERE t.entity_id IN (:entityIds)
+        GROUP BY t.entity_id
+      ),
+      event_stats AS (
+        SELECT
+          t.entity_id AS "entityId",
+          COUNT(e.id)::bigint AS "totalEvents",
+          COALESCE(SUM(CASE WHEN e.event_type = 'error' THEN 1 ELSE 0 END), 0)::bigint AS "errorEvents"
+        FROM traces t
+        LEFT JOIN trace_events e ON e.trace_id = t.id
+        WHERE t.entity_id IN (:entityIds)
+        GROUP BY t.entity_id
+      )
       SELECT
-        t.entity_id AS "entityId",
-        COUNT(DISTINCT t.id) AS "traceCount",
-        COUNT(e.id) AS "totalEvents",
-        COALESCE(SUM(CASE WHEN e.event_type = 'error' THEN 1 ELSE 0 END), 0) AS "errorEvents",
-        MAX(t.created_at) AS "lastActiveAt"
-      FROM traces t
-      LEFT JOIN trace_events e ON e.trace_id = t.id
-      WHERE t.entity_id IN (:entityIds)
-      GROUP BY t.entity_id
+        ts."entityId",
+        ts."traceCount",
+        COALESCE(es."totalEvents", 0)::bigint AS "totalEvents",
+        COALESCE(es."errorEvents", 0)::bigint AS "errorEvents",
+        ts."lastActiveAt"
+      FROM trace_stats ts
+      LEFT JOIN event_stats es ON es."entityId" = ts."entityId"
     `,
     {
       replacements: { entityIds },
@@ -481,6 +500,12 @@ app.get('/', async (c) => {
     const offset = (page - 1) * count;
     const include = parseInclude(c.req.query('include'));
     const includeMetadata = include.has('metadata');
+    const cacheKey = `${auth.userId}:${auth.projectId}:${auth.environmentId}:${page}:${count}:${includeMetadata ? 1 : 0}`;
+
+    const cached = entitiesListCache.get(cacheKey);
+    if (cached && Date.now() <= cached.expiresAtMs) {
+      return c.json(cached.payload);
+    }
 
     const attributes = ['id', 'userId', 'projectId', 'environmentId', 'name', 'createdAt', 'updatedAt'] as const;
     let { rows: agents, count: total } = await Agent.findAndCountAll({
@@ -571,7 +596,7 @@ app.get('/', async (c) => {
       };
     });
 
-    return c.json({
+    const payload = {
       success: true,
       agents: items,
       pagination: {
@@ -581,7 +606,14 @@ app.get('/', async (c) => {
         totalPages: Math.ceil(total / count),
         hasMore: page * count < total,
       },
+    };
+
+    entitiesListCache.set(cacheKey, {
+      expiresAtMs: Date.now() + ENTITIES_LIST_CACHE_TTL_MS,
+      payload,
     });
+
+    return c.json(payload);
   } catch (error: any) {
     logger.error({ error }, 'Failed to list agents');
     return c.json({ success: false, error: 'Failed to list agents' }, 500);
