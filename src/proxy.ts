@@ -157,26 +157,5 @@ export const config = {
         { type: "header", key: "purpose", value: "prefetch" },
       ],
     },
-    {
-      source: "/agents/:path*",
-      missing: [
-        { type: "header", key: "next-router-prefetch" },
-        { type: "header", key: "purpose", value: "prefetch" },
-      ],
-    },
-    {
-      source: "/traces/:path*",
-      missing: [
-        { type: "header", key: "next-router-prefetch" },
-        { type: "header", key: "purpose", value: "prefetch" },
-      ],
-    },
-    {
-      source: "/settings/:path*",
-      missing: [
-        { type: "header", key: "next-router-prefetch" },
-        { type: "header", key: "purpose", value: "prefetch" },
-      ],
-    },
   ],
 };
