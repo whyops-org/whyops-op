@@ -158,7 +158,7 @@ function JsonPayloadDialogButton({ value, title, description }: JsonPayloadDialo
             {description}
           </DialogDescription>
         </DialogHeader>
-        <div className="max-h-[65vh] overflow-auto p-4">
+        <div className="min-h-0 flex-1 overflow-auto p-4">
           <JsonViewer value={value} />
         </div>
       </DialogContent>

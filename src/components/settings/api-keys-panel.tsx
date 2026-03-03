@@ -359,7 +359,7 @@ export function ApiKeysPanel({ className }: ApiKeysPanelProps) {
       </InfoBox>
 
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="max-w-lg border-border/60 bg-card">
+        <DialogContent className="max-h-[90vh] max-w-lg border-border/60 bg-card">
           <DialogHeader>
             <DialogTitle>Create API Key</DialogTitle>
             <DialogDescription>
@@ -367,7 +367,7 @@ export function ApiKeysPanel({ className }: ApiKeysPanelProps) {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
             <div className="space-y-2">
               <Label htmlFor="api-key-name">Key Name</Label>
               <Input

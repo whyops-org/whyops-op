@@ -72,8 +72,8 @@ export function ConnectionModal({ open, onOpenChange }: ConnectionModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl gap-0 border-border/60 bg-card p-0">
-        <div className="space-y-6 p-6 pr-14">
+      <DialogContent className="max-h-[90vh] max-w-2xl gap-0 border-border/60 bg-card p-0">
+        <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-6 pr-14">
           <DialogHeader className="space-y-3">
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1">

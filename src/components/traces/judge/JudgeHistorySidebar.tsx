@@ -70,7 +70,7 @@ export function JudgeHistorySidebar({
           </SheetDescription>
         </SheetHeader>
 
-        <div className="flex-1 space-y-3 overflow-y-auto px-5 py-4">
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-4">
           {isRunning ? (
             <div className="rounded-sm border border-primary/30 bg-primary/10 px-3 py-2 text-xs text-muted-foreground">
               Running analysis in progress. History selection is temporarily disabled.

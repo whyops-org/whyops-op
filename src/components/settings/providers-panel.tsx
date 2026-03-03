@@ -74,7 +74,7 @@ export function ProvidersPanel({ className }: ProvidersPanelProps) {
       )}
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="max-w-3xl border-border/60 bg-card">
+        <DialogContent className="max-h-[90vh] max-w-3xl border-border/60 bg-card">
           <DialogHeader>
             <DialogTitle className="text-lg font-semibold text-foreground">
               {SETTINGS_COPY.addProviderModalTitle}
@@ -83,7 +83,7 @@ export function ProvidersPanel({ className }: ProvidersPanelProps) {
               {SETTINGS_COPY.addProviderModalDescription}
             </DialogDescription>
           </DialogHeader>
-          <div className="mt-6">
+          <div className="mt-6 min-h-0 flex-1 overflow-y-auto pr-1">
             <ProviderForm onSuccess={() => setIsModalOpen(false)} showSecurityInfo />
           </div>
         </DialogContent>

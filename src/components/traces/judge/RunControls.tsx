@@ -84,7 +84,7 @@ export function RunControls({
               </Button>
             </DialogTrigger>
 
-            <DialogContent className="max-w-3xl border-border/60 bg-card p-0">
+            <DialogContent className="max-h-[90vh] max-w-3xl border-border/60 bg-card p-0">
               <DialogHeader className="border-b border-border/55 px-5 py-4">
                 <DialogTitle className="flex items-center gap-2 text-lg">
                   <Sparkles className="h-4 w-4 text-primary" />
@@ -95,7 +95,7 @@ export function RunControls({
                 </DialogDescription>
               </DialogHeader>
 
-              <div className="space-y-5 px-5 py-4">
+              <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-4">
                 <section className="space-y-2.5">
                   <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                     Analysis Mode

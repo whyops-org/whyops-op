@@ -121,7 +121,7 @@ export function PatchedPromptDialog({
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
-        <div className="max-h-[62vh] overflow-auto rounded-sm border border-border/60 bg-surface-2/30 p-3">
+        <div className="min-h-0 flex-1 overflow-auto rounded-sm border border-border/60 bg-surface-2/30 p-3">
           <pre className="whitespace-pre-wrap text-xs leading-relaxed text-foreground">
             {patchedText || "No source content available."}
           </pre>

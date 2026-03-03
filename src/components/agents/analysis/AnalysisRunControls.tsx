@@ -170,7 +170,7 @@ export function AnalysisRunControls({
                 </DialogDescription>
               </DialogHeader>
 
-              <div className="max-h-[68vh] space-y-4 overflow-y-auto px-5 py-4">
+              <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
                 <section className="space-y-3 rounded-sm border border-border/60 bg-surface-2/25 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -311,7 +311,7 @@ export function AnalysisRunControls({
                 </DialogDescription>
               </DialogHeader>
 
-              <div className="max-h-[68vh] space-y-5 overflow-y-auto px-5 py-4">
+              <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-4">
                 <section className="space-y-2.5">
                   <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Analysis Mode</p>
                   <div className="inline-flex items-center rounded-sm border border-border/70 bg-surface-2/50 p-0.5">

@@ -230,7 +230,7 @@ function ToolSchemaDialog({ tool }: { tool: ToolInfo }) {
             Input and output schema for this tool.
           </DialogDescription>
         </DialogHeader>
-        <div className="max-h-[70vh] overflow-y-auto p-4">
+        <div className="min-h-0 flex-1 overflow-y-auto p-4">
           <div className="grid gap-4 md:grid-cols-2 [&>*]:min-w-0">
             <SchemaPanel title="Input Schema" value={tool.inputSchema} emptyText="No input schema available." />
             <SchemaPanel title="Output Schema" value={tool.outputSchema} emptyText="No output schema available." />
@@ -263,7 +263,7 @@ function SystemPromptDialog({ prompt }: { prompt: string }) {
             Full system prompt configured for this trace.
           </DialogDescription>
         </DialogHeader>
-        <div className="max-h-[70vh] overflow-auto p-4">
+        <div className="min-h-0 flex-1 overflow-auto p-4">
           <div className="rounded-sm border border-border/60 bg-surface-2/30 p-3">
             <div className="text-xs text-foreground">
               <Streamdown>{prompt}</Streamdown>

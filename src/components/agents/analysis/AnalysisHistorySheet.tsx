@@ -66,7 +66,7 @@ export function AnalysisHistorySheet({
           </SheetDescription>
         </SheetHeader>
 
-        <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4">
           {isLoading ? (
             <div className="rounded-sm border border-border/60 bg-surface-2/20 p-4 text-sm text-muted-foreground">
               Loading analysis runs...

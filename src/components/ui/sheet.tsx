@@ -61,7 +61,7 @@ function SheetContent({
         data-slot="sheet-content"
         data-side={side}
         className={cn(
-          "bg-background fixed z-50 flex flex-col gap-4 shadow-lg will-change-transform",
+          "bg-background fixed z-50 flex min-h-0 flex-col gap-4 overflow-hidden shadow-lg will-change-transform",
           side === "right" &&
             "inset-y-0 right-0 h-full w-3/4 border-l sm:max-w-sm",
           side === "left" &&
@@ -90,7 +90,7 @@ function SheetHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="sheet-header"
-      className={cn("flex flex-col gap-1.5 p-4", className)}
+      className={cn("shrink-0 flex flex-col gap-1.5 p-4", className)}
       {...props}
     />
   )
@@ -100,7 +100,7 @@ function SheetFooter({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="sheet-footer"
-      className={cn("mt-auto flex flex-col gap-2 p-4", className)}
+      className={cn("mt-auto shrink-0 flex flex-col gap-2 p-4", className)}
       {...props}
     />
   )
