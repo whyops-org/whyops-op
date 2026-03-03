@@ -214,13 +214,13 @@ app.get('/dashboard', async (c) => {
   try {
     const agentCount = Math.min(Math.max(parseInt(c.req.query('agentCount') || '5', 10) || 5, 1), 100);
 
-    const baseReplacements = {
+    const scopedReplacements = {
       userId: auth.userId,
       projectId: auth.projectId,
       environmentId: auth.environmentId,
     };
 
-    const agentCountRows = await Agent.sequelize!.query<{ totalAgents: string | number }>(
+    const scopedAgentCountRows = await Agent.sequelize!.query<{ totalAgents: string | number }>(
       `
         SELECT COUNT(*) AS "totalAgents"
         FROM agents a
@@ -229,11 +229,53 @@ app.get('/dashboard', async (c) => {
           AND a.environment_id = :environmentId
       `,
       {
-        replacements: baseReplacements,
+        replacements: scopedReplacements,
         type: QueryTypes.SELECT,
       }
     );
-    const totalAgents = Number(agentCountRows[0]?.totalAgents || 0);
+
+    let useUserScopeFallback = Number(scopedAgentCountRows[0]?.totalAgents || 0) === 0;
+    let totalAgents = Number(scopedAgentCountRows[0]?.totalAgents || 0);
+
+    if (useUserScopeFallback) {
+      const userScopeAgentCountRows = await Agent.sequelize!.query<{ totalAgents: string | number }>(
+        `
+          SELECT COUNT(*) AS "totalAgents"
+          FROM agents a
+          WHERE a.user_id = :userId
+        `,
+        {
+          replacements: { userId: auth.userId },
+          type: QueryTypes.SELECT,
+        }
+      );
+
+      const userScopeAgents = Number(userScopeAgentCountRows[0]?.totalAgents || 0);
+      if (userScopeAgents > 0) {
+        totalAgents = userScopeAgents;
+        logger.warn(
+          {
+            userId: auth.userId,
+            projectId: auth.projectId,
+            environmentId: auth.environmentId,
+            fallbackTotalAgents: userScopeAgents,
+          },
+          'Dashboard scoped context returned no agents; falling back to user scope'
+        );
+      } else {
+        useUserScopeFallback = false;
+      }
+    }
+
+    const scopeClause = useUserScopeFallback
+      ? `a.user_id = :userId`
+      : `a.user_id = :userId
+          AND a.project_id = :projectId
+          AND a.environment_id = :environmentId`;
+
+    const baseReplacements = useUserScopeFallback
+      ? { userId: auth.userId }
+      : scopedReplacements;
 
     const oneDayAgo = new Date();
     oneDayAgo.setDate(oneDayAgo.getDate() - 1);
@@ -246,9 +288,7 @@ app.get('/dashboard', async (c) => {
         FROM traces t
         JOIN entities e ON e.id = t.entity_id
         JOIN agents a ON a.id = e.agent_id
-        WHERE a.user_id = :userId
-          AND a.project_id = :projectId
-          AND a.environment_id = :environmentId
+        WHERE ${scopeClause}
       `,
       {
         replacements: {
@@ -271,9 +311,7 @@ app.get('/dashboard', async (c) => {
         JOIN traces t ON t.id = e.trace_id
         JOIN entities en ON en.id = t.entity_id
         JOIN agents a ON a.id = en.agent_id
-        WHERE a.user_id = :userId
-          AND a.project_id = :projectId
-          AND a.environment_id = :environmentId
+        WHERE ${scopeClause}
       `,
       {
         replacements: baseReplacements,
@@ -314,9 +352,7 @@ app.get('/dashboard', async (c) => {
           JOIN traces t ON t.id = e.trace_id
           JOIN entities en ON en.id = t.entity_id
           JOIN agents a ON a.id = en.agent_id
-          WHERE a.user_id = :userId
-            AND a.project_id = :projectId
-            AND a.environment_id = :environmentId
+          WHERE ${scopeClause}
             AND e.timestamp >= :from
             AND e.timestamp < :to
         `,
@@ -386,9 +422,7 @@ app.get('/dashboard', async (c) => {
         JOIN traces t ON t.id = e.trace_id
         JOIN entities en ON en.id = t.entity_id
         JOIN agents a ON a.id = en.agent_id
-        WHERE a.user_id = :userId
-          AND a.project_id = :projectId
-          AND a.environment_id = :environmentId
+        WHERE ${scopeClause}
           AND e.timestamp >= :since
         GROUP BY 1
         ORDER BY 1 ASC
@@ -434,9 +468,7 @@ app.get('/dashboard', async (c) => {
         FROM agents a
         LEFT JOIN entities e ON e.agent_id = a.id
         LEFT JOIN traces t ON t.entity_id = e.id
-        WHERE a.user_id = :userId
-          AND a.project_id = :projectId
-          AND a.environment_id = :environmentId
+        WHERE ${scopeClause}
         GROUP BY a.id
         ORDER BY COUNT(DISTINCT t.id) DESC
         LIMIT :agentCount

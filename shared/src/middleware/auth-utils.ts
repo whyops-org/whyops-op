@@ -32,6 +32,19 @@ async function touchApiKeyLastUsed(apiKeyId: string): Promise<void> {
   }
 }
 
+async function resolveSingleActiveProvider(userId: string): Promise<Provider | null> {
+  const providers = await Provider.findAll({
+    where: {
+      userId,
+      isActive: true,
+    },
+    order: [['createdAt', 'ASC']],
+    limit: 2,
+  });
+
+  return providers.length === 1 ? providers[0] : null;
+}
+
 export interface BetterAuthSession {
   user: {
     id: string;
@@ -142,6 +155,14 @@ export async function validateApiKey(
         apiKey,
       } satisfies ApiKeyAuthContext;
 
+      if (!context.providerId) {
+        const inferredProvider = await resolveSingleActiveProvider(context.userId);
+        if (inferredProvider) {
+          context.providerId = inferredProvider.id;
+          context.provider = inferredProvider as any;
+        }
+      }
+
       void touchApiKeyLastUsed(context.apiKeyId);
 
       return {
@@ -182,13 +203,24 @@ export async function validateApiKey(
       return { valid: false, error: 'Environment is not active' };
     }
 
+    let resolvedProviderId = apiKeyRecord.providerId ?? undefined;
+    let resolvedProvider = (apiKeyRecord as any).provider;
+
+    if (!resolvedProviderId) {
+      const inferredProvider = await resolveSingleActiveProvider(apiKeyRecord.userId);
+      if (inferredProvider) {
+        resolvedProviderId = inferredProvider.id;
+        resolvedProvider = inferredProvider as any;
+      }
+    }
+
     const context: ApiKeyAuthContext = {
       authType: 'api_key',
       apiKey,
       userId: apiKeyRecord.userId,
       projectId: apiKeyRecord.projectId,
       environmentId: apiKeyRecord.environmentId,
-      providerId: apiKeyRecord.providerId ?? undefined,
+      providerId: resolvedProviderId,
       entityId: apiKeyRecord.entityId ?? undefined,
       isMaster: apiKeyRecord.isMaster,
       apiKeyId: apiKeyRecord.id,
@@ -196,7 +228,7 @@ export async function validateApiKey(
       environmentName: environment.name,
       project,
       environment,
-      provider: (apiKeyRecord as any).provider,
+      provider: resolvedProvider,
       entity: (apiKeyRecord as any).entity,
     };
 
@@ -225,41 +257,80 @@ export async function getSessionAuthContext(
   userId: string
 ): Promise<SessionAuthContext | null> {
   try {
-    const project = await Project.findOne({
-      where: { userId, isActive: true },
-      order: [['createdAt', 'ASC']],
-    });
-
-    if (!project) {
-      return null;
-    }
-
-    const environment = await Environment.findOne({
-      where: { projectId: project.id },
-      order: [['createdAt', 'ASC']],
-    });
-
-    if (!environment) {
-      return null;
-    }
-
-    const apiKeyRecord = await ApiKey.findOne({
+    // Primary strategy: rank active master keys by usage recency, then creation time.
+    // This aligns session-scoped dashboards with where traffic is actually flowing.
+    const rankedMasterKeys = await ApiKey.findAll({
       where: {
         userId,
-        projectId: project.id,
-        environmentId: environment.id,
         isMaster: true,
         isActive: true,
       },
-      include: [{ model: Provider, as: 'provider', required: false }],
+      include: [
+        { model: Provider, as: 'provider', required: false },
+        { model: Project, as: 'project', required: true, where: { isActive: true } },
+        { model: Environment, as: 'environment', required: true, where: { isActive: true } },
+      ],
+      order: [['createdAt', 'DESC']],
+      limit: 50,
     });
+
+    const apiKeyRecord = rankedMasterKeys
+      .slice()
+      .sort((a, b) => {
+        const aUsedAt = a.lastUsedAt?.getTime() ?? null;
+        const bUsedAt = b.lastUsedAt?.getTime() ?? null;
+        if (aUsedAt !== null && bUsedAt !== null) return bUsedAt - aUsedAt;
+        if (aUsedAt !== null) return -1;
+        if (bUsedAt !== null) return 1;
+        return b.createdAt.getTime() - a.createdAt.getTime();
+      })[0] ?? null;
+
+    // Last resort fallback for legacy data: first active project/environment.
+    let projectId: string | null = null;
+    let environmentId: string | null = null;
+    let providerId: string | undefined;
+
+    if (apiKeyRecord) {
+      const project = (apiKeyRecord as any).project as Project | undefined;
+      const environment = (apiKeyRecord as any).environment as Environment | undefined;
+      projectId = project?.id ?? null;
+      environmentId = environment?.id ?? null;
+      providerId = apiKeyRecord.providerId ?? undefined;
+    }
+
+    if (!projectId) {
+      const project = await Project.findOne({
+        where: { userId, isActive: true },
+        order: [['createdAt', 'ASC']],
+      });
+      projectId = project?.id ?? null;
+    }
+
+    if (!environmentId && projectId) {
+      const environment = await Environment.findOne({
+        where: { projectId, isActive: true },
+        order: [['createdAt', 'ASC']],
+      });
+      environmentId = environment?.id ?? null;
+    }
+
+    if (!projectId || !environmentId) {
+      return null;
+    }
+
+    if (!providerId) {
+      const inferredProvider = await resolveSingleActiveProvider(userId);
+      if (inferredProvider) {
+        providerId = inferredProvider.id;
+      }
+    }
 
     return {
       authType: 'session',
       userId,
-      projectId: project.id,
-      environmentId: environment.id,
-      providerId: apiKeyRecord?.providerId ?? undefined,
+      projectId,
+      environmentId,
+      providerId,
       isMaster: true,
       sessionId: '',
       userEmail: '',
