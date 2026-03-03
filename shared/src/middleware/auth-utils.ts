@@ -13,6 +13,70 @@ import { getCookie } from 'hono/cookie';
 import type { ApiKeyAuthContext, SessionAuthContext, SessionUser, UserSession } from './types';
 
 const logger = createServiceLogger('auth:utils');
+const REMOTE_SESSION_CACHE_TTL_MS = 15_000;
+const SESSION_USER_CACHE_TTL_MS = 30_000;
+
+const remoteSessionCache = new Map<
+  string,
+  { expiresAtMs: number; value: BetterAuthSession | null }
+>();
+const remoteSessionInFlight = new Map<string, Promise<BetterAuthSession | null>>();
+const sessionUserCache = new Map<string, { expiresAtMs: number; user: SessionUser }>();
+
+function extractSessionTokenFromCookieHeader(cookieHeader: string | null | undefined): string | null {
+  if (!cookieHeader) return null;
+  const match = cookieHeader.match(
+    /(?:^|;\s*)(?:__Secure-better-auth\.session_token|better-auth\.session_token)=([^;]+)/
+  );
+  return match?.[1] || null;
+}
+
+function getRemoteSessionCacheKey(headers: Headers): string | null {
+  const cookie = headers.get('Cookie') || headers.get('cookie');
+  const token = extractSessionTokenFromCookieHeader(cookie);
+  return token ? `session:${token}` : null;
+}
+
+function getCachedRemoteSession(cacheKey: string): BetterAuthSession | null | undefined {
+  const cached = remoteSessionCache.get(cacheKey);
+  if (!cached) return undefined;
+  if (Date.now() > cached.expiresAtMs) {
+    remoteSessionCache.delete(cacheKey);
+    return undefined;
+  }
+  if (cached.value?.session?.expiresAt) {
+    const sessionExpiresAtMs = new Date(cached.value.session.expiresAt).getTime();
+    if (!Number.isFinite(sessionExpiresAtMs) || sessionExpiresAtMs <= Date.now()) {
+      remoteSessionCache.delete(cacheKey);
+      return undefined;
+    }
+  }
+  return cached.value;
+}
+
+function setCachedRemoteSession(cacheKey: string, value: BetterAuthSession | null): void {
+  remoteSessionCache.set(cacheKey, {
+    expiresAtMs: Date.now() + REMOTE_SESSION_CACHE_TTL_MS,
+    value,
+  });
+}
+
+function getCachedSessionUser(userId: string): SessionUser | null {
+  const cached = sessionUserCache.get(userId);
+  if (!cached) return null;
+  if (Date.now() > cached.expiresAtMs) {
+    sessionUserCache.delete(userId);
+    return null;
+  }
+  return cached.user;
+}
+
+function setCachedSessionUser(user: SessionUser): void {
+  sessionUserCache.set(user.id, {
+    expiresAtMs: Date.now() + SESSION_USER_CACHE_TTL_MS,
+    user,
+  });
+}
 
 async function touchApiKeyLastUsed(apiKeyId: string): Promise<void> {
   try {
@@ -66,41 +130,72 @@ export interface BetterAuthSession {
 export async function getSessionFromAuthServer(headers: Headers): Promise<BetterAuthSession | null> {
   const authUrl = env.AUTH_URL.replace(/\/$/, '');
   const url = `${authUrl}/api/auth/get-session`;
-  
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 5000);
+  const cacheKey = getRemoteSessionCacheKey(headers);
+
+  if (cacheKey) {
+    const cached = getCachedRemoteSession(cacheKey);
+    if (cached !== undefined) {
+      return cached;
+    }
+
+    const existingInFlight = remoteSessionInFlight.get(cacheKey);
+    if (existingInFlight) {
+      return existingInFlight;
+    }
+  }
+
+  const fetchPromise = (async () => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+    try {
+      logger.debug({ url, authUrl }, 'Fetching session from auth service');
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers,
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      logger.debug({ 
+        status: response.status, 
+        ok: response.ok,
+        url 
+      }, 'Session fetch response');
+
+      if (response.ok) {
+        const data = await response.json() as BetterAuthSession | null;
+        return data;
+      }
+      
+      logger.warn({ 
+        status: response.status, 
+        statusText: response.statusText,
+        url 
+      }, 'Session fetch returned non-OK status');
+      return null;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      logger.warn({ error, authUrl, url }, 'Failed to fetch session from auth service');
+      return null;
+    }
+  })();
+
+  if (cacheKey) {
+    remoteSessionInFlight.set(cacheKey, fetchPromise);
+  }
 
   try {
-    logger.debug({ url, authUrl }, 'Fetching session from auth service');
-    
-    const response = await fetch(url, {
-      method: 'GET',
-      headers,
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutId);
-
-    logger.debug({ 
-      status: response.status, 
-      ok: response.ok,
-      url 
-    }, 'Session fetch response');
-
-    if (response.ok) {
-      const data = await response.json() as BetterAuthSession | null;
-      return data;
+    const result = await fetchPromise;
+    if (cacheKey) {
+      setCachedRemoteSession(cacheKey, result);
     }
-    
-    logger.warn({ 
-      status: response.status, 
-      statusText: response.statusText,
-      url 
-    }, 'Session fetch returned non-OK status');
-    return null;
-  } catch (error) {
-    clearTimeout(timeoutId);
-    logger.warn({ error, authUrl, url }, 'Failed to fetch session from auth service');
-    return null;
+    return result;
+  } finally {
+    if (cacheKey) {
+      remoteSessionInFlight.delete(cacheKey);
+    }
   }
 }
 
@@ -348,6 +443,18 @@ export async function loadUserSession(c: Context): Promise<{ user: SessionUser; 
     return null;
   }
 
+  const cachedUser = getCachedSessionUser(sessionData.user.id);
+  if (cachedUser) {
+    return {
+      user: {
+        ...cachedUser,
+        email: sessionData.user.email || cachedUser.email,
+        name: sessionData.user.name ?? cachedUser.name,
+      },
+      session: sessionData.session,
+    };
+  }
+
   try {
     const { User } = await import('@whyops/shared/models');
     const appUser = await User.findByPk(sessionData.user.id);
@@ -361,19 +468,24 @@ export async function loadUserSession(c: Context): Promise<{ user: SessionUser; 
         onboardingComplete: Boolean(appUser.metadata?.onboardingComplete),
         isActive: appUser.isActive,
       };
+      setCachedSessionUser(mergedUser);
       return { user: mergedUser, session: sessionData.session };
     }
 
-    return {
+    const fallbackUser = {
       user: sessionData.user as SessionUser,
       session: sessionData.session,
     };
+    setCachedSessionUser(fallbackUser.user);
+    return fallbackUser;
   } catch (error) {
     logger.warn({ error }, 'Failed to load Sequelize user data, using Better Auth user');
-    return {
+    const fallbackUser = {
       user: sessionData.user as SessionUser,
       session: sessionData.session,
     };
+    setCachedSessionUser(fallbackUser.user);
+    return fallbackUser;
   }
 }
 
@@ -382,6 +494,18 @@ export async function loadUserSessionFromBetterAuth(
 ): Promise<{ user: SessionUser; session: UserSession['session'] } | null> {
   if (!session) {
     return null;
+  }
+
+  const cachedUser = getCachedSessionUser(session.user.id);
+  if (cachedUser) {
+    return {
+      user: {
+        ...cachedUser,
+        email: session.user.email || cachedUser.email,
+        name: session.user.name ?? cachedUser.name,
+      },
+      session: session.session,
+    };
   }
 
   try {
@@ -397,18 +521,23 @@ export async function loadUserSessionFromBetterAuth(
         onboardingComplete: Boolean(appUser.metadata?.onboardingComplete),
         isActive: appUser.isActive,
       };
+      setCachedSessionUser(mergedUser);
       return { user: mergedUser, session: session.session };
     }
 
-    return {
+    const fallbackUser = {
       user: session.user as SessionUser,
       session: session.session,
     };
+    setCachedSessionUser(fallbackUser.user);
+    return fallbackUser;
   } catch (error) {
     logger.warn({ error }, 'Failed to load Sequelize user data, using Better Auth user');
-    return {
+    const fallbackUser = {
       user: session.user as SessionUser,
       session: session.session,
     };
+    setCachedSessionUser(fallbackUser.user);
+    return fallbackUser;
   }
 }

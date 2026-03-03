@@ -40,6 +40,26 @@ export interface UpdateProviderData {
 
 export class ProviderService {
   /**
+   * Fast existence check used by onboarding status endpoints.
+   */
+  static async hasProviders(userId: string): Promise<boolean> {
+    try {
+      const provider = await Provider.findOne({
+        where: { userId, isActive: true },
+        attributes: ['id'],
+      });
+      return Boolean(provider);
+    } catch (error: any) {
+      const code = error?.original?.code || error?.parent?.code;
+      if (code === '42P01') {
+        logger.warn({ userId }, 'providers table missing; treating provider existence as false');
+        return false;
+      }
+      throw error;
+    }
+  }
+
+  /**
    * List all providers for a user
    */
   static async listProviders(userId: string): Promise<Provider[]> {

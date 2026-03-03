@@ -9,6 +9,8 @@ const app = new Hono();
  * Returns all configurable data that was previously hardcoded in the frontend
  */
 app.get('/', (c) => {
+  c.header('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
+
   const config = {
     // API Base URLs for different services
     authBaseUrl: env.AUTH_URL || 'http://localhost:8082',

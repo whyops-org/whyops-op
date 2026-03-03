@@ -21,9 +21,19 @@ import { verifyEmailConnection } from './utils/email.util';
 
 const logger = createServiceLogger('auth');
 const app = new Hono();
+const GET_SESSION_CACHE_TTL_MS = 10_000;
+const getSessionCache = new Map<string, { expiresAtMs: number; payload: unknown }>();
 
 type MagicLinkRateState = Map<string, { count: number; start: number }>;
 const MAGIC_LINK_RATE_LIMIT: MagicLinkRateState = new Map();
+
+function extractSessionToken(cookieHeader: string | null | undefined): string | null {
+  if (!cookieHeader) return null;
+  const match = cookieHeader.match(
+    /(?:^|;\s*)(?:__Secure-better-auth\.session_token|better-auth\.session_token)=([^;]+)/
+  );
+  return match?.[1] || null;
+}
 
 await initDatabase();
 logger.info('Database initialized');
@@ -68,6 +78,37 @@ app.use('/api/auth/sign-in/magic-link', magicLinkLimiter);
 
 app.route('/health', healthRouter);
 app.route('/api/config', configRouter);
+
+// Hot path optimization for frontend polling.
+// Better Auth get-session can be called very frequently; short TTL cache avoids repeated DB hits.
+app.get('/api/auth/get-session', async (c) => {
+  const cookieHeader = c.req.header('Cookie');
+  const token = extractSessionToken(cookieHeader);
+
+  if (token) {
+    const cacheKey = `session:${token}`;
+    const cached = getSessionCache.get(cacheKey);
+    if (cached && Date.now() <= cached.expiresAtMs) {
+      return c.json(cached.payload, 200);
+    }
+
+    const session = await auth.api.getSession({
+      headers: c.req.raw.headers,
+    });
+
+    getSessionCache.set(cacheKey, {
+      expiresAtMs: Date.now() + GET_SESSION_CACHE_TTL_MS,
+      payload: session ?? null,
+    });
+
+    return c.json(session ?? null, 200);
+  }
+
+  const session = await auth.api.getSession({
+    headers: c.req.raw.headers,
+  });
+  return c.json(session ?? null, 200);
+});
 
 // Better Auth handler - must be before session middleware
 // Handles /api/auth/* endpoints like /api/auth/get-session, /api/auth/sign-in, etc.

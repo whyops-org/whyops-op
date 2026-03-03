@@ -37,6 +37,17 @@ export interface ProjectWithEnvironments {
 
 export class ProjectService {
   /**
+   * Fast existence check used by onboarding status endpoints.
+   */
+  static async hasProjects(userId: string): Promise<boolean> {
+    const project = await Project.findOne({
+      where: { userId, isActive: true },
+      attributes: ['id'],
+    });
+    return Boolean(project);
+  }
+
+  /**
    * List all projects for a user
    */
   static async listProjects(userId: string): Promise<Project[]> {

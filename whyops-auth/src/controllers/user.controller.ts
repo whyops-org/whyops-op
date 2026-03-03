@@ -6,6 +6,8 @@ import { UserService } from '../services';
 import { ResponseUtil } from '../utils';
 
 const logger = createServiceLogger('auth:user-controller');
+const ONBOARDING_CACHE_TTL_MS = 15_000;
+const onboardingProgressCache = new Map<string, { expiresAtMs: number; value: OnboardingProgress }>();
 
 export interface OnboardingProgress {
   hasProvider: boolean;
@@ -26,13 +28,18 @@ export class UserController {
         return ResponseUtil.unauthorized(c, 'Not authenticated');
       }
 
-      // Check if user has providers
-      const providers = await ProviderService.listProviders(user.id);
-      const hasProvider = providers.length > 0;
+      const onboardingComplete = Boolean(user.metadata?.onboardingComplete);
+      const cacheKey = `${user.id}:${onboardingComplete ? '1' : '0'}`;
+      const cached = onboardingProgressCache.get(cacheKey);
+      if (cached && Date.now() <= cached.expiresAtMs) {
+        return ResponseUtil.success(c, cached.value);
+      }
 
-      // Check if user has projects
-      const projects = await ProjectService.listProjects(user.id);
-      const hasProject = projects.length > 0;
+      // Fast existence checks, executed in parallel.
+      const [hasProvider, hasProject] = await Promise.all([
+        ProviderService.hasProviders(user.id),
+        ProjectService.hasProjects(user.id),
+      ]);
 
       // Determine current onboarding step
       let currentStep: OnboardingProgress['currentStep'] = 'welcome';
@@ -40,18 +47,23 @@ export class UserController {
         currentStep = 'provider';
       } else if (!hasProject) {
         currentStep = 'workspace';
-      } else if (!user.metadata?.onboardingComplete) {
+      } else if (!onboardingComplete) {
         currentStep = 'complete';
       }
 
-      const onboardingComplete = Boolean(user.metadata?.onboardingComplete);
-
-      return ResponseUtil.success(c, {
+      const payload: OnboardingProgress = {
         hasProvider,
         hasProject,
         onboardingComplete,
         currentStep: hasProvider && hasProject && onboardingComplete ? 'complete' : currentStep,
+      };
+
+      onboardingProgressCache.set(cacheKey, {
+        expiresAtMs: Date.now() + ONBOARDING_CACHE_TTL_MS,
+        value: payload,
       });
+
+      return ResponseUtil.success(c, payload);
     } catch (error: any) {
       logger.error({ error }, 'Failed to fetch onboarding progress');
       return ResponseUtil.internalError(c, 'Failed to fetch onboarding progress');
@@ -114,6 +126,8 @@ export class UserController {
             onboardingComplete: data.onboardingComplete,
           },
         });
+        onboardingProgressCache.delete(`${user.id}:0`);
+        onboardingProgressCache.delete(`${user.id}:1`);
       }
 
       return ResponseUtil.success(c, {
