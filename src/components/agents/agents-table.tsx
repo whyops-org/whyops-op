@@ -291,16 +291,7 @@ export function AgentsTable({
                   <TableCell className="px-6 py-4 text-sm text-muted-foreground">
                     {formatLastActive(agent.lastActive)}
                   </TableCell>
-                  <TableCell className="px-6 py-4 text-right">
-                    <button
-                      className="text-muted-foreground transition-colors hover:text-foreground"
-                      aria-label={AGENTS_TABLE_TEXT.actionLabel}
-                      disabled={isTableLoading}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <MoreIcon />
-                    </button>
-                  </TableCell>
+                  
                 </TableRow>
               );
             })}
