@@ -7,6 +7,7 @@ import { AgentUsagePieChart } from "@/components/agents/agent-usage-pie-chart";
 import { StatCard } from "@/components/agents/stat-card";
 import { SuccessRateChart } from "@/components/agents/success-rate-chart";
 import { EmptyState } from "@/components/dashboard/empty-state";
+import { Spinner } from "@/components/ui/spinner";
 import { Activity, Clock, TrendingUp, Users } from "lucide-react";
 
 import { useAgentsStore } from "@/stores/agentsStore";
@@ -130,7 +131,7 @@ export default function AgentsPage() {
   if (shouldShowInitialLoader) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        <Spinner className="h-8 w-8 border-4 text-primary" />
       </div>
     );
   }

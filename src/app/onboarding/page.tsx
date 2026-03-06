@@ -15,6 +15,7 @@ import { ProviderCard } from "@/components/onboarding/provider-card";
 import { StepIndicator } from "@/components/onboarding/step-indicator";
 import { WorkspaceCard } from "@/components/onboarding/workspace-card";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
 import { useAuthStore } from "@/stores/authStore";
 import { useConfigStore } from "@/stores/configStore";
@@ -258,7 +259,7 @@ export default function OnboardingPage() {
         <div className="flex flex-col h-screen">
           <SiteHeader actionLabel="Log out" />
           <main className="flex-1 flex items-center justify-center">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+            <Spinner className="h-8 w-8 border-4 text-primary" />
           </main>
         </div>
       </div>

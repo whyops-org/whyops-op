@@ -11,6 +11,7 @@ import {
   type AgentAnalysisMode,
 } from "@/constants/agent-analysis";
 import { Card } from "@/components/ui/card";
+import { Spinner } from "@/components/ui/spinner";
 import { useAgentAnalysisStore } from "@/stores/agentAnalysisStore";
 import { AnalysisHistorySheet } from "./AnalysisHistorySheet";
 import { AnalysisResults } from "./AnalysisResults";
@@ -334,7 +335,7 @@ export function AgentAnalysisTab({ agentId }: AgentAnalysisTabProps) {
 
       {showStreamingSkeleton ? (
         <Card className="border-border/60 bg-card px-5 py-8 text-center">
-          <div className="mx-auto h-7 w-7 animate-spin rounded-full border-2 border-border border-t-foreground" />
+          <Spinner className="mx-auto h-7 w-7 border-2 border-border border-t-foreground" />
           <p className="mt-3 text-sm text-muted-foreground">
             Preparing overview sections. Results will stream in this panel.
           </p>

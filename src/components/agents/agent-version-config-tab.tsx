@@ -7,6 +7,7 @@ import { JsonViewer } from "@/components/ui/json-viewer";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import {
   Select,
   SelectContent,
@@ -349,7 +350,7 @@ export function AgentVersionConfigTab({ agentId, preferredVersionId }: AgentVers
 
       {isLoadingDetail ? (
         <div className="flex min-h-[14rem] items-center justify-center">
-          <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-primary" />
+          <Spinner className="h-6 w-6 border-2 text-primary" />
         </div>
       ) : versionDetail ? (
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1.8fr)_minmax(0,1fr)]">

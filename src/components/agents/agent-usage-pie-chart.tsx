@@ -4,6 +4,7 @@ import { useMemo } from "react";
 
 import { Card } from "@/components/ui/card";
 import { EmptyStateSimple } from "@/components/ui/empty-state-simple";
+import { Spinner } from "@/components/ui/spinner";
 import {
   ChartConfig,
   ChartContainer,
@@ -102,7 +103,7 @@ export function AgentUsagePieChart({
 
       {isLoading ? (
         <div className="h-52 w-full flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+          <Spinner className="h-8 w-8 border-2 text-primary" />
         </div>
       ) : !hasData ? (
         <div className="h-52 w-full flex items-center justify-center border border-dashed border-border/30">

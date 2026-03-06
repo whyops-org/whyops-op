@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyStateSimple } from "@/components/ui/empty-state-simple";
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 import {
   Select,
   SelectContent,
@@ -109,7 +110,7 @@ export function TracesPageContent() {
 
           {currentLoading && !isRefetching ? (
             <div className="flex items-center justify-center p-8">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
+              <Spinner className="h-6 w-6 border-2 text-primary" />
             </div>
           ) : filteredThreads.length === 0 ? (
             <EmptyStateSimple

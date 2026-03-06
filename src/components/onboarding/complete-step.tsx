@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getCodeSnippet, type SnippetType } from "@/lib/code-snippets";
 import { goToDocumentation } from "@/lib/helper";
@@ -69,7 +70,7 @@ export function CompleteStep({ onFinish, isFinishing }: CompleteStepProps) {
     return (
       <StepContainer>
         <div className="flex items-center justify-center p-12">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          <Spinner className="h-8 w-8 border-4 text-primary" />
         </div>
       </StepContainer>
     );

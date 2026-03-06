@@ -1,6 +1,6 @@
 "use client";
 
-import { Copy, KeyRound, Loader2, Plus, RefreshCcw, ShieldAlert } from "lucide-react";
+import { Copy, KeyRound, Plus, RefreshCcw, ShieldAlert } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { InfoBox } from "@/components/onboarding/info-box";
@@ -17,6 +17,7 @@ import { EmptyStateSimple } from "@/components/ui/empty-state-simple";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { SETTINGS_COPY } from "@/constants/settings";
 import { apiClient } from "@/lib/api-client";
@@ -297,7 +298,7 @@ export function ApiKeysPanel({ className }: ApiKeysPanelProps) {
                           disabled={regeneratingKeyId === key.id}
                         >
                           {regeneratingKeyId === key.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <Spinner className="h-4 w-4 border-2" />
                           ) : (
                             <RefreshCcw className="h-4 w-4" />
                           )}
@@ -406,7 +407,7 @@ export function ApiKeysPanel({ className }: ApiKeysPanelProps) {
             <Button variant="primary" onClick={handleCreateKey} disabled={isCreatingKey}>
               {isCreatingKey ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Spinner className="h-4 w-4 border-2" />
                   Creating...
                 </>
               ) : (

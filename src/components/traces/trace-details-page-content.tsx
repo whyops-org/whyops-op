@@ -9,6 +9,7 @@ import { TraceHeader } from "@/components/traces/trace-header";
 import { TraceSidebarLeft } from "@/components/traces/trace-sidebar-left";
 import { TraceSidebarRight } from "@/components/traces/trace-sidebar-right";
 import { TraceTimeline } from "@/components/traces/trace-timeline";
+import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import { useConfigStore } from "@/stores/configStore";
 import { useTraceDetailStore } from "@/stores/traceDetailStore";
@@ -36,7 +37,7 @@ export function TraceDetailsPageContent() {
   if (isLoading) {
     return (
       <div className="flex h-[calc(100vh-56px)] items-center justify-center bg-background">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-foreground" />
+        <Spinner className="h-8 w-8 border-2 border-border border-t-foreground" />
       </div>
     );
   }

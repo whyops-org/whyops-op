@@ -1,12 +1,13 @@
 "use client";
 
-import { Code2, Eye, EyeOff, Key, Loader2, Plus, ShieldCheck, Sparkles, TestTube, User, Wifi } from "lucide-react";
+import { Code2, Eye, EyeOff, Key, Plus, ShieldCheck, Sparkles, TestTube, User, Wifi } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { FormField } from "@/components/onboarding/form-field";
 import { InfoBox } from "@/components/onboarding/info-box";
 import { SelectableCard } from "@/components/onboarding/selectable-card";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { PROVIDER_FORM_COPY } from "@/constants/providers";
 import { cn } from "@/lib/utils";
 import { useConfigStore, type ProviderType } from "@/stores/configStore";
@@ -179,7 +180,7 @@ export function ProviderForm({
   if (!config) {
     return (
       <div className="flex items-center justify-center p-6">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <Spinner className="h-6 w-6 border-2 text-muted-foreground" />
       </div>
     );
   }
@@ -277,7 +278,7 @@ export function ProviderForm({
         >
           {testStatus === "testing" ? (
             <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <Spinner className="mr-2 h-4 w-4 border-2" />
               {PROVIDER_FORM_COPY.testingButton}
             </>
           ) : (
@@ -297,7 +298,7 @@ export function ProviderForm({
         >
           {isCreating ? (
             <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <Spinner className="mr-2 h-4 w-4 border-2" />
               {PROVIDER_FORM_COPY.addingButton}
             </>
           ) : (

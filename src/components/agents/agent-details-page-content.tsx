@@ -7,6 +7,7 @@ import { AgentDetailStats } from "@/components/agents/agent-detail-stats";
 import { AgentTraceCountTimeline } from "@/components/agents/agent-trace-count-timeline";
 import { AgentTraceTimeline } from "@/components/agents/agent-trace-timeline";
 import { RecentTracesTable } from "@/components/agents/recent-traces-table";
+import { Spinner } from "@/components/ui/spinner";
 import { DEFAULT_TIMELINE_PERIOD } from "@/constants/agent-timelines";
 import { useAgentsStore } from "@/stores/agentsStore";
 import { useConfigStore } from "@/stores/configStore";
@@ -67,7 +68,7 @@ export function AgentDetailsPageContent({ agentId }: AgentDetailsPageContentProp
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+        <Spinner className="h-8 w-8 border-2 text-primary" />
       </div>
     );
   }

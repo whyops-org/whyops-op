@@ -1,7 +1,8 @@
-import { Code2, Copy, Key, Loader2, Rocket, User } from "lucide-react";
+import { Code2, Copy, Key, Rocket, User } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { FormField } from "./form-field";
 import { InfoBox } from "./info-box";
 import { SelectableCard } from "./selectable-card";
@@ -99,7 +100,7 @@ export function WorkspaceCard({ onBack, onContinue }: WorkspaceCardProps) {
     return (
       <StepContainer>
         <div className="flex items-center justify-center p-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <Spinner className="h-8 w-8 border-2 text-muted-foreground" />
         </div>
       </StepContainer>
     );
@@ -149,7 +150,7 @@ export function WorkspaceCard({ onBack, onContinue }: WorkspaceCardProps) {
           >
             {isCreating ? (
               <>
-                <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                <Spinner className="mr-2 h-5 w-5 border-2" />
                 Creating Workspace...
               </>
             ) : (
