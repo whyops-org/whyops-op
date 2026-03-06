@@ -7,6 +7,8 @@ export interface AgentAttributes {
   projectId: string;
   environmentId: string;
   name: string;
+  maxTraces?: number;
+  maxSpans?: number;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -17,6 +19,8 @@ export class Agent extends Model<AgentAttributes> implements AgentAttributes {
   declare projectId: string;
   declare environmentId: string;
   declare name: string;
+  declare maxTraces: number;
+  declare maxSpans: number;
   declare createdAt: Date;
   declare updatedAt: Date;
 }
@@ -61,6 +65,24 @@ Agent.init(
     name: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    maxTraces: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 10000,
+      field: 'max_traces',
+      validate: {
+        min: 1,
+      },
+    },
+    maxSpans: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 1000,
+      field: 'max_spans',
+      validate: {
+        min: 1,
+      },
     },
     createdAt: {
       type: DataTypes.DATE,

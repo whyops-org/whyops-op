@@ -1,6 +1,6 @@
 import { createServiceLogger } from '@whyops/shared/logger';
 import env from '@whyops/shared/env';
-import { Entity, Trace } from '@whyops/shared/models';
+import { Agent, Entity, Trace } from '@whyops/shared/models';
 import CryptoJS from 'crypto-js';
 import { QueryTypes } from 'sequelize';
 
@@ -10,6 +10,13 @@ export interface SamplingResult {
   shouldSample: boolean;
   samplingRate?: number;
   hashValue?: number;
+  reason?: string;
+}
+
+export interface AgentSpanLimitResult {
+  allowed: boolean;
+  maxSpans?: number;
+  currentSpans?: number;
   reason?: string;
 }
 
@@ -55,6 +62,20 @@ export class SamplingService {
         }
 
         if (entity.agentId) {
+          const agent = await Agent.findOne({
+            where: {
+              id: entity.agentId,
+              userId,
+              projectId,
+              environmentId,
+            },
+            attributes: ['id', 'maxTraces'],
+          });
+          const maxTracesForAgent = Math.max(
+            1,
+            Number(agent?.maxTraces || env.MAX_TRACES_PER_AGENT)
+          );
+
           const rows = await Entity.sequelize!.query<{ traceCount: string | number }>(
             `
               SELECT COUNT(*)::bigint AS "traceCount"
@@ -70,11 +91,11 @@ export class SamplingService {
           );
           const sampledTracesForAgent = Number(rows[0]?.traceCount || 0);
 
-          if (sampledTracesForAgent >= env.MAX_TRACES_PER_AGENT) {
+          if (sampledTracesForAgent >= maxTracesForAgent) {
             return {
               shouldSample: false,
               samplingRate: Number(entity.samplingRate),
-              reason: `Trace rejected by agent limit (${sampledTracesForAgent}/${env.MAX_TRACES_PER_AGENT})`,
+              reason: `Trace rejected by agent limit (${sampledTracesForAgent}/${maxTracesForAgent})`,
             };
           }
         }
@@ -109,6 +130,114 @@ export class SamplingService {
     } catch (error) {
       logger.error({ error, userId, projectId, environmentId, entityName }, 'Error in sampling decision, defaulting to sample');
       return { shouldSample: true, reason: 'Error in sampling, defaulting to accept' };
+    }
+  }
+
+  static async checkAgentSpanLimit(
+    userId: string,
+    projectId: string,
+    environmentId: string,
+    entityName: string | undefined,
+    traceId: string,
+    spanId?: string
+  ): Promise<AgentSpanLimitResult> {
+    if (!entityName) {
+      return { allowed: true };
+    }
+
+    try {
+      const entity = await Entity.findOne({
+        where: { userId, projectId, environmentId, name: entityName },
+        order: [['createdAt', 'DESC']],
+        attributes: ['id', 'agentId'],
+      });
+
+      if (!entity?.agentId) {
+        return { allowed: true };
+      }
+
+      const agent = await Agent.findOne({
+        where: {
+          id: entity.agentId,
+          userId,
+          projectId,
+          environmentId,
+        },
+        attributes: ['id', 'maxSpans'],
+      });
+
+      if (!agent) {
+        return { allowed: true };
+      }
+
+      const maxSpans = Math.max(1, Number(agent.maxSpans || env.MAX_SPANS_PER_AGENT));
+
+      if (spanId) {
+        const existingSpanRows = await Trace.sequelize!.query<{ exists: boolean }>(
+          `
+            SELECT EXISTS (
+              SELECT 1
+              FROM trace_events e
+              JOIN traces t ON t.id = e.trace_id
+              JOIN entities en ON en.id = t.entity_id
+              WHERE en.agent_id = :agentId
+                AND e.span_id = :spanId
+            ) AS "exists"
+          `,
+          {
+            replacements: { agentId: agent.id, spanId },
+            type: QueryTypes.SELECT,
+          }
+        );
+
+        if (Boolean(existingSpanRows[0]?.exists)) {
+          return {
+            allowed: true,
+            maxSpans,
+          };
+        }
+      }
+
+      const currentSpans = await Trace.sequelize!.query<{ spanCount: string | number }>(
+        `
+          SELECT COUNT(DISTINCT e.span_id)::bigint AS "spanCount"
+          FROM trace_events e
+          JOIN traces t ON t.id = e.trace_id
+          JOIN entities en ON en.id = t.entity_id
+          WHERE en.agent_id = :agentId
+            AND e.span_id IS NOT NULL
+            AND e.span_id <> ''
+        `,
+        {
+          replacements: { agentId: agent.id },
+          type: QueryTypes.SELECT,
+        }
+      );
+
+      const spanCount = Number(currentSpans[0]?.spanCount || 0);
+      if (spanCount >= maxSpans) {
+        return {
+          allowed: false,
+          maxSpans,
+          currentSpans: spanCount,
+          reason: `Span rejected by agent limit (${spanCount}/${maxSpans})`,
+        };
+      }
+
+      return {
+        allowed: true,
+        maxSpans,
+        currentSpans: spanCount,
+      };
+    } catch (error) {
+      logger.error(
+        { error, userId, projectId, environmentId, entityName, traceId },
+        'Error while checking span limits, defaulting to allow'
+      );
+      return {
+        allowed: true,
+        reason: 'Error in span limit check, defaulting to allow',
+      };
     }
   }
 

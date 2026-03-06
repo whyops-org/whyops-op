@@ -67,6 +67,18 @@ export interface Project {
   updatedAt: Date;
 }
 
+export interface AgentRuntimeLimits {
+  defaultSamplingRate: number;
+  maxAgents: number;
+  maxSpans: number;
+}
+
+export interface AgentRuntimeSettings {
+  maxTraces: number;
+  maxSpans: number;
+  samplingRate: number;
+}
+
 // Environment types
 export type EnvironmentType = 'PRODUCTION' | 'STAGING' | 'DEVELOPMENT';
 

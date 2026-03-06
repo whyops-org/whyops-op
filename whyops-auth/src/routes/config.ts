@@ -89,6 +89,20 @@ app.get('/', (c) => {
         },
       },
     },
+
+    // Runtime limits and sampling defaults
+    limits: {
+      defaultSamplingRate: Number(env.DEFAULT_TRACE_SAMPLING_RATE),
+      defaultTraceSamplingRate: Number(env.DEFAULT_TRACE_SAMPLING_RATE),
+      maxAgents: Number(env.MAX_AGENTS_PER_ACCOUNT || env.MAX_AGENTS_PER_PROJECT),
+      maxAgentsPerProject: Number(env.MAX_AGENTS_PER_ACCOUNT || env.MAX_AGENTS_PER_PROJECT),
+    },
+
+    // Top-level aliases for backwards/forwards compatibility
+    defaultSamplingRate: Number(env.DEFAULT_TRACE_SAMPLING_RATE),
+    defaultTraceSamplingRate: Number(env.DEFAULT_TRACE_SAMPLING_RATE),
+    maxAgents: Number(env.MAX_AGENTS_PER_ACCOUNT || env.MAX_AGENTS_PER_PROJECT),
+    maxAgentsPerProject: Number(env.MAX_AGENTS_PER_ACCOUNT || env.MAX_AGENTS_PER_PROJECT),
   };
 
   return ResponseUtil.success(c, config);

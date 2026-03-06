@@ -139,6 +139,37 @@ export class EventService {
         };
       }
 
+      if (data.spanId) {
+        const spanLimit = await SamplingService.checkAgentSpanLimit(
+          data.userId,
+          data.projectId,
+          data.environmentId,
+          data.agentName,
+          data.traceId,
+          data.spanId
+        );
+
+        if (!spanLimit.allowed) {
+          logger.debug(
+            {
+              traceId: data.traceId,
+              spanId: data.spanId,
+              eventType: data.eventType,
+              maxSpans: spanLimit.maxSpans,
+              currentSpans: spanLimit.currentSpans,
+            },
+            'Span rejected by span limit'
+          );
+
+          return {
+            id: null,
+            status: 'sampled_out',
+            spanId: data.spanId,
+            message: spanLimit.reason || 'Span rejected by span limit',
+          };
+        }
+      }
+
       // 3. Idempotency Check
       const eventHash = SamplingService.generateContentHash({
         traceId: data.traceId,

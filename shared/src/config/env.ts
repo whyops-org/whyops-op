@@ -84,8 +84,15 @@ const envSchema = z.object({
 
   // V1 limits
   MAX_AGENTS_PER_PROJECT: z.coerce.number().int().positive().default(2),
+  MAX_AGENTS_PER_ACCOUNT: z.coerce.number().int().positive().default(2),
   MAX_TRACES_PER_AGENT: z.coerce.number().int().positive().default(10000),
   MAX_TRACES_PER_ENTITY: z.coerce.number().int().positive().default(1000),
+  MAX_SPANS_PER_AGENT: z
+    .preprocess(
+      (value) => value ?? process.env.MAX_SPANS_PER_TRACE ?? process.env.MAX_SPANS,
+      z.coerce.number().int().positive()
+    )
+    .default(1000),
   DEFAULT_TRACE_SAMPLING_RATE: z.coerce.number().min(0).max(1).default(0.2),
   
   // Better Auth

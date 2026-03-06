@@ -42,6 +42,12 @@ interface AggregatedAgentMetrics {
   lastActive: string | null;
 }
 
+interface AgentRuntimeRow {
+  id: string;
+  maxTraces: string | number;
+  maxSpans: string | number;
+}
+
 interface SingleAgentMetricRow {
   traceCount: string | number;
   lastActiveAt: string | Date | null;
@@ -372,13 +378,13 @@ app.post('/init', zValidator('json', entityInitSchema), async (c) => {
 
   } catch (error: any) {
     if (
-      error?.code === EntityService.PROJECT_AGENT_LIMIT_REACHED ||
-      error?.message?.includes('Agent limit reached for project')
+      error?.code === EntityService.ACCOUNT_AGENT_LIMIT_REACHED ||
+      error?.message?.includes('Agent limit reached for account')
     ) {
       return c.json(
         {
           success: false,
-          error: `Project agent limit reached (${error?.message || 'too many agents'})`,
+          error: `Account agent limit reached (${error?.message || 'too many agents'})`,
         },
         409
       );
@@ -676,9 +682,25 @@ app.get('/', async (c) => {
       }
     }
 
+    const agentRuntimeRows = await Agent.findAll({
+      where: { id: agentIds },
+      attributes: ['id', 'maxTraces', 'maxSpans'],
+    });
+    const runtimeByAgentId = new Map<string, AgentRuntimeRow>(
+      agentRuntimeRows.map((row) => [
+        row.id,
+        {
+          id: row.id,
+          maxTraces: Number((row as any).maxTraces || 0),
+          maxSpans: Number((row as any).maxSpans || 0),
+        },
+      ])
+    );
+
     const items = agents.map((agent) => {
       const latestVersion = latestVersionByAgentId.get(agent.id);
       const metrics = agentMetrics.get(agent.id);
+      const runtime = runtimeByAgentId.get(agent.id);
 
       return {
         id: agent.id,
@@ -686,6 +708,8 @@ app.get('/', async (c) => {
         projectId: agent.projectId,
         environmentId: agent.environmentId,
         name: agent.name,
+        maxTraces: runtime?.maxTraces ? Number(runtime.maxTraces) : undefined,
+        maxSpans: runtime?.maxSpans ? Number(runtime.maxSpans) : undefined,
         traceCount: metrics?.traceCount ?? 0,
         successPercentage: metrics?.successPercentage ?? 100,
         lastActive: metrics?.lastActive ?? null,
@@ -755,7 +779,7 @@ app.get('/:id', async (c) => {
                 projectId: auth.projectId,
                 environmentId: auth.environmentId,
             },
-            attributes: ['id', 'userId', 'projectId', 'environmentId', 'name', 'createdAt', 'updatedAt'],
+            attributes: ['id', 'userId', 'projectId', 'environmentId', 'name', 'maxTraces', 'maxSpans', 'createdAt', 'updatedAt'],
         });
 
         if (!agent) {
@@ -764,7 +788,7 @@ app.get('/:id', async (c) => {
               id,
               userId: auth.userId,
             },
-            attributes: ['id', 'userId', 'projectId', 'environmentId', 'name', 'createdAt', 'updatedAt'],
+            attributes: ['id', 'userId', 'projectId', 'environmentId', 'name', 'maxTraces', 'maxSpans', 'createdAt', 'updatedAt'],
           });
 
           if (fallbackAgent) {
@@ -803,6 +827,8 @@ app.get('/:id', async (c) => {
             projectId: agent.projectId,
             environmentId: agent.environmentId,
             name: agent.name,
+            maxTraces: Number((agent as any).maxTraces || 0) || undefined,
+            maxSpans: Number((agent as any).maxSpans || 0) || undefined,
             traceCount: agentMetrics.traceCount,
             successPercentage: successPercentageByDate,
             successRatePeriod,

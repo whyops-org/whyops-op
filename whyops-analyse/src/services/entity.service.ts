@@ -8,6 +8,7 @@ const logger = createServiceLogger('analyse:entity-service');
 
 export class EntityService {
   static readonly PROJECT_AGENT_LIMIT_REACHED = 'PROJECT_AGENT_LIMIT_REACHED';
+  static readonly ACCOUNT_AGENT_LIMIT_REACHED = 'ACCOUNT_AGENT_LIMIT_REACHED';
 
   private static readonly TRACE_DELETE_CHUNK_SIZE = 1000;
 
@@ -64,16 +65,20 @@ export class EntityService {
         const projectAgentCount = await Agent.count({
           where: {
             userId: input.userId,
-            projectId: input.projectId,
           },
           transaction,
         });
 
-        if (projectAgentCount >= env.MAX_AGENTS_PER_PROJECT) {
+        const accountAgentLimit = Math.max(
+          1,
+          Number(env.MAX_AGENTS_PER_ACCOUNT || env.MAX_AGENTS_PER_PROJECT)
+        );
+
+        if (projectAgentCount >= accountAgentLimit) {
           const error = new Error(
-            `Agent limit reached for project (max: ${env.MAX_AGENTS_PER_PROJECT})`
+            `Agent limit reached for account (max: ${accountAgentLimit})`
           ) as Error & { code?: string };
-          error.code = EntityService.PROJECT_AGENT_LIMIT_REACHED;
+          error.code = EntityService.ACCOUNT_AGENT_LIMIT_REACHED;
           throw error;
         }
 
@@ -83,6 +88,8 @@ export class EntityService {
             projectId: input.projectId,
             environmentId: input.environmentId,
             name: input.agentName,
+            maxTraces: env.MAX_TRACES_PER_AGENT,
+            maxSpans: env.MAX_SPANS_PER_AGENT,
           },
           { transaction }
         );
