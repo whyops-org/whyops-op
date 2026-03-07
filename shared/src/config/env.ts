@@ -37,7 +37,7 @@ const envSchema = z.object({
   DB_SSL_REJECT_UNAUTHORIZED: envBoolean.default(false),
   DB_POOL_MAX: z.coerce.number().default(20),
   DB_POOL_MIN: z.coerce.number().default(5),
-  DB_SLOW_QUERY_MS: z.coerce.number().default(200),
+  DB_SLOW_QUERY_MS: z.coerce.number().default(500),
   
   // Application
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),

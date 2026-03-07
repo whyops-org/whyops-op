@@ -24,13 +24,40 @@ export class TraceService {
    * Resolves entity and extracts metadata on first creation
    */
   static async ensureTraceExists(data: TraceCreationData): Promise<Trace | null> {
-    // 1. Resolve agent version by name (must be initialized already)
-    const resolvedAgentVersion = await EntityService.resolveLatestAgentVersionByName(
+    // 1. Resolve agent version by name (auto-initialize if missing)
+    let resolvedAgentVersion = await EntityService.resolveLatestAgentVersionByName(
       data.userId,
       data.projectId,
       data.environmentId,
       data.agentName
     );
+
+    if (!resolvedAgentVersion) {
+      logger.warn(
+        {
+          userId: data.userId,
+          projectId: data.projectId,
+          environmentId: data.environmentId,
+          agentName: data.agentName,
+        },
+        'Agent not initialized; attempting auto-initialization from event payload'
+      );
+
+      await EntityService.initAgentVersion({
+        userId: data.userId,
+        projectId: data.projectId,
+        environmentId: data.environmentId,
+        agentName: data.agentName,
+        metadata: this.extractInitMetadata(data.content, data.metadata),
+      });
+
+      resolvedAgentVersion = await EntityService.resolveLatestAgentVersionByName(
+        data.userId,
+        data.projectId,
+        data.environmentId,
+        data.agentName
+      );
+    }
 
     if (!resolvedAgentVersion) {
       throw new Error(`Agent '${data.agentName}' is not initialized`);
@@ -131,6 +158,25 @@ export class TraceService {
       model: openai.model || anthropic.model,
       systemMessage: openai.systemMessage || anthropic.systemMessage,
       tools: openai.tools || anthropic.tools,
+    };
+  }
+
+  private static extractInitMetadata(content?: any, metadata?: Record<string, any>) {
+    const fallbackMetadata = this.extractBestEffortMetadata(content, metadata);
+    const systemPrompt =
+      typeof metadata?.systemPrompt === 'string'
+        ? metadata.systemPrompt
+        : fallbackMetadata.systemMessage || '(Auto-initialized from ingested trace event)';
+    const tools = Array.isArray(metadata?.tools)
+      ? metadata.tools
+      : Array.isArray(fallbackMetadata.tools)
+        ? fallbackMetadata.tools
+        : [];
+
+    return {
+      systemPrompt,
+      tools,
+      description: 'Auto-initialized by analyse service from first ingested trace event',
     };
   }
 }
