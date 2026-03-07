@@ -21,7 +21,7 @@ import { verifyEmailConnection } from './utils/email.util';
 
 const logger = createServiceLogger('auth');
 const app = new Hono();
-const GET_SESSION_CACHE_TTL_MS = 10_000;
+const GET_SESSION_CACHE_TTL_MS = env.AUTH_GET_SESSION_CACHE_TTL_MS;
 const getSessionCache = new Map<string, { expiresAtMs: number; payload: unknown }>();
 const getSessionInFlight = new Map<string, Promise<unknown | null>>();
 

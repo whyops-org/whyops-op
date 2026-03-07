@@ -7,7 +7,7 @@ import type { BetterAuthSession } from './auth-utils';
 import { getSessionAuthContext, loadUserSession, loadUserSessionFast, loadUserSessionFromBetterAuth, validateApiKey } from './auth-utils';
 
 const logger = createServiceLogger('middleware:auth');
-const LOCAL_SESSION_CACHE_TTL_MS = 10_000;
+const LOCAL_SESSION_CACHE_TTL_MS = env.AUTH_LOCAL_SESSION_CACHE_TTL_MS;
 const SESSION_AUTH_CONTEXT_CACHE_TTL_MS = env.AUTH_MIDDLEWARE_SESSION_CONTEXT_CACHE_TTL_MS;
 const localSessionCache = new Map<string, { expiresAtMs: number; session: unknown | null }>();
 const localSessionInFlight = new Map<string, Promise<unknown | null>>();
