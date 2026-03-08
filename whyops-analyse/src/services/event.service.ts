@@ -109,20 +109,6 @@ export class EventService {
         samplingReason = samplingResult.reason;
       }
 
-      // 2. Ensure Trace Exists (also persists sampledIn on first write)
-      await TraceService.ensureTraceExists({
-        traceId: data.traceId,
-        userId: data.userId,
-        projectId: data.projectId,
-        environmentId: data.environmentId,
-        providerId: data.providerId,
-        agentName: data.agentName,
-        sampledIn,
-        content: data.content,
-        metadata: data.metadata,
-        timestamp: data.timestamp,
-      });
-
       if (!sampledIn) {
         logger.debug(
           {
@@ -138,6 +124,20 @@ export class EventService {
           message: samplingReason || 'Trace rejected by sampling',
         };
       }
+
+      // 2. Ensure Trace Exists (only for sampled-in traces)
+      await TraceService.ensureTraceExists({
+        traceId: data.traceId,
+        userId: data.userId,
+        projectId: data.projectId,
+        environmentId: data.environmentId,
+        providerId: data.providerId,
+        agentName: data.agentName,
+        sampledIn,
+        content: data.content,
+        metadata: data.metadata,
+        timestamp: data.timestamp,
+      });
 
       if (data.spanId) {
         const spanLimit = await SamplingService.checkAgentSpanLimit(
