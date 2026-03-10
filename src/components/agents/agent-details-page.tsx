@@ -28,6 +28,7 @@ export function AgentDetailsPage() {
   const [isSuccessRateLoading, setIsSuccessRateLoading] = useState(false);
   const [isTraceCountLoading, setIsTraceCountLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
+  const [hasAttemptedLoad, setHasAttemptedLoad] = useState(false);
 
   useEffect(() => {
     if (config?.analyseBaseUrl && agentId) {
@@ -37,6 +38,8 @@ export function AgentDetailsPage() {
         DEFAULT_TIMELINE_PERIOD
       ).catch((err) => {
         setError(err instanceof Error ? err.message : "Failed to load agent");
+      }).finally(() => {
+        setHasAttemptedLoad(true);
       });
     }
   }, [config?.analyseBaseUrl, agentId, fetchAgentById]);
@@ -69,7 +72,10 @@ export function AgentDetailsPage() {
     }
   };
 
-  if (isLoading) {
+  const shouldShowInitialLoader =
+    !hasAttemptedLoad || isLoading || (config?.analyseBaseUrl && !currentAgent && !error);
+
+  if (shouldShowInitialLoader) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Spinner className="h-8 w-8 border-2 text-primary" />

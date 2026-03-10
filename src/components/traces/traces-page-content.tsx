@@ -40,10 +40,13 @@ export function TracesPageContent() {
   const config = useConfigStore((state) => state.config);
   const [searchQuery, setSearchQuery] = useState("");
   const [localIsLoading, setLocalIsLoading] = useState(false);
+  const [hasAttemptedInitialLoad, setHasAttemptedInitialLoad] = useState(false);
 
   useEffect(() => {
     if (config?.analyseBaseUrl) {
-      fetchThreads(undefined, 1, pagination.count);
+      fetchThreads(undefined, 1, pagination.count).finally(() => {
+        setHasAttemptedInitialLoad(true);
+      });
     }
   }, [config?.analyseBaseUrl, fetchThreads, pagination.count]);
 
@@ -71,7 +74,10 @@ export function TracesPageContent() {
     router.push(`/agents/${resolvedAgentId}/traces/${thread.threadId}`);
   };
 
-  const currentLoading = isLoading || localIsLoading;
+  const shouldShowInitialLoader =
+    !hasAttemptedInitialLoad || isLoading || (config?.analyseBaseUrl && threads.length === 0 && !isRefetching);
+
+  const currentLoading = shouldShowInitialLoader || localIsLoading;
 
   return (
     <div className="space-y-6 p-8">

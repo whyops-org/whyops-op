@@ -23,6 +23,7 @@ export function TraceDetailsPageContent() {
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [rightCollapsed, setRightCollapsed] = useState(false);
   const [view, setView] = useState<"graph" | "timeline" | "judge">("graph");
+  const [hasAttemptedLoad, setHasAttemptedLoad] = useState(false);
   const isJudgeView = view === "judge";
 
   const config = useConfigStore((state) => state.config);
@@ -30,11 +31,16 @@ export function TraceDetailsPageContent() {
 
   useEffect(() => {
     if (traceId && config?.analyseBaseUrl) {
-      fetchTrace(traceId);
+      fetchTrace(traceId).finally(() => {
+        setHasAttemptedLoad(true);
+      });
     }
   }, [traceId, config?.analyseBaseUrl, fetchTrace]);
 
-  if (isLoading) {
+  const shouldShowInitialLoader =
+    !hasAttemptedLoad || isLoading || (config?.analyseBaseUrl && !trace && !isLoading);
+
+  if (shouldShowInitialLoader) {
     return (
       <div className="flex h-[calc(100vh-56px)] items-center justify-center bg-background">
         <Spinner className="h-8 w-8 border-2 border-border border-t-foreground" />
