@@ -3,6 +3,7 @@
 import { PropsWithChildren, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
+import { Spinner } from "@/components/ui/spinner";
 import { useAuthStore } from "@/stores/authStore";
 
 export function AuthGate({ children }: PropsWithChildren) {
@@ -33,6 +34,14 @@ export function AuthGate({ children }: PropsWithChildren) {
       router.replace("/");
     }
   }, [hasSession, pathname, router, sessionChecked, user?.onboardingComplete]);
+
+  if (pathname === "/" && (!sessionChecked || hasSession)) {
+    return (
+      <div className="flex h-dvh w-full items-center justify-center bg-grid">
+        <Spinner className="h-8 w-8 border-4 text-primary" />
+      </div>
+    );
+  }
 
   return children;
 }
