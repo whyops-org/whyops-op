@@ -1,7 +1,9 @@
+import { serve } from '@hono/node-server';
 import { getIntegrationCorsOptions } from '@whyops/shared/cors';
 import env from '@whyops/shared/env';
 import { createAuthMiddleware, getAuthContext } from '@whyops/shared/middleware';
 import { createServiceLogger } from '@whyops/shared/logger';
+import { closeRedisClient } from '@whyops/shared/services';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger as honoLogger } from 'hono/logger';
@@ -59,9 +61,44 @@ app.notFound((c) => {
 
 const port = env.PROXY_PORT;
 
-logger.info(`🚀 WhyOps Proxy Server starting on port ${port}`);
+const server = serve({ fetch: app.fetch, port }, (info) => {
+  logger.info({ port: info.port }, 'WhyOps Proxy Server listening');
+});
 
-export default {
-  port,
-  fetch: app.fetch,
-};
+async function shutdown(signal: NodeJS.Signals) {
+  logger.info({ signal }, 'Shutting down proxy service');
+
+  const forceExitTimer = setTimeout(() => {
+    logger.error({ signal }, 'Proxy shutdown timed out');
+    process.exit(1);
+  }, 10000);
+  forceExitTimer.unref();
+
+  try {
+    await new Promise<void>((resolve, reject) => {
+      server.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+
+        resolve();
+      });
+    });
+
+    await closeRedisClient();
+    logger.info({ signal }, 'Proxy service stopped cleanly');
+    process.exit(0);
+  } catch (error) {
+    logger.error({ error, signal }, 'Proxy shutdown failed');
+    process.exit(1);
+  }
+}
+
+for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+  process.once(signal, () => {
+    void shutdown(signal);
+  });
+}
+
+export default app;

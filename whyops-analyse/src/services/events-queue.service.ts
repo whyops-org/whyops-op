@@ -11,6 +11,8 @@ import {
 import { EventService, type EventData } from './event.service';
 
 const logger = createServiceLogger('analyse:events-queue');
+let workerLoopPromise: Promise<void> | null = null;
+let stopWorkerRequested = false;
 
 interface QueuedEventEnvelope {
   apiKey?: string;
@@ -152,6 +154,11 @@ export async function startAnalyseEventsWorker(): Promise<void> {
     return;
   }
 
+  if (workerLoopPromise) {
+    logger.info('Analyse events worker already running');
+    return;
+  }
+
   const groupReady = await ensureRedisConsumerGroup(
     env.EVENTS_STREAM_NAME,
     env.EVENTS_STREAM_GROUP
@@ -176,8 +183,10 @@ export async function startAnalyseEventsWorker(): Promise<void> {
     'Analyse events worker started'
   );
 
-  const loop = async () => {
-    while (true) {
+  stopWorkerRequested = false;
+
+  workerLoopPromise = (async () => {
+    while (!stopWorkerRequested) {
       try {
         const messages = await readRedisStreamGroup<QueuedEventEnvelope>(
           env.EVENTS_STREAM_NAME,
@@ -186,6 +195,10 @@ export async function startAnalyseEventsWorker(): Promise<void> {
           env.EVENTS_STREAM_BATCH_SIZE,
           env.EVENTS_STREAM_BLOCK_MS
         );
+
+        if (stopWorkerRequested) {
+          break;
+        }
 
         if (messages.length === 0) {
           continue;
@@ -197,11 +210,27 @@ export async function startAnalyseEventsWorker(): Promise<void> {
           )
         );
       } catch (error) {
+        if (stopWorkerRequested) {
+          break;
+        }
+
         logger.error({ error, consumer }, 'Analyse events worker loop error');
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
     }
-  };
 
-  void loop();
+    logger.info({ consumer }, 'Analyse events worker stopped');
+  })().finally(() => {
+    workerLoopPromise = null;
+    stopWorkerRequested = false;
+  });
+}
+
+export async function stopAnalyseEventsWorker(): Promise<void> {
+  if (!workerLoopPromise) {
+    return;
+  }
+
+  stopWorkerRequested = true;
+  await workerLoopPromise;
 }

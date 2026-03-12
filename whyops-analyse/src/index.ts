@@ -1,8 +1,10 @@
+import { serve } from '@hono/node-server';
 import { getIntegrationCorsOptions } from '@whyops/shared/cors';
-import { initDatabase } from '@whyops/shared/database';
+import { closeDatabase, initDatabase } from '@whyops/shared/database';
 import env from '@whyops/shared/env';
 import { createAuthMiddleware, getAuthContext, requireAuth } from '@whyops/shared/middleware';
 import { createServiceLogger } from '@whyops/shared/logger';
+import { closeRedisClient } from '@whyops/shared/services';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger as honoLogger } from 'hono/logger';
@@ -16,7 +18,7 @@ import healthRouter from './routes/health';
 import llmCostsRouter from './routes/llmCosts';
 import threadsRouter from './routes/threads';
 import visualizeRouter from './routes/visualize';
-import { startAnalyseEventsWorker } from './services/events-queue.service';
+import { startAnalyseEventsWorker, stopAnalyseEventsWorker } from './services/events-queue.service';
 
 const logger = createServiceLogger('analyse');
 const app = new Hono();
@@ -85,10 +87,46 @@ app.onError((err, c) => {
 
 const port = env.ANALYSE_PORT;
 
-logger.info(`🚀 WhyOps Analyse Server starting on port ${port}`);
+const server = serve({ fetch: app.fetch, port }, (info) => {
+  logger.info({ port: info.port }, 'WhyOps Analyse Server listening');
+});
 
-export default {
-  port,
-  idleTimeout: 120,
-  fetch: app.fetch,
-};
+async function shutdown(signal: NodeJS.Signals) {
+  logger.info({ signal }, 'Shutting down analyse service');
+
+  const forceExitTimer = setTimeout(() => {
+    logger.error({ signal }, 'Analyse shutdown timed out');
+    process.exit(1);
+  }, 10000);
+  forceExitTimer.unref();
+
+  try {
+    await new Promise<void>((resolve, reject) => {
+      server.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+
+        resolve();
+      });
+    });
+
+    await stopAnalyseEventsWorker();
+    await closeRedisClient();
+    await closeDatabase();
+    logger.info({ signal }, 'Analyse service stopped cleanly');
+    process.exit(0);
+  } catch (error) {
+    logger.error({ error, signal }, 'Analyse shutdown failed');
+    process.exit(1);
+  }
+}
+
+for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+  process.once(signal, () => {
+    void shutdown(signal);
+  });
+}
+
+export default app;

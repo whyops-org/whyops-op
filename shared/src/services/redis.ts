@@ -52,6 +52,26 @@ export async function getRedisClient(): Promise<AnyRedisClient | null> {
   return redisConnectPromise;
 }
 
+export async function closeRedisClient(): Promise<void> {
+  const client = redisClient;
+  redisClient = null;
+  redisConnectPromise = null;
+
+  if (!client) {
+    return;
+  }
+
+  try {
+    if (client.isOpen) {
+      await client.quit();
+      logger.info('Redis connection closed');
+    }
+  } catch (error) {
+    logger.warn({ error }, 'Graceful Redis quit failed, forcing disconnect');
+    client.disconnect();
+  }
+}
+
 export function prefixedRedisKey(...parts: Array<string | number | undefined | null>): string {
   const values = parts
     .filter((part) => part !== undefined && part !== null && String(part).length > 0)

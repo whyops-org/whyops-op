@@ -70,6 +70,6 @@ COPY --from=builder /app/whyops-${SERVICE} ./whyops-${SERVICE}
 # Service ports (proxy 8080, analyse 8081, auth 8082)
 EXPOSE 8080 8081 8082
 
-# CMD selects the service based on SERVICE arg
+# Start the service directly so the app process receives signals as PID 1.
 WORKDIR /app/whyops-${SERVICE}
-CMD ["npm", "run", "start"]
+CMD ["node", "--import", "tsx", "src/index.ts"]
