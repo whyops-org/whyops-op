@@ -4,3 +4,4 @@ import * as redisService from './redis';
 export { LlmCostService, llmCostService };
 export { redisService };
 export * from './redis';
+export { sendPlainEmail, isMailerooConfigured } from './maileroo';

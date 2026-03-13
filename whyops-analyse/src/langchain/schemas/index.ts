@@ -10,3 +10,7 @@ export * from './agent-section-insights.schema';
 export * from './agent-overview-analysis.schema';
 
 export * from './agent-trace-intent-routing.schema';
+export * from './agent-knowledge-research.schema';
+export * from './eval-generation.schema';
+export * from './eval-validation.schema';
+export * from './eval-critique.schema';

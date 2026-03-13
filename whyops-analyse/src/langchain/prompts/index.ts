@@ -26,3 +26,23 @@ export {
   agentTraceIntentRoutingPrompt,
   AGENT_TRACE_INTENT_ROUTING_VERSION,
 } from './agent-trace-intent-routing.prompt';
+
+export {
+  agentKnowledgeResearchPrompt,
+  AGENT_KNOWLEDGE_RESEARCH_VERSION,
+} from './agent-knowledge-research.prompt';
+
+export {
+  evalGenerationPrompt,
+  EVAL_GENERATION_VERSION,
+} from './eval-generation.prompt';
+
+export {
+  evalValidationPrompt,
+  EVAL_VALIDATION_VERSION,
+} from './eval-validation.prompt';
+
+export {
+  evalCritiquePrompt,
+  EVAL_CRITIQUE_VERSION,
+} from './eval-critique.prompt';

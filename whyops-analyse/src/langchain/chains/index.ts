@@ -24,3 +24,23 @@ export {
   runAgentTraceIntentRoutingChain,
   type AgentTraceIntentRoutingInput,
 } from './agent-trace-intent-routing.chain';
+
+export {
+  runAgentKnowledgeResearchChain,
+  type AgentKnowledgeResearchInput,
+} from './agent-knowledge-research.chain';
+
+export {
+  runEvalGenerationChain,
+  type EvalGenerationInput,
+} from './eval-generation.chain';
+
+export {
+  runEvalValidationChain,
+  type EvalValidationInput,
+} from './eval-validation.chain';
+
+export {
+  runEvalCritiqueChain,
+  type EvalCritiqueInput,
+} from './eval-critique.chain';

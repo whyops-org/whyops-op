@@ -133,6 +133,15 @@ const envSchema = z.object({
   JUDGE_LLM_MODEL: z.string().default('azure/gpt-4.1'),
   JUDGE_LLM_TEMPERATURE: z.coerce.number().default(0),
   JUDGE_MAX_RETRIES: z.coerce.number().default(2),
+
+  // Intelligence APIs (all optional — providers are skipped when keys are missing)
+  LINKUP_API_KEY: z.string().optional(),
+  GITHUB_TOKEN: z.string().optional(),
+  REDDIT_CLIENT_ID: z.string().optional(),
+  REDDIT_CLIENT_SECRET: z.string().optional(),
+  REDDIT_USERNAME: z.string().optional(),
+  REDDIT_PASSWORD: z.string().optional(),
+  TWITTER_BEARER_TOKEN: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

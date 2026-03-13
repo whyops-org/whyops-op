@@ -28,6 +28,10 @@ export {
   runAgentSectionInsightsChain,
   runAgentOverviewAnalysisChain,
   runAgentTraceIntentRoutingChain,
+  runAgentKnowledgeResearchChain,
+  runEvalGenerationChain,
+  runEvalValidationChain,
+  runEvalCritiqueChain,
 } from './chains';
 
 // Utilities
@@ -45,5 +49,7 @@ export type { AgentSynthesisInput } from './chains/agent-synthesis.chain';
 export type { AgentSectionInsightsInput } from './chains/agent-section-insights.chain';
 export type { AgentOverviewAnalysisInput } from './chains/agent-overview-analysis.chain';
 export type { AgentTraceIntentRoutingInput } from './chains/agent-trace-intent-routing.chain';
+export type { AgentKnowledgeResearchInput } from './chains/agent-knowledge-research.chain';
+export type { EvalGenerationInput } from './chains/eval-generation.chain';
 export type { PromptBlock, SegmentationResult } from './utils/prompt-segmenter';
 export type { ToolDefinition, ToolFilterInput, ToolFilterResult } from './utils/tool-relevance-filter';

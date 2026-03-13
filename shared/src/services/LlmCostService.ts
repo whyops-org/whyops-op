@@ -1,6 +1,7 @@
 import { LlmCost } from '../models';
 import { Op } from 'sequelize';
 import sequelize from '../database';
+import env from '../config/env';
 import { createServiceLogger } from '../utils/logger';
 
 const logger = createServiceLogger('shared:llm-cost-service');
@@ -152,7 +153,10 @@ export class LlmCostService {
 
   private async fetchFromLinkup(query: string): Promise<any> {
     const url = "https://api.linkup.so/v1/search";
-    const apiKey = "c9a287bc-e8de-492d-94ca-b42658a17293";
+    const apiKey = env.LINKUP_API_KEY;
+    if (!apiKey) {
+      throw new Error('LINKUP_API_KEY environment variable is not set');
+    }
 
     const payload = {
       q: `cost of ${query}`,
