@@ -9,6 +9,7 @@ import { AgentTraceCountTimeline } from "@/components/agents/agent-trace-count-t
 import { AgentTraceTimeline } from "@/components/agents/agent-trace-timeline";
 import { AgentVersionConfigTab } from "@/components/agents/agent-version-config-tab";
 import { AgentAnalysisTab } from "@/components/agents/analysis/AgentAnalysisTab";
+import { AgentEvalsTab } from "@/components/agents/evals/AgentEvalsTab";
 import { RecentTracesTable } from "@/components/agents/recent-traces-table";
 import { Spinner } from "@/components/ui/spinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -97,9 +98,10 @@ export function AgentDetailsPage() {
     <div className="space-y-6 p-8">
       <AgentDetailHeader agent={currentAgent} />
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="w-full max-w-md">
+        <TabsList className="w-full max-w-lg">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="analysis">Analysis</TabsTrigger>
+          <TabsTrigger value="evals">Evals</TabsTrigger>
           <TabsTrigger value="configuration">Configuration</TabsTrigger>
         </TabsList>
 
@@ -135,6 +137,10 @@ export function AgentDetailsPage() {
 
         <TabsContent value="analysis">
           <AgentAnalysisTab key={agentId} agentId={agentId} />
+        </TabsContent>
+
+        <TabsContent value="evals">
+          <AgentEvalsTab key={agentId} agentId={agentId} />
         </TabsContent>
       </Tabs>
     </div>
