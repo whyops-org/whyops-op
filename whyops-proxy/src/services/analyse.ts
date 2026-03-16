@@ -1,5 +1,6 @@
 import env from '@whyops/shared/env';
 import { createServiceLogger } from '@whyops/shared/logger';
+import { getInternalServiceUrl } from '@whyops/shared/service-urls';
 import { enqueueRedisStreamEvent } from '@whyops/shared/services';
 
 const logger = createServiceLogger('proxy:analyse');
@@ -70,7 +71,7 @@ export async function sendToAnalyse(
       return;
     }
 
-    const analyseUrl = `${env.ANALYSE_URL}/api/events/ingest`;
+    const analyseUrl = `${getInternalServiceUrl('analyse')}/api/events/ingest`;
 
     // Fire-and-forget request - only forward API key
     fetch(analyseUrl, {

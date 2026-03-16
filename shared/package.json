@@ -9,6 +9,7 @@
     "./utils": "./src/utils/index.ts",
     "./logger": "./src/utils/logger.ts",
     "./env": "./src/config/env.ts",
+    "./service-urls": "./src/config/service-urls.ts",
     "./cors": "./src/config/cors.ts",
     "./services": "./src/services/index.ts",
     "./middleware": "./src/middleware/index.ts"

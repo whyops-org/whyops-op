@@ -1,5 +1,6 @@
 import env from '@whyops/shared/env';
 import { createServiceLogger } from '@whyops/shared/logger';
+import { getInternalServiceUrl } from '@whyops/shared/service-urls';
 import { Hono } from 'hono';
 
 const logger = createServiceLogger('proxy:agents');
@@ -16,7 +17,7 @@ app.post('/agents/init', async (c) => {
   }
 
   try {
-    const response = await fetch(`${env.ANALYSE_URL}/api/entities/init`, {
+    const response = await fetch(`${getInternalServiceUrl('analyse')}/api/entities/init`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -1,6 +1,7 @@
 import env from '@whyops/shared/env';
 import { createServiceLogger } from '@whyops/shared/logger';
 import { ApiKey, Entity, Environment, Project, Provider } from '@whyops/shared/models';
+import { getInternalServiceUrl } from '@whyops/shared/service-urls';
 import {
   cacheApiKeyAuthContext,
   claimRedisThrottleGate,
@@ -162,7 +163,7 @@ export interface BetterAuthSession {
 }
 
 export async function getSessionFromAuthServer(headers: Headers): Promise<BetterAuthSession | null> {
-  const authUrl = env.AUTH_URL.replace(/\/$/, '');
+  const authUrl = getInternalServiceUrl('auth');
   const url = `${authUrl}/api/auth/get-session`;
   const cacheKey = getRemoteSessionCacheKey(headers);
 

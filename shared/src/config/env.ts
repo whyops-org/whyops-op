@@ -51,6 +51,9 @@ const envSchema = z.object({
   PROXY_URL: z.string().url().default('http://localhost:8080'),
   ANALYSE_URL: z.string().url().default('http://localhost:8081'),
   AUTH_URL: z.string().url().default('http://localhost:8082'),
+  INTERNAL_PROXY_URL: z.string().url().optional(),
+  INTERNAL_ANALYSE_URL: z.string().url().optional(),
+  INTERNAL_AUTH_URL: z.string().url().optional(),
   
   // Security
   JWT_SECRET: z.string().default('your-super-secret-jwt-key-change-in-production'),
