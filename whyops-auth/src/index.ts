@@ -10,6 +10,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger as honoLogger } from 'hono/logger';
 import { auth } from './lib/auth';
+import { normalizeAuthRequest } from './lib/normalize-auth-request';
 import apiKeysRouter from './routes/apiKeys';
 import authRouter from './routes/auth';
 import configRouter from './routes/config';
@@ -139,7 +140,7 @@ app.get('/api/auth/get-session', async (c) => {
 // Better Auth handler - must be before session middleware
 // Handles /api/auth/* endpoints like /api/auth/get-session, /api/auth/sign-in, etc.
 app.on(['POST', 'GET'], '/api/auth/*', (c) => {
-  return auth.handler(c.req.raw);
+  return auth.handler(normalizeAuthRequest(c.req.raw));
 });
 
 // Custom auth routes (for non-Better-Auth endpoints)
