@@ -108,12 +108,12 @@ jobs:
             "ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}"
           )
 
-          PROVISIONING_STATE=$(az containerapp show --name whyops-proxy --resource-group ${{ secrets.RESOURCE_GROUP }} --query properties.provisioningState -o tsv 2>/dev/null || echo "NotFound")
+          PROVISIONING_STATE=$(az containerapp show --name whyops-proxy-ci --resource-group ${{ secrets.RESOURCE_GROUP }} --query properties.provisioningState -o tsv 2>/dev/null || echo "NotFound")
           
           if [[ "$PROVISIONING_STATE" == "Succeeded" ]]; then
-            echo "Updating existing whyops-proxy..."
+            echo "Updating existing whyops-proxy-ci..."
             az containerapp update \
-              --name whyops-proxy \
+              --name whyops-proxy-ci \
               --resource-group ${{ secrets.RESOURCE_GROUP }} \
               --image ${{ secrets.REGISTRY_LOGIN_SERVER }}/whyops-proxy:${{ github.sha }} \
               --min-replicas 1 \
@@ -122,10 +122,10 @@ jobs:
               --memory 2Gi \
               --set-env-vars "${ENV_VARS[@]}"
           else
-            echo "Creating whyops-proxy (state: $PROVISIONING_STATE)..."
-            [[ "$PROVISIONING_STATE" != "NotFound" ]] && az containerapp delete --name whyops-proxy --resource-group ${{ secrets.RESOURCE_GROUP }} --yes || true
+            echo "Creating whyops-proxy-ci (state: $PROVISIONING_STATE)..."
+            [[ "$PROVISIONING_STATE" != "NotFound" ]] && az containerapp delete --name whyops-proxy-ci --resource-group ${{ secrets.RESOURCE_GROUP }} --yes || true
             az containerapp create \
-              --name whyops-proxy \
+              --name whyops-proxy-ci \
               --resource-group ${{ secrets.RESOURCE_GROUP }} \
               --environment ${{ secrets.CONTAINER_APP_ENVIRONMENT }} \
               --image ${{ secrets.REGISTRY_LOGIN_SERVER }}/whyops-proxy:${{ github.sha }} \
@@ -232,12 +232,12 @@ jobs:
             "ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}"
           )
 
-          PROVISIONING_STATE=$(az containerapp show --name whyops-analyse --resource-group ${{ secrets.RESOURCE_GROUP }} --query properties.provisioningState -o tsv 2>/dev/null || echo "NotFound")
+          PROVISIONING_STATE=$(az containerapp show --name whyops-analyse-ci --resource-group ${{ secrets.RESOURCE_GROUP }} --query properties.provisioningState -o tsv 2>/dev/null || echo "NotFound")
           
           if [[ "$PROVISIONING_STATE" == "Succeeded" ]]; then
-            echo "Updating existing whyops-analyse..."
+            echo "Updating existing whyops-analyse-ci..."
             az containerapp update \
-              --name whyops-analyse \
+              --name whyops-analyse-ci \
               --resource-group ${{ secrets.RESOURCE_GROUP }} \
               --image ${{ secrets.REGISTRY_LOGIN_SERVER }}/whyops-analyse:${{ github.sha }} \
               --min-replicas 1 \
@@ -246,10 +246,10 @@ jobs:
               --memory 2Gi \
               --set-env-vars "${ENV_VARS[@]}"
           else
-            echo "Creating whyops-analyse (state: $PROVISIONING_STATE)..."
-            [[ "$PROVISIONING_STATE" != "NotFound" ]] && az containerapp delete --name whyops-analyse --resource-group ${{ secrets.RESOURCE_GROUP }} --yes || true
+            echo "Creating whyops-analyse-ci (state: $PROVISIONING_STATE)..."
+            [[ "$PROVISIONING_STATE" != "NotFound" ]] && az containerapp delete --name whyops-analyse-ci --resource-group ${{ secrets.RESOURCE_GROUP }} --yes || true
             az containerapp create \
-              --name whyops-analyse \
+              --name whyops-analyse-ci \
               --resource-group ${{ secrets.RESOURCE_GROUP }} \
               --environment ${{ secrets.CONTAINER_APP_ENVIRONMENT }} \
               --image ${{ secrets.REGISTRY_LOGIN_SERVER }}/whyops-analyse:${{ github.sha }} \
@@ -356,12 +356,12 @@ jobs:
             "ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}"
           )
 
-          PROVISIONING_STATE=$(az containerapp show --name whyops-auth --resource-group ${{ secrets.RESOURCE_GROUP }} --query properties.provisioningState -o tsv 2>/dev/null || echo "NotFound")
+          PROVISIONING_STATE=$(az containerapp show --name whyops-auth-ci --resource-group ${{ secrets.RESOURCE_GROUP }} --query properties.provisioningState -o tsv 2>/dev/null || echo "NotFound")
           
           if [[ "$PROVISIONING_STATE" == "Succeeded" ]]; then
-            echo "Updating existing whyops-auth..."
+            echo "Updating existing whyops-auth-ci..."
             az containerapp update \
-              --name whyops-auth \
+              --name whyops-auth-ci \
               --resource-group ${{ secrets.RESOURCE_GROUP }} \
               --image ${{ secrets.REGISTRY_LOGIN_SERVER }}/whyops-auth:${{ github.sha }} \
               --min-replicas 1 \
@@ -370,10 +370,10 @@ jobs:
               --memory 2Gi \
               --set-env-vars "${ENV_VARS[@]}"
           else
-            echo "Creating whyops-auth (state: $PROVISIONING_STATE)..."
-            [[ "$PROVISIONING_STATE" != "NotFound" ]] && az containerapp delete --name whyops-auth --resource-group ${{ secrets.RESOURCE_GROUP }} --yes || true
+            echo "Creating whyops-auth-ci (state: $PROVISIONING_STATE)..."
+            [[ "$PROVISIONING_STATE" != "NotFound" ]] && az containerapp delete --name whyops-auth-ci --resource-group ${{ secrets.RESOURCE_GROUP }} --yes || true
             az containerapp create \
-              --name whyops-auth \
+              --name whyops-auth-ci \
               --resource-group ${{ secrets.RESOURCE_GROUP }} \
               --environment ${{ secrets.CONTAINER_APP_ENVIRONMENT }} \
               --image ${{ secrets.REGISTRY_LOGIN_SERVER }}/whyops-auth:${{ github.sha }} \
