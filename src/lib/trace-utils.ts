@@ -336,19 +336,22 @@ export function convertEventsToNodesAndEdges(
         }
       }
     } else {
-      let parentEvent: TraceEvent | undefined;
-      if (event.parentStepId && eventsByStepId.has(event.parentStepId)) {
-        parentEvent = eventsByStepId.get(event.parentStepId);
-      }
-      if (parentEvent && parentEvent.id !== event.id) {
-        const parentIndex = displayedIndexById.get(parentEvent.id) ?? -1;
-        if (parentIndex > -1 && parentIndex < index) {
-          sourceIds = [parentEvent.id];
-        } else if (lastVisibleEventId) {
-          sourceIds = [lastVisibleEventId];
-        }
-      } else if (lastVisibleEventId) {
+      // Use chronological order (lastVisibleEventId) as the primary connection
+      // strategy. parentStepId can point far back in the event list when multiple
+      // events share the same parent (e.g. llm_thinking + llm_response both have
+      // parentStepId pointing at user_message, and a final llm_response after a
+      // tool chain also points back at user_message). Preferring lastVisibleEventId
+      // produces the correct linear flow.
+      if (lastVisibleEventId) {
         sourceIds = [lastVisibleEventId];
+      } else if (event.parentStepId && eventsByStepId.has(event.parentStepId)) {
+        const parentEvent = eventsByStepId.get(event.parentStepId);
+        if (parentEvent && parentEvent.id !== event.id) {
+          const parentIndex = displayedIndexById.get(parentEvent.id) ?? -1;
+          if (parentIndex > -1 && parentIndex < index) {
+            sourceIds = [parentEvent.id];
+          }
+        }
       }
     }
 
