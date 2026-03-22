@@ -19,6 +19,7 @@ export class ThreadController {
       const count = Math.min(Math.max(parseInt(c.req.query('count') || '20', 10) || 20, 1), 100);
       const page = Math.max(parseInt(c.req.query('page') || '1', 10) || 1, 1);
       const agentName = c.req.query('agentName')?.trim() || undefined;
+      const agentId = c.req.query('agentId')?.trim() || undefined;
       const include = parseInclude(c.req.query('include'));
       const startDateParam = c.req.query('startDate');
       const endDateParam = c.req.query('endDate');
@@ -35,6 +36,7 @@ export class ThreadController {
       const result = await ThreadService.listThreads({
         userId: auth.userId,
         agentName,
+        agentId,
         page,
         count,
         includeSystemPrompt: include.has('systemPrompt'),

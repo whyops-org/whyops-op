@@ -3,8 +3,12 @@ import { createServiceLogger } from '@whyops/shared/logger';
 import { ApiKey, Entity, Environment, Project, Provider } from '@whyops/shared/models';
 import { getInternalServiceUrl } from '@whyops/shared/service-urls';
 import {
+  cacheSessionAuthContext as cacheDistributedSessionAuthContext,
+  cacheSingleActiveProvider,
   cacheApiKeyAuthContext,
   claimRedisThrottleGate,
+  getCachedSessionAuthContext as getDistributedSessionAuthContext,
+  getCachedSingleActiveProvider,
   getCachedApiKeyAuthContext,
   prefixedRedisKey,
 } from '@whyops/shared/services';
@@ -131,7 +135,12 @@ async function touchApiKeyLastUsed(apiKeyId: string): Promise<void> {
   }
 }
 
-async function resolveSingleActiveProvider(userId: string): Promise<Provider | null> {
+async function resolveSingleActiveProvider(userId: string): Promise<any | null> {
+  const cached = await getCachedSingleActiveProvider<any>(userId);
+  if (cached.hit) {
+    return cached.provider;
+  }
+
   const providers = await Provider.findAll({
     where: {
       userId,
@@ -141,7 +150,9 @@ async function resolveSingleActiveProvider(userId: string): Promise<Provider | n
     limit: 2,
   });
 
-  return providers.length === 1 ? providers[0] : null;
+  const provider = providers.length === 1 ? providers[0] : null;
+  await cacheSingleActiveProvider(userId, provider ? provider.toJSON() : null);
+  return provider;
 }
 
 export interface BetterAuthSession {
@@ -397,6 +408,12 @@ export async function getSessionAuthContext(
     return context ? cloneSessionAuthContext(context) : null;
   }
 
+  const distributedCached = await getDistributedSessionAuthContext(userId);
+  if (distributedCached !== undefined) {
+    setCachedSessionAuthContext(userId, distributedCached);
+    return distributedCached ? cloneSessionAuthContext(distributedCached) : null;
+  }
+
   const fetchPromise = (async () => {
     try {
       // Primary strategy: rank active master keys by usage recency, then creation time.
@@ -488,6 +505,7 @@ export async function getSessionAuthContext(
   try {
     const context = await fetchPromise;
     setCachedSessionAuthContext(userId, context);
+    await cacheDistributedSessionAuthContext(userId, context);
     return context ? cloneSessionAuthContext(context) : null;
   } finally {
     sessionAuthContextInFlight.delete(userId);

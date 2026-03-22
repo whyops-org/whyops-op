@@ -308,6 +308,38 @@ export async function readRedisStreamGroup<T = JsonRecord>(
   }
 }
 
+export async function reclaimIdleRedisStreamMessages<T = JsonRecord>(
+  stream: string,
+  group: string,
+  consumer: string,
+  minIdleMs: number,
+  count: number
+): Promise<Array<RedisStreamMessage<T>>> {
+  const client = await getRedisClient();
+  if (!client) return [];
+
+  try {
+    const result = await (client as any).xAutoClaim(stream, group, consumer, minIdleMs, '0-0', { COUNT: count });
+    const messages: Array<{ id: string; message: Record<string, string> }> = result?.messages ?? [];
+    if (messages.length === 0) return [];
+
+    const parsed: Array<RedisStreamMessage<T>> = [];
+    for (const msg of messages) {
+      const payloadRaw = msg.message?.payload;
+      if (!payloadRaw) continue;
+      try {
+        parsed.push({ id: msg.id, payload: JSON.parse(payloadRaw) as T });
+      } catch (error) {
+        logger.warn({ error, messageId: msg.id }, 'Failed to parse reclaimed Redis stream payload');
+      }
+    }
+    return parsed;
+  } catch (error) {
+    logger.warn({ error, stream, group, consumer }, 'Failed to reclaim idle Redis stream messages');
+    return [];
+  }
+}
+
 export async function ackRedisStreamMessage(
   stream: string,
   group: string,

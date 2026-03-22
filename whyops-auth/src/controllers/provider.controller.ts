@@ -1,5 +1,9 @@
 import { createServiceLogger } from '@whyops/shared/logger';
-import { invalidateProviderCacheForUser } from '@whyops/shared/services';
+import {
+  invalidateProviderCacheForUser,
+  invalidateSessionAuthContext,
+  invalidateSingleActiveProviderCache,
+} from '@whyops/shared/services';
 import { Context } from 'hono';
 import { CreateProviderData, ProviderService, UpdateProviderData } from '../services';
 import { ResponseUtil } from '../utils';
@@ -36,6 +40,8 @@ export class ProviderController {
       } as CreateProviderData);
 
       await invalidateProviderCacheForUser(user.id);
+      await invalidateSingleActiveProviderCache(user.id);
+      await invalidateSessionAuthContext(user.id);
 
       return ResponseUtil.created(c, {
         id: provider.id,
@@ -99,6 +105,8 @@ export class ProviderController {
 
       const provider = await ProviderService.updateProvider(id, user.id, data);
       await invalidateProviderCacheForUser(user.id);
+      await invalidateSingleActiveProviderCache(user.id);
+      await invalidateSessionAuthContext(user.id);
 
       return ResponseUtil.success(c, {
         id: provider.id,
@@ -132,6 +140,8 @@ export class ProviderController {
 
       await ProviderService.deleteProvider(id, user.id);
       await invalidateProviderCacheForUser(user.id);
+      await invalidateSingleActiveProviderCache(user.id);
+      await invalidateSessionAuthContext(user.id);
 
       return ResponseUtil.success(c, { message: 'Provider deleted' });
     } catch (error: any) {
@@ -158,6 +168,8 @@ export class ProviderController {
 
       const isActive = await ProviderService.toggleProvider(id, user.id);
       await invalidateProviderCacheForUser(user.id);
+      await invalidateSingleActiveProviderCache(user.id);
+      await invalidateSessionAuthContext(user.id);
 
       return ResponseUtil.success(c, { isActive });
     } catch (error: any) {

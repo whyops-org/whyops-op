@@ -1,5 +1,9 @@
 import { createServiceLogger } from '@whyops/shared/logger';
-import { invalidateApiKeyAuthCacheByHash, invalidateApiKeyAuthCacheById } from '@whyops/shared/services';
+import {
+  invalidateApiKeyAuthCacheByHash,
+  invalidateApiKeyAuthCacheById,
+  invalidateSessionAuthContext,
+} from '@whyops/shared/services';
 import { hashApiKey } from '@whyops/shared/utils';
 import { Context } from 'hono';
 import { ApiKeyService, CreateApiKeyData, UpdateApiKeyData } from '../services';
@@ -98,6 +102,7 @@ export class ApiKeyController {
       if (apiKeyRecord.apiKey) {
         await invalidateApiKeyAuthCacheByHash(hashApiKey(apiKeyRecord.apiKey));
       }
+      await invalidateSessionAuthContext(user.id);
 
       return ResponseUtil.created(c, {
         id: apiKeyRecord.id,
@@ -168,6 +173,7 @@ export class ApiKeyController {
       
       const apiKey = await ApiKeyService.updateApiKey(id, user.id, data);
       await invalidateApiKeyAuthCacheById(id);
+      await invalidateSessionAuthContext(user.id);
 
       return ResponseUtil.success(c, {
         id: apiKey.id,
@@ -200,6 +206,7 @@ export class ApiKeyController {
       
       await ApiKeyService.deleteApiKey(id, user.id);
       await invalidateApiKeyAuthCacheById(id);
+      await invalidateSessionAuthContext(user.id);
 
       return ResponseUtil.success(c, { message: 'API key revoked' });
     } catch (error: any) {
@@ -226,6 +233,7 @@ export class ApiKeyController {
       
       const isActive = await ApiKeyService.toggleApiKey(id, user.id);
       await invalidateApiKeyAuthCacheById(id);
+      await invalidateSessionAuthContext(user.id);
 
       return ResponseUtil.success(c, { isActive });
     } catch (error: any) {
@@ -253,6 +261,7 @@ export class ApiKeyController {
       const regenerated = await ApiKeyService.regenerateApiKey(id, user.id);
       await invalidateApiKeyAuthCacheById(id);
       await invalidateApiKeyAuthCacheByHash(hashApiKey(regenerated.apiKey));
+      await invalidateSessionAuthContext(user.id);
 
       return ResponseUtil.success(c, {
         ...regenerated,

@@ -1,4 +1,5 @@
 import { createServiceLogger } from '@whyops/shared/logger';
+import { invalidateSessionAuthContext } from '@whyops/shared/services';
 import { Context } from 'hono';
 import { CreateProjectData, ProjectService, UpdateProjectData } from '../services';
 import { ResponseUtil } from '../utils';
@@ -56,6 +57,7 @@ export class ProjectController {
         userId: user.id,
         ...data,
       } as CreateProjectData);
+      await invalidateSessionAuthContext(user.id);
 
       return ResponseUtil.created(c, {
         project: {
@@ -99,6 +101,7 @@ export class ProjectController {
       const data = await c.req.json() as UpdateProjectData;
       
       const project = await ProjectService.updateProject(projectId, user.id, data);
+      await invalidateSessionAuthContext(user.id);
 
       return ResponseUtil.success(c, { project });
     } catch (error: any) {
@@ -124,6 +127,7 @@ export class ProjectController {
       }
       
       await ProjectService.deactivateProject(projectId, user.id);
+      await invalidateSessionAuthContext(user.id);
 
       return ResponseUtil.success(c, { message: 'Project deactivated successfully' });
     } catch (error: any) {

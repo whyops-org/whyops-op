@@ -152,6 +152,7 @@ export class ThreadService {
   static async listThreads(filters: {
     userId: string;
     agentName?: string;
+    agentId?: string;
     page?: number;
     count?: number;
     includeSystemPrompt?: boolean;
@@ -160,7 +161,7 @@ export class ThreadService {
     startDate?: Date;
     endDate?: Date;
   }): Promise<{ threads: ThreadListItem[]; pagination: { total: number; count: number; page: number; totalPages: number; hasMore: boolean } }> {
-    const { userId, agentName, page = 1, count = 20, includeSystemPrompt = false, includeTools = false, includeMetadata = false, startDate, endDate } = filters;
+    const { userId, agentName, agentId, page = 1, count = 20, includeSystemPrompt = false, includeTools = false, includeMetadata = false, startDate, endDate } = filters;
     const offset = (page - 1) * count;
 
     try {
@@ -182,6 +183,7 @@ export class ThreadService {
           LEFT JOIN event_stats es ON es.trace_id = t.id
           WHERE t.user_id = :userId
             AND (:agentName IS NULL OR a.name = :agentName)
+            AND (:agentId IS NULL OR a.id = :agentId)
             AND (:startDate IS NULL OR COALESCE(es.last_event_timestamp, t.created_at) >= :startDate)
             AND (:endDate IS NULL OR COALESCE(es.last_event_timestamp, t.created_at) <= :endDate)
         `,
@@ -189,6 +191,7 @@ export class ThreadService {
           replacements: {
             userId,
             agentName: agentName || null,
+            agentId: agentId || null,
             startDate: startDate || null,
             endDate: endDate || null,
           },
@@ -273,6 +276,7 @@ export class ThreadService {
           LEFT JOIN latest_event le ON le.trace_id = t.id
           WHERE t.user_id = :userId
             AND (:agentName IS NULL OR a.name = :agentName)
+            AND (:agentId IS NULL OR a.id = :agentId)
             AND (:startDate IS NULL OR COALESCE(es.last_event_timestamp, t.created_at) >= :startDate)
             AND (:endDate IS NULL OR COALESCE(es.last_event_timestamp, t.created_at) <= :endDate)
           ORDER BY COALESCE(es.last_event_timestamp, t.created_at) DESC
@@ -282,6 +286,7 @@ export class ThreadService {
           replacements: {
             userId,
             agentName: agentName || null,
+            agentId: agentId || null,
             count,
             offset,
             startDate: startDate || null,

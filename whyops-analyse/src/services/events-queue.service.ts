@@ -6,6 +6,7 @@ import {
   ackRedisStreamMessage,
   enqueueRedisStreamEvent,
   ensureRedisConsumerGroup,
+  reclaimIdleRedisStreamMessages,
   readRedisStreamGroup,
 } from '@whyops/shared/services';
 import { EventService, type EventData } from './event.service';
@@ -185,9 +186,29 @@ export async function startAnalyseEventsWorker(): Promise<void> {
 
   stopWorkerRequested = false;
 
+  const RECLAIM_IDLE_MS = 60_000;
+  const RECLAIM_EVERY_N_LOOPS = 10;
+  let loopCount = 0;
+
   workerLoopPromise = (async () => {
     while (!stopWorkerRequested) {
       try {
+        // Periodically reclaim messages pending from crashed/restarted consumers
+        if (loopCount % RECLAIM_EVERY_N_LOOPS === 0) {
+          const reclaimed = await reclaimIdleRedisStreamMessages<QueuedEventEnvelope>(
+            env.EVENTS_STREAM_NAME,
+            env.EVENTS_STREAM_GROUP,
+            consumer,
+            RECLAIM_IDLE_MS,
+            env.EVENTS_STREAM_BATCH_SIZE
+          );
+          if (reclaimed.length > 0) {
+            logger.info({ count: reclaimed.length, consumer }, 'Reclaimed idle pending events');
+            await Promise.all(reclaimed.map((m) => handleMessage(m.id, m.payload, consumer)));
+          }
+        }
+        loopCount++;
+
         const messages = await readRedisStreamGroup<QueuedEventEnvelope>(
           env.EVENTS_STREAM_NAME,
           env.EVENTS_STREAM_GROUP,
