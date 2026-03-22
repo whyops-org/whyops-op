@@ -13,6 +13,7 @@ import { formatDuration } from "@/lib/trace-format";
 import { cn } from "@/lib/utils";
 import {
   Brain,
+  BrainCircuit,
   CheckCircle,
   Code2,
   Sparkles,
@@ -419,6 +420,30 @@ export function ErrorNode({ data }: NodeProps) {
       dialogTitle="Error Payload"
       dialogDescription="Error details captured for this event."
       showSourceHandle={false}
+    />
+  );
+}
+
+// LLM Thinking Node - for llm_thinking events
+export function LLMThinkingNode({ data }: NodeProps) {
+  const content = data.contentText || "";
+  const jsonValue = toJsonValue(content);
+  const model = data.metadata?.model || "";
+  const rightSlot = model
+    ? <Badge className={META_BADGE_CLASS}>{model}</Badge>
+    : undefined;
+
+  return (
+    <JsonEventNode
+      widthClass="w-72"
+      icon={<BrainCircuit className="h-3.5 w-3.5 text-muted-foreground" />}
+      title="Thinking"
+      titleClassName="text-muted-foreground"
+      headerClassName="bg-surface-2/30"
+      rightSlot={rightSlot}
+      jsonValue={jsonValue}
+      dialogTitle="LLM Thinking"
+      dialogDescription="Internal reasoning produced by the model before responding."
     />
   );
 }

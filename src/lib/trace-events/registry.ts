@@ -8,6 +8,7 @@ import { ToolResultEventHandler, ToolResultHandler } from "./handlers/tool-resul
 import { ErrorMessageHandler } from "./handlers/error-message.handler";
 import { AgentMessageHandler } from "./handlers/agent-message.handler";
 import { SystemMessageHandler } from "./handlers/system-message.handler";
+import { LlmThinkingHandler } from "./handlers/llm-thinking.handler";
 
 class EventHandlerRegistry {
   private handlers: EventHandlerMap = new Map();
@@ -25,6 +26,7 @@ class EventHandlerRegistry {
     this.register(ErrorMessageHandler);
     this.register(AgentMessageHandler);
     this.register(SystemMessageHandler);
+    this.register(LlmThinkingHandler);
   }
 
   register(handler: EventHandler): void {
