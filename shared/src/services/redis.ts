@@ -266,6 +266,26 @@ export interface RedisStreamMessage<T> {
   payload: T;
 }
 
+function parseRedisStreamMessages<T = JsonRecord>(
+  messages: Array<{ id: string; message: Record<string, string> }>,
+  warnMessage: string
+): Array<RedisStreamMessage<T>> {
+  if (messages.length === 0) return [];
+
+  const parsed: Array<RedisStreamMessage<T>> = [];
+  for (const msg of messages) {
+    const payloadRaw = msg.message?.payload;
+    if (!payloadRaw) continue;
+    try {
+      parsed.push({ id: msg.id, payload: JSON.parse(payloadRaw) as T });
+    } catch (error) {
+      logger.warn({ error, messageId: msg.id }, warnMessage);
+    }
+  }
+
+  return parsed;
+}
+
 export async function readRedisStreamGroup<T = JsonRecord>(
   stream: string,
   group: string,
@@ -319,22 +339,58 @@ export async function reclaimIdleRedisStreamMessages<T = JsonRecord>(
   if (!client) return [];
 
   try {
-    const result = await (client as any).xAutoClaim(stream, group, consumer, minIdleMs, '0-0', { COUNT: count });
+    const result = await (client as any).xAutoClaim(
+      stream,
+      group,
+      consumer,
+      minIdleMs,
+      '0-0',
+      { COUNT: count }
+    );
     const messages: Array<{ id: string; message: Record<string, string> }> = result?.messages ?? [];
-    if (messages.length === 0) return [];
+    return parseRedisStreamMessages<T>(
+      messages,
+      'Failed to parse reclaimed Redis stream payload'
+    );
+  } catch (error) {
+    const message = String((error as any)?.message || error || '');
 
-    const parsed: Array<RedisStreamMessage<T>> = [];
-    for (const msg of messages) {
-      const payloadRaw = msg.message?.payload;
-      if (!payloadRaw) continue;
+    if (message.includes('unknown command') && message.includes('XAUTOCLAIM')) {
       try {
-        parsed.push({ id: msg.id, payload: JSON.parse(payloadRaw) as T });
-      } catch (error) {
-        logger.warn({ error, messageId: msg.id }, 'Failed to parse reclaimed Redis stream payload');
+        const pending = await (client as any).xPendingRange(
+          stream,
+          group,
+          '0-0',
+          '+',
+          count,
+          { IDLE: minIdleMs }
+        );
+
+        const ids = (pending ?? []).map((entry: { id: string }) => entry.id);
+        if (ids.length === 0) return [];
+
+        const claimed = await (client as any).xClaim(
+          stream,
+          group,
+          consumer,
+          minIdleMs,
+          ids
+        );
+
+        const messages: Array<{ id: string; message: Record<string, string> }> = claimed ?? [];
+        return parseRedisStreamMessages<T>(
+          messages,
+          'Failed to parse reclaimed Redis stream payload'
+        );
+      } catch (fallbackError) {
+        logger.warn(
+          { error: fallbackError, stream, group, consumer },
+          'Failed to reclaim idle Redis stream messages with XCLAIM fallback'
+        );
+        return [];
       }
     }
-    return parsed;
-  } catch (error) {
+
     logger.warn({ error, stream, group, consumer }, 'Failed to reclaim idle Redis stream messages');
     return [];
   }
