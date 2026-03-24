@@ -91,6 +91,20 @@ export interface EventDetail {
   isLateEvent?: boolean; // Event arrived after subsequent events
 }
 
+export interface ModelBreakdown {
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  cachedTokens: number;
+  totalTokens: number;
+  totalCost: number;
+  cost: any | null; // LlmCost record (pricing rates + contextWindow)
+  isLastModel: boolean;
+  // Context window fill for the last model (from the last llm_response event)
+  contextWindowUsed?: number;
+  contextWindowFillPct?: number;
+}
+
 export interface ThreadDetail {
   threadId: string;
   userId: string;
@@ -124,7 +138,12 @@ export interface ThreadDetail {
     offset: number;
     hasMore: boolean;
   };
+  /** @deprecated use models instead */
   cost?: any[];
+  /** Per-model breakdown with costs and token usage */
+  models?: ModelBreakdown[];
+  /** Total cost across all models in USD */
+  totalCost?: number;
 }
 
 export interface GraphNode {
@@ -384,14 +403,173 @@ export class ThreadService {
         : undefined;
 
       const modelForCost = trace.model || (trace.metadata as any)?.model;
+
+      // ── Per-model token usage from events ────────────────────────────────
+      interface ModelTokenRow {
+        model: string;
+        inputTokens: string | number;
+        outputTokens: string | number;
+        cachedTokens: string | number;
+        totalTokens: string | number;
+      }
+
+      const modelTokenRows = await LLMEvent.sequelize!.query<ModelTokenRow>(
+        `
+          SELECT
+            COALESCE(
+              NULLIF(metadata->>'model', ''),
+              NULLIF(metadata->>'modelName', '')
+            ) AS model,
+            SUM(COALESCE(
+              NULLIF(metadata->'usage'->>'inputTokens', '')::bigint,
+              NULLIF(metadata->'usage'->>'promptTokens', '')::bigint,
+              NULLIF(metadata->'usage'->>'input', '')::bigint,
+              0
+            )) AS "inputTokens",
+            SUM(COALESCE(
+              NULLIF(metadata->'usage'->>'outputTokens', '')::bigint,
+              NULLIF(metadata->'usage'->>'completionTokens', '')::bigint,
+              NULLIF(metadata->'usage'->>'output', '')::bigint,
+              0
+            )) AS "outputTokens",
+            SUM(COALESCE(
+              NULLIF(metadata->'usage'->>'cachedTokens', '')::bigint,
+              NULLIF(metadata->'usage'->>'cacheRead', '')::bigint,
+              0
+            )) AS "cachedTokens",
+            SUM(COALESCE(
+              NULLIF(metadata->'usage'->>'totalTokens', '')::bigint,
+              NULLIF(metadata->'usage'->>'total_tokens', '')::bigint,
+              0
+            )) AS "totalTokens"
+          FROM trace_events
+          WHERE trace_id = :traceId
+            AND event_type = 'llm_response'
+            AND COALESCE(
+              NULLIF(metadata->>'model', ''),
+              NULLIF(metadata->>'modelName', '')
+            ) IS NOT NULL
+          GROUP BY 1
+        `,
+        { replacements: { traceId: threadId }, type: QueryTypes.SELECT }
+      );
+
+      // Last llm_response event — model + token count for context window fill
+      interface LastEventRow {
+        model: string | null;
+        inputTokens: string | number;
+        outputTokens: string | number;
+      }
+
+      const lastEventRows = await LLMEvent.sequelize!.query<LastEventRow>(
+        `
+          SELECT
+            COALESCE(
+              NULLIF(metadata->>'model', ''),
+              NULLIF(metadata->>'modelName', '')
+            ) AS model,
+            COALESCE(
+              NULLIF(metadata->'usage'->>'inputTokens', '')::bigint,
+              NULLIF(metadata->'usage'->>'promptTokens', '')::bigint,
+              NULLIF(metadata->'usage'->>'input', '')::bigint,
+              0
+            ) AS "inputTokens",
+            COALESCE(
+              NULLIF(metadata->'usage'->>'outputTokens', '')::bigint,
+              NULLIF(metadata->'usage'->>'completionTokens', '')::bigint,
+              NULLIF(metadata->'usage'->>'output', '')::bigint,
+              0
+            ) AS "outputTokens"
+          FROM trace_events
+          WHERE trace_id = :traceId
+            AND event_type = 'llm_response'
+          ORDER BY timestamp DESC
+          LIMIT 1
+        `,
+        { replacements: { traceId: threadId }, type: QueryTypes.SELECT }
+      );
+
+      const lastEventModel = lastEventRows[0]?.model ?? null;
+
+      // Determine unique model names: from events + fallback to trace.model
+      const eventModelNames = modelTokenRows.map((r) => r.model);
+      const allModelNames = eventModelNames.length > 0
+        ? eventModelNames
+        : (modelForCost ? [modelForCost] : []);
+
+      // Fetch cost records for all models in parallel
+      const costRecords = await Promise.all(
+        allModelNames.map((m) => llmCostService.getCosts([m]).then((r: any[]) => r?.[0] ?? null).catch(() => null))
+      );
+      const costByModel = new Map<string, any>(
+        allModelNames.map((m, i) => [m, costRecords[i]])
+      );
+
+      const TOKENS_PER_MILLION = 1_000_000;
+
+      const models: ModelBreakdown[] = [];
+      let totalCost = 0;
+
+      for (const row of modelTokenRows) {
+        const costRecord = costByModel.get(row.model) ?? null;
+        const inputTokens = Number(row.inputTokens || 0);
+        const outputTokens = Number(row.outputTokens || 0);
+        const cachedTokens = Number(row.cachedTokens || 0);
+        const rowTotal = Number(row.totalTokens || 0);
+
+        let modelCost = 0;
+        if (costRecord) {
+          const hasSplit = inputTokens > 0 || outputTokens > 0 || cachedTokens > 0;
+          if (hasSplit) {
+            modelCost =
+              (inputTokens / TOKENS_PER_MILLION) * costRecord.inputTokenPricePerMillionToken +
+              (outputTokens / TOKENS_PER_MILLION) * costRecord.outputTokenPricePerMillionToken +
+              (cachedTokens / TOKENS_PER_MILLION) * (costRecord.cachedTokenPricePerMillionToken || 0);
+          } else if (rowTotal > 0) {
+            const blended = (costRecord.inputTokenPricePerMillionToken + costRecord.outputTokenPricePerMillionToken) / 2;
+            modelCost = (rowTotal / TOKENS_PER_MILLION) * blended;
+          }
+        }
+
+        totalCost += modelCost;
+        const isLastModel = row.model === lastEventModel;
+
+        const breakdown: ModelBreakdown = {
+          model: row.model,
+          inputTokens,
+          outputTokens,
+          cachedTokens,
+          totalTokens: rowTotal || inputTokens + outputTokens + cachedTokens,
+          totalCost: modelCost,
+          cost: costRecord,
+          isLastModel,
+        };
+
+        if (isLastModel && lastEventRows[0]) {
+          const lastIn = Number(lastEventRows[0].inputTokens || 0);
+          const lastOut = Number(lastEventRows[0].outputTokens || 0);
+          const used = lastIn + lastOut;
+          const contextWindow = costRecord?.contextWindow ? Number(costRecord.contextWindow) : null;
+          breakdown.contextWindowUsed = used;
+          if (contextWindow && contextWindow > 0) {
+            breakdown.contextWindowFillPct = Math.min(used / contextWindow, 1);
+          }
+        }
+
+        models.push(breakdown);
+      }
+
+      // Fallback: if no events had model metadata but trace has a model, still return cost
       let cost: any[] = [];
-      if (modelForCost) {
+      if (models.length === 0 && modelForCost) {
         try {
           cost = (await llmCostService.getCosts([modelForCost])) || [];
         } catch (costError) {
           logger.warn({ costError, threadId, modelForCost }, 'Failed to resolve thread cost; returning thread without cost details');
           cost = [];
         }
+      } else {
+        cost = models.map((m) => m.cost).filter(Boolean);
       }
 
       interface ThreadSummaryRow {
@@ -456,6 +634,8 @@ export class ThreadService {
             hasMore: false,
           },
           cost,
+          models,
+          totalCost,
         };
       }
 
@@ -570,7 +750,7 @@ export class ThreadService {
         entityId: trace.entityId,
         entityName: (trace as any).entity?.name,
         lastActivity: lastEventTimestamp,
-        model: trace.model || (trace.metadata as any)?.model,
+        model: lastEventModel || trace.model || (trace.metadata as any)?.model,
         systemPrompt: resolvedSystemPrompt,
         tools: resolvedTools,
         metadata: includeMetadata ? trace.metadata : undefined,
@@ -591,6 +771,8 @@ export class ThreadService {
           hasMore: eventOffset + eventLimit < eventCount,
         },
         cost,
+        models,
+        totalCost,
       };
     } catch (error) {
       logger.error({ error, threadId }, 'Failed to get thread detail');

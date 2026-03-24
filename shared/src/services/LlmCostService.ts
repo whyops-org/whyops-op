@@ -95,6 +95,8 @@ export class LlmCostService {
         // Clean the fetched model name too
         const fetchedModelName = fetchedData.model.trim().toLowerCase();
 
+        const contextWindow = typeof fetchedData.contextWindow === 'number' ? fetchedData.contextWindow : null;
+
         // If we found an expired record, update it
         if (cost) {
           logger.info({ modelName, fetchedModelName }, 'Updating expired LLM Cost record');
@@ -102,20 +104,22 @@ export class LlmCostService {
             inputTokenPricePerMillionToken: fetchedData.inputTokenPricePerMillionToken,
             outputTokenPricePerMillionToken: fetchedData.outputTokenPricePerMillionToken,
             cachedTokenPricePerMillionToken: fetchedData.cachedTokenPricePerMillionToken || 0,
-            model: fetchedModelName, 
+            contextWindow,
+            model: fetchedModelName,
           });
         } else {
           // Double check if we already have this exact model to prevent duplicates
           const existingCanonical = await LlmCost.findOne({ where: { model: fetchedModelName } });
-          
+
           if (existingCanonical) {
-             logger.info({ modelName, fetchedModelName }, 'Updating existing canonical LLM Cost record');
-             await existingCanonical.update({
-                inputTokenPricePerMillionToken: fetchedData.inputTokenPricePerMillionToken,
-                outputTokenPricePerMillionToken: fetchedData.outputTokenPricePerMillionToken,
-                cachedTokenPricePerMillionToken: fetchedData.cachedTokenPricePerMillionToken || 0,
-             });
-             cost = existingCanonical;
+            logger.info({ modelName, fetchedModelName }, 'Updating existing canonical LLM Cost record');
+            await existingCanonical.update({
+              inputTokenPricePerMillionToken: fetchedData.inputTokenPricePerMillionToken,
+              outputTokenPricePerMillionToken: fetchedData.outputTokenPricePerMillionToken,
+              cachedTokenPricePerMillionToken: fetchedData.cachedTokenPricePerMillionToken || 0,
+              contextWindow,
+            });
+            cost = existingCanonical;
           } else {
             // Create new record
             logger.info({ modelName, fetchedModelName }, 'Creating new LLM Cost record');
@@ -125,6 +129,7 @@ export class LlmCostService {
                 inputTokenPricePerMillionToken: fetchedData.inputTokenPricePerMillionToken,
                 outputTokenPricePerMillionToken: fetchedData.outputTokenPricePerMillionToken,
                 cachedTokenPricePerMillionToken: fetchedData.cachedTokenPricePerMillionToken || 0,
+                contextWindow,
               });
             } catch (createError: any) {
               if (this.isMissingRelationError(createError)) {
@@ -134,6 +139,7 @@ export class LlmCostService {
                   inputTokenPricePerMillionToken: fetchedData.inputTokenPricePerMillionToken,
                   outputTokenPricePerMillionToken: fetchedData.outputTokenPricePerMillionToken,
                   cachedTokenPricePerMillionToken: fetchedData.cachedTokenPricePerMillionToken || 0,
+                  contextWindow,
                 };
               }
               throw createError;
@@ -159,7 +165,7 @@ export class LlmCostService {
     }
 
     const payload = {
-      q: `cost of ${query}`,
+      q: `cost and context window of ${query}`,
       depth: "standard",
       outputType: "structured",
       includeImages: false,
@@ -179,6 +185,10 @@ export class LlmCostService {
           },
           cachedTokenPricePerMillionToken: {
             description: "cached token price per million token in dollars",
+            type: "number",
+          },
+          contextWindow: {
+            description: "maximum context window size in tokens (e.g. 128000 for 128k context)",
             type: "number",
           },
         },
