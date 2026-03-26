@@ -1,0 +1,35 @@
+export const SETTINGS_TABS = [
+  { id: "providers", label: "Providers" },
+  { id: "api-keys", label: "API Keys" },
+  { id: "team", label: "Team" },
+  { id: "billing", label: "Billing" },
+  { id: "integrations", label: "Integrations" },
+] as const;
+
+export const SETTINGS_COPY = {
+  title: "Settings",
+  subtitle: "Manage your team settings, billing details, and integration keys.",
+  providersTitle: "Providers",
+  providersSubtitle: "Connect and manage the model providers your agents can use.",
+  providersEmptyTitle: "No providers connected",
+  providersEmptyDescription: "Add a provider to start routing requests to your preferred models.",
+  addProviderButton: "Add Provider",
+  addProviderModalTitle: "Connect a provider",
+  addProviderModalDescription: "Securely add a provider and test the connection before saving.",
+  apiKeysTitle: "Active API Keys",
+  apiKeysSubtitle: "Keys are used by your agents to send traces and metrics.",
+  apiKeysEmptyTitle: "No API keys available",
+  apiKeysEmptyDescription: "API keys are generated during onboarding and stored securely.",
+  apiKeysUsagePlaceholder: "Not tracked",
+  endpointsTitle: "Endpoints",
+  endpointsSubtitle: "Point your SDKs and agents to these URLs.",
+  traceEndpointLabel: "Trace Ingestion URL",
+  traceEndpointDescription: "For high-volume trace data",
+  sdkEndpointLabel: "SDK Base Endpoint",
+  sdkEndpointDescription: "Base URL for client libraries",
+  securityNoticeTitle: "Security Notice",
+  securityNoticeBody:
+    "Keys older than your rotation policy will be flagged. Review audit logs regularly and rotate keys proactively.",
+  emptyTabTitle: "Coming soon",
+  emptyTabDescription: "This section is being prepared for your workspace.",
+} as const;

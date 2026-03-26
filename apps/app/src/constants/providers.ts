@@ -1,0 +1,28 @@
+export const PROVIDER_FORM_COPY = {
+  sectionTitle: "Connect a Provider",
+  addAnotherTitle: "Add Another Provider",
+  nameLabel: "Provider Name",
+  namePlaceholder: "My OpenAI Key",
+  slugLabel: "Provider Slug",
+  slugPlaceholder: "my-openai-key",
+  slugHint: "API: provider-slug/model",
+  baseUrlLabel: "Base URL",
+  baseUrlPlaceholder: "https://api.openai.com/v1",
+  modelLabel: "Test Model",
+  modelHint: "Enter a model to test the connection (e.g., gpt-4o-mini for OpenAI)",
+  modelPlaceholders: {
+    openai: "gpt-4o-mini",
+    anthropic: "claude-3-haiku-20240307",
+  },
+  apiKeyLabel: "Provider API Key",
+  apiKeyPlaceholder: "sk-...",
+  testButton: "Test Connection",
+  testingButton: "Testing...",
+  addButton: "Add Provider",
+  addingButton: "Adding...",
+  successTitle: "Connection successful",
+  successBody: "Successfully connected to the provider. You can now add this provider.",
+  securityTitle: "Encrypted and never shared",
+  securityBody:
+    "Your keys are encrypted at rest using AES-256 and only decrypted in the secure enclave during active agent sessions.",
+} as const;
