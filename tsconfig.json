@@ -20,5 +20,6 @@
     "paths": {
       "@shared/*": ["./packages/shared/src/*"]
     }
-  }
+  },
+  "exclude": ["apps/app/**", "node_modules"]
 }
