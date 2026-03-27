@@ -1,0 +1,81 @@
+name: Deploy to VM
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/whyops-**/**'
+      - 'packages/shared/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.json'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Deploy to VM
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: whyops
+          key: ${{ secrets.VM_SSH_KEY }}
+          command_timeout: 15m
+          script: |
+            set -e
+
+            # Pull latest code
+            cd /app
+            git pull https://${{ secrets.GH_PAT }}@github.com/whyops-org/whyops-op.git main
+
+            # Write env file
+            cat > .env.production << 'ENVEOF'
+            ${{ secrets.ENV_FILE }}
+            ENVEOF
+
+            # Install deps and build
+            npm ci --install-strategy=nested
+            npm run build:shared
+            npm run build:proxy
+            npm run build:analyse
+            npm run build:auth
+
+            # Start or reload PM2 processes
+            export NODE_ENV=production
+
+            pm2 describe proxy > /dev/null 2>&1 \
+              && pm2 reload proxy --update-env \
+              || pm2 start /app/apps/whyops-proxy/src/index.ts \
+                   --name proxy \
+                   --interpreter node \
+                   --interpreter-args "--import tsx" \
+                   --cwd /app/apps/whyops-proxy \
+                   --env-file /app/.env.production
+
+            pm2 describe analyse > /dev/null 2>&1 \
+              && pm2 reload analyse --update-env \
+              || pm2 start /app/apps/whyops-analyse/src/index.ts \
+                   --name analyse \
+                   --interpreter node \
+                   --interpreter-args "--import tsx" \
+                   --cwd /app/apps/whyops-analyse \
+                   --env-file /app/.env.production
+
+            pm2 describe auth > /dev/null 2>&1 \
+              && pm2 reload auth --update-env \
+              || pm2 start /app/apps/whyops-auth/src/index.ts \
+                   --name auth \
+                   --interpreter node \
+                   --interpreter-args "--import tsx" \
+                   --cwd /app/apps/whyops-auth \
+                   --env-file /app/.env.production
+
+            # Persist process list so PM2 restores on reboot
+            pm2 save
+
+            echo "Deploy complete"
+            pm2 ls
