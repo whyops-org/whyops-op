@@ -93,14 +93,22 @@ export interface EventDetail {
 
 export interface ModelBreakdown {
   model: string;
+  /** Non-cached input tokens only. */
   inputTokens: number;
   outputTokens: number;
-  cachedTokens: number;
+  /** Tokens written to 5-minute cache. */
+  cacheWrite5mTokens: number;
+  /** Tokens written to 1-hour cache. */
+  cacheWrite1hTokens: number;
+  /** Total cache-write tokens (5m + 1h). */
+  cacheCreationTokens: number;
+  /** Tokens served from cache (cache hit). */
+  cacheReadTokens: number;
+  /** Sum of all input token types + output. */
   totalTokens: number;
   totalCost: number;
   cost: any | null; // LlmCost record (pricing rates + contextWindow)
   isLastModel: boolean;
-  // Context window fill for the last model (from the last llm_response event)
   contextWindowUsed?: number;
   contextWindowFillPct?: number;
 }
@@ -409,7 +417,10 @@ export class ThreadService {
         model: string;
         inputTokens: string | number;
         outputTokens: string | number;
-        cachedTokens: string | number;
+        cacheWrite5mTokens: string | number;
+        cacheWrite1hTokens: string | number;
+        cacheCreationTokens: string | number;
+        cacheReadTokens: string | number;
         totalTokens: string | number;
       }
 
@@ -433,10 +444,23 @@ export class ThreadService {
               0
             )) AS "outputTokens",
             SUM(COALESCE(
+              NULLIF(metadata->'usage'->>'cacheWrite5mTokens', '')::bigint,
+              0
+            )) AS "cacheWrite5mTokens",
+            SUM(COALESCE(
+              NULLIF(metadata->'usage'->>'cacheWrite1hTokens', '')::bigint,
+              0
+            )) AS "cacheWrite1hTokens",
+            SUM(COALESCE(
+              NULLIF(metadata->'usage'->>'cacheCreationTokens', '')::bigint,
+              0
+            )) AS "cacheCreationTokens",
+            SUM(COALESCE(
+              NULLIF(metadata->'usage'->>'cacheReadTokens', '')::bigint,
               NULLIF(metadata->'usage'->>'cachedTokens', '')::bigint,
               NULLIF(metadata->'usage'->>'cacheRead', '')::bigint,
               0
-            )) AS "cachedTokens",
+            )) AS "cacheReadTokens",
             SUM(COALESCE(
               NULLIF(metadata->'usage'->>'totalTokens', '')::bigint,
               NULLIF(metadata->'usage'->>'total_tokens', '')::bigint,
@@ -514,17 +538,26 @@ export class ThreadService {
         const costRecord = costByModel.get(row.model) ?? null;
         const inputTokens = Number(row.inputTokens || 0);
         const outputTokens = Number(row.outputTokens || 0);
-        const cachedTokens = Number(row.cachedTokens || 0);
+        const cacheWrite5mTokens = Number(row.cacheWrite5mTokens || 0);
+        const cacheWrite1hTokens = Number(row.cacheWrite1hTokens || 0);
+        const cacheCreationTokens = Number(row.cacheCreationTokens || 0);
+        const cacheReadTokens = Number(row.cacheReadTokens || 0);
         const rowTotal = Number(row.totalTokens || 0);
+
+        // Total cache-write tokens: prefer split TTL values, fall back to combined total
+        const effectiveCacheWrite5m = cacheWrite5mTokens || (cacheCreationTokens > 0 && cacheWrite1hTokens === 0 ? cacheCreationTokens : 0);
+        const effectiveCacheWrite1h = cacheWrite1hTokens;
 
         let modelCost = 0;
         if (costRecord) {
-          const hasSplit = inputTokens > 0 || outputTokens > 0 || cachedTokens > 0;
+          const hasSplit = inputTokens > 0 || outputTokens > 0 || cacheReadTokens > 0 || cacheCreationTokens > 0;
           if (hasSplit) {
             modelCost =
               (inputTokens / TOKENS_PER_MILLION) * costRecord.inputTokenPricePerMillionToken +
               (outputTokens / TOKENS_PER_MILLION) * costRecord.outputTokenPricePerMillionToken +
-              (cachedTokens / TOKENS_PER_MILLION) * (costRecord.cachedTokenPricePerMillionToken || 0);
+              (effectiveCacheWrite5m / TOKENS_PER_MILLION) * (costRecord.cacheWrite5mTokenPricePerMillionToken || 0) +
+              (effectiveCacheWrite1h / TOKENS_PER_MILLION) * (costRecord.cacheWrite1hTokenPricePerMillionToken || 0) +
+              (cacheReadTokens / TOKENS_PER_MILLION) * (costRecord.cacheReadTokenPricePerMillionToken || 0);
           } else if (rowTotal > 0) {
             const blended = (costRecord.inputTokenPricePerMillionToken + costRecord.outputTokenPricePerMillionToken) / 2;
             modelCost = (rowTotal / TOKENS_PER_MILLION) * blended;
@@ -538,8 +571,11 @@ export class ThreadService {
           model: row.model,
           inputTokens,
           outputTokens,
-          cachedTokens,
-          totalTokens: rowTotal || inputTokens + outputTokens + cachedTokens,
+          cacheWrite5mTokens,
+          cacheWrite1hTokens,
+          cacheCreationTokens,
+          cacheReadTokens,
+          totalTokens: rowTotal || inputTokens + cacheCreationTokens + cacheReadTokens + outputTokens,
           totalCost: modelCost,
           cost: costRecord,
           isLastModel,

@@ -28,6 +28,10 @@ export interface TraceEventMetadata {
     totalTokens?: number;
     promptTokens?: number;
     completionTokens?: number;
+    cacheWrite5mTokens?: number;
+    cacheWrite1hTokens?: number;
+    cacheCreationTokens?: number;
+    cacheReadTokens?: number;
   };
   latencyMs?: number;
   [key: string]: unknown;
@@ -40,7 +44,11 @@ export interface TraceCostRate {
   model: string;
   inputTokenPricePerMillionToken: number;
   outputTokenPricePerMillionToken: number;
-  cachedTokenPricePerMillionToken: number;
+  /** @deprecated use cacheReadTokenPricePerMillionToken */
+  cachedTokenPricePerMillionToken?: number;
+  cacheReadTokenPricePerMillionToken: number;
+  cacheWrite5mTokenPricePerMillionToken: number | null;
+  cacheWrite1hTokenPricePerMillionToken: number | null;
   contextWindow?: number | null;
   createdAt: string;
   updatedAt: string;
@@ -48,9 +56,17 @@ export interface TraceCostRate {
 
 export interface TraceModelBreakdown {
   model: string;
+  /** Non-cached input tokens only. */
   inputTokens: number;
   outputTokens: number;
-  cachedTokens: number;
+  /** Tokens written to 5-minute cache. */
+  cacheWrite5mTokens: number;
+  /** Tokens written to 1-hour cache. */
+  cacheWrite1hTokens: number;
+  /** Total cache-write tokens (5m + 1h). */
+  cacheCreationTokens: number;
+  /** Tokens served from cache (cache hit). */
+  cacheReadTokens: number;
   totalTokens: number;
   totalCost: number;
   cost: TraceCostRate | null;

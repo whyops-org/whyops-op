@@ -10,6 +10,10 @@ type Usage = {
   totalTokens?: number;
   inputTokens?: number;
   outputTokens?: number;
+  cacheWrite5mTokens?: number;
+  cacheWrite1hTokens?: number;
+  cacheCreationTokens?: number;
+  cacheReadTokens?: number;
 };
 
 function getUsage(event: TraceEvent): Usage | null {
@@ -20,29 +24,43 @@ function getUsage(event: TraceEvent): Usage | null {
   return usage ?? null;
 }
 
-function normalizeUsage(usage: Usage): Required<Pick<Usage, "promptTokens" | "completionTokens" | "cachedTokens">> & { totalTokens?: number } {
+function normalizeUsage(usage: Usage) {
   return {
     promptTokens: usage.promptTokens ?? usage.inputTokens ?? 0,
     completionTokens: usage.completionTokens ?? usage.outputTokens ?? 0,
-    cachedTokens: usage.cachedTokens ?? 0,
+    cacheWrite5mTokens: usage.cacheWrite5mTokens ?? 0,
+    cacheWrite1hTokens: usage.cacheWrite1hTokens ?? 0,
+    cacheCreationTokens: usage.cacheCreationTokens ?? 0,
+    cacheReadTokens: usage.cacheReadTokens ?? usage.cachedTokens ?? 0,
     totalTokens: usage.totalTokens,
   };
 }
 
 function calculateCostForUsage(usage: Usage, rate: TraceCostRate): number {
-  const normalized = normalizeUsage(usage);
-  const hasSplitTokens = normalized.promptTokens > 0 || normalized.completionTokens > 0 || normalized.cachedTokens > 0;
+  const n = normalizeUsage(usage);
+  const hasSplitTokens = n.promptTokens > 0 || n.completionTokens > 0 || n.cacheReadTokens > 0 || n.cacheCreationTokens > 0;
 
   if (hasSplitTokens) {
-    const inputCost = (normalized.promptTokens / TOKENS_PER_MILLION) * rate.inputTokenPricePerMillionToken;
-    const outputCost = (normalized.completionTokens / TOKENS_PER_MILLION) * rate.outputTokenPricePerMillionToken;
-    const cachedCost = (normalized.cachedTokens / TOKENS_PER_MILLION) * rate.cachedTokenPricePerMillionToken;
-    return inputCost + outputCost + cachedCost;
+    const cacheReadPrice = rate.cacheReadTokenPricePerMillionToken ?? rate.cachedTokenPricePerMillionToken ?? 0;
+    const cache5mPrice = rate.cacheWrite5mTokenPricePerMillionToken ?? 0;
+    const cache1hPrice = rate.cacheWrite1hTokenPricePerMillionToken ?? 0;
+
+    // Prefer split TTL; if unavailable, attribute all creation tokens to 5m price
+    const cache5m = n.cacheWrite5mTokens > 0 ? n.cacheWrite5mTokens : n.cacheCreationTokens;
+    const cache1h = n.cacheWrite1hTokens;
+
+    return (
+      (n.promptTokens / TOKENS_PER_MILLION) * rate.inputTokenPricePerMillionToken +
+      (n.completionTokens / TOKENS_PER_MILLION) * rate.outputTokenPricePerMillionToken +
+      (cache5m / TOKENS_PER_MILLION) * cache5mPrice +
+      (cache1h / TOKENS_PER_MILLION) * cache1hPrice +
+      (n.cacheReadTokens / TOKENS_PER_MILLION) * cacheReadPrice
+    );
   }
 
-  if (normalized.totalTokens && normalized.totalTokens > 0) {
+  if (n.totalTokens && n.totalTokens > 0) {
     const blendedRate = (rate.inputTokenPricePerMillionToken + rate.outputTokenPricePerMillionToken) / 2;
-    return (normalized.totalTokens / TOKENS_PER_MILLION) * blendedRate;
+    return (n.totalTokens / TOKENS_PER_MILLION) * blendedRate;
   }
 
   return 0;

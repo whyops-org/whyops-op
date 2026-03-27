@@ -39,8 +39,10 @@ export function TraceHeader({ trace, view, onViewChange, agentId }: TraceHeaderP
   const modelBreakdowns = trace.models ?? [];
   const lastBreakdown = modelBreakdowns.find((m) => m.isLastModel);
   const totalUsedTokens =
-    modelBreakdowns.reduce((sum, m) => sum + m.inputTokens + m.outputTokens, 0) ||
-    trace.totalTokens;
+    modelBreakdowns.reduce(
+      (sum, m) => sum + m.inputTokens + m.cacheCreationTokens + m.cacheReadTokens + m.outputTokens,
+      0
+    ) || trace.totalTokens;
   const lastContextWindow = lastBreakdown?.cost?.contextWindow
     ? Number(lastBreakdown.cost.contextWindow)
     : null;
@@ -105,11 +107,37 @@ export function TraceHeader({ trace, view, onViewChange, agentId }: TraceHeaderP
         <HoverMetric icon={<Hash className="h-3.5 w-3.5" />}>
           <PopoverRow label="Total tokens" value={trace.totalTokens.toLocaleString()} />
           {modelBreakdowns.length > 0 && (
-            <div className="mt-2 space-y-1 border-t border-border/40 pt-2">
+            <div className="mt-2 space-y-1.5 border-t border-border/40 pt-2">
               {modelBreakdowns.map((m) => (
-                <div key={m.model} className="flex items-center justify-between gap-4 text-xs">
-                  <span className="truncate font-mono text-muted-foreground">{m.model}</span>
-                  <span className="tabular-nums text-foreground">{m.totalTokens.toLocaleString()}</span>
+                <div key={m.model} className="space-y-0.5">
+                  <div className="flex items-center justify-between gap-4 text-xs">
+                    <span className="truncate font-mono text-muted-foreground">{m.model}</span>
+                    <span className="tabular-nums text-foreground">{m.totalTokens.toLocaleString()}</span>
+                  </div>
+                  {(m.cacheCreationTokens > 0 || m.cacheReadTokens > 0) && (
+                    <div className="ml-0.5 space-y-0.5 border-l border-border/40 pl-2">
+                      <div className="flex items-center justify-between gap-4 text-[11px] text-muted-foreground">
+                        <span>Input</span>
+                        <span className="tabular-nums">{m.inputTokens.toLocaleString()}</span>
+                      </div>
+                      {m.cacheCreationTokens > 0 && (
+                        <div className="flex items-center justify-between gap-4 text-[11px] text-muted-foreground">
+                          <span>Cache write</span>
+                          <span className="tabular-nums">{m.cacheCreationTokens.toLocaleString()}</span>
+                        </div>
+                      )}
+                      {m.cacheReadTokens > 0 && (
+                        <div className="flex items-center justify-between gap-4 text-[11px] text-muted-foreground">
+                          <span>Cache read</span>
+                          <span className="tabular-nums">{m.cacheReadTokens.toLocaleString()}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between gap-4 text-[11px] text-muted-foreground">
+                        <span>Output</span>
+                        <span className="tabular-nums">{m.outputTokens.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -253,14 +281,48 @@ function PopoverRow({ label, value }: { label: string; value: string }) {
 }
 
 function ModelCostRow({ breakdown }: { breakdown: TraceModelBreakdown }) {
+  const hasCacheRead = breakdown.cacheReadTokens > 0;
+  const hasCacheWrite = breakdown.cacheCreationTokens > 0;
+
+  // Savings = what user would have paid at input price vs what they paid at cache read price
+  const cacheReadPrice = breakdown.cost?.cacheReadTokenPricePerMillionToken ?? breakdown.cost?.cachedTokenPricePerMillionToken ?? 0;
+  const inputPrice = breakdown.cost?.inputTokenPricePerMillionToken ?? 0;
+  const cacheSavings = hasCacheRead && inputPrice > cacheReadPrice
+    ? ((inputPrice - cacheReadPrice) * breakdown.cacheReadTokens) / 1_000_000
+    : 0;
+
   return (
-    <div className="flex items-center justify-between gap-4 text-xs">
-      <span className="min-w-0 flex-1 truncate font-mono text-muted-foreground">
-        {breakdown.model}
-      </span>
-      <span className="tabular-nums text-foreground">
-        {breakdown.totalCost > 0 ? formatCostUsd(breakdown.totalCost) : "—"}
-      </span>
+    <div className="space-y-1">
+      <div className="flex items-center justify-between gap-4 text-xs">
+        <span className="min-w-0 flex-1 truncate font-mono text-muted-foreground">
+          {breakdown.model}
+        </span>
+        <span className="tabular-nums font-medium text-foreground">
+          {breakdown.totalCost > 0 ? formatCostUsd(breakdown.totalCost) : "—"}
+        </span>
+      </div>
+      {(hasCacheRead || hasCacheWrite) && (
+        <div className="ml-0.5 space-y-0.5 border-l border-border/40 pl-2">
+          {hasCacheWrite && (
+            <div className="flex items-center justify-between gap-4 text-[11px] text-muted-foreground">
+              <span>Cache write</span>
+              <span className="tabular-nums">{breakdown.cacheCreationTokens.toLocaleString()} tok</span>
+            </div>
+          )}
+          {hasCacheRead && (
+            <div className="flex items-center justify-between gap-4 text-[11px] text-muted-foreground">
+              <span>Cache read</span>
+              <span className="tabular-nums">{breakdown.cacheReadTokens.toLocaleString()} tok</span>
+            </div>
+          )}
+          {cacheSavings > 0.000001 && (
+            <div className="flex items-center justify-between gap-4 text-[11px] text-emerald-600 dark:text-emerald-400">
+              <span>Saved</span>
+              <span className="tabular-nums">−{formatCostUsd(cacheSavings)}</span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

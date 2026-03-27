@@ -14,9 +14,12 @@ export interface ParsedResponse {
   toolCalls?: any[];
   finishReason?: string;
   usage?: {
+    /** Total prompt tokens (includes cached tokens — OpenAI does not separate them from the total). */
     promptTokens: number;
     completionTokens: number;
     totalTokens: number;
+    /** Tokens served from cache. Subset of promptTokens (not additional). OpenAI only has cache reads, no write premium. */
+    cacheReadTokens?: number;
   };
   id?: string;
   created?: number;
@@ -54,6 +57,7 @@ export class OpenAIParser {
         promptTokens: data.usage.prompt_tokens,
         completionTokens: data.usage.completion_tokens,
         totalTokens: data.usage.total_tokens,
+        cacheReadTokens: (data.usage.prompt_tokens_details as any)?.cached_tokens || undefined,
       } : undefined,
       id: data.id,
       created: data.created,
@@ -114,6 +118,7 @@ export class OpenAIParser {
         promptTokens: data.usage.input_tokens,
         completionTokens: data.usage.output_tokens,
         totalTokens: data.usage.total_tokens,
+        cacheReadTokens: (data.usage.input_tokens_details as any)?.cached_tokens || undefined,
       } : undefined,
       id: data.id,
       created: data.created_at,
@@ -196,6 +201,7 @@ export class OpenAIParser {
         promptTokens: usage.prompt_tokens,
         completionTokens: usage.completion_tokens,
         totalTokens: usage.total_tokens,
+        cacheReadTokens: (usage.prompt_tokens_details as any)?.cached_tokens || undefined,
       };
     }
 
@@ -237,6 +243,7 @@ export class OpenAIParser {
           promptTokens: response.usage.input_tokens,
           completionTokens: response.usage.output_tokens,
           totalTokens: response.usage.total_tokens,
+          cacheReadTokens: (response.usage.input_tokens_details as any)?.cached_tokens || undefined,
         };
       }
     }

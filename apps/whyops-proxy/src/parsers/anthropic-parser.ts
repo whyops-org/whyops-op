@@ -8,9 +8,19 @@ export interface ParsedResponse {
   toolCalls?: any[];
   finishReason?: string;
   usage?: {
+    /** Non-cached input tokens only (after the last cache breakpoint). */
     promptTokens: number;
     completionTokens: number;
+    /** Sum of all input token types + output tokens. */
     totalTokens: number;
+    /** Tokens written to 5-minute cache. */
+    cacheWrite5mTokens?: number;
+    /** Tokens written to 1-hour cache. */
+    cacheWrite1hTokens?: number;
+    /** Total cache-write tokens (5m + 1h combined). Used when TTL breakdown is unavailable. */
+    cacheCreationTokens?: number;
+    /** Tokens served from cache (cache hit). */
+    cacheReadTokens?: number;
   };
   thinkingBlocks?: Array<
     | { type: 'thinking'; thinking: string; signature?: string }
@@ -22,7 +32,10 @@ export interface ParsedResponse {
 
 export class AnthropicParser {
   /**
-   * Parse a non-streaming response from Anthropic
+   * Parse a non-streaming response from Anthropic.
+   *
+   * NOTE: input_tokens in the response is ONLY the non-cached tokens.
+   * Total input = input_tokens + cache_creation_input_tokens + cache_read_input_tokens.
    */
   static parseResponse(data: AnthropicMessageResponse): ParsedResponse {
     let content = '';
@@ -66,19 +79,17 @@ export class AnthropicParser {
       toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
       finishReason: data.stop_reason || undefined,
       thinkingBlocks: thinkingBlocks && thinkingBlocks.length > 0 ? thinkingBlocks : undefined,
-      usage: data.usage ? {
-        promptTokens: data.usage.input_tokens,
-        completionTokens: data.usage.output_tokens,
-        totalTokens: data.usage.input_tokens + data.usage.output_tokens,
-      } : undefined,
+      usage: data.usage
+        ? AnthropicParser.extractUsage(data.usage)
+        : undefined,
       id: data.id,
-      created: Date.now(), // Anthropic doesn't always send created timestamp in same format
+      created: Date.now(),
     };
   }
 
   /**
-   * Parse a single SSE event from a streaming response
-   * Anthropic streaming is event-based (message_start, content_block_delta, etc.)
+   * Parse a single SSE event from a streaming response.
+   * Cache token counts are available in message_start.message.usage.
    */
   static parseStreamEvent(
     data: AnthropicStreamEvent,
@@ -92,12 +103,7 @@ export class AnthropicParser {
       case 'message_start':
         if (data.message?.id) result.id = data.message.id;
         if (data.message?.usage) {
-          // Initial input usage
-          result.usage = {
-            promptTokens: data.message.usage.input_tokens,
-            completionTokens: 0,
-            totalTokens: data.message.usage.input_tokens,
-          };
+          result.usage = AnthropicParser.extractUsage(data.message.usage, 0);
         }
         break;
 
@@ -171,19 +177,25 @@ export class AnthropicParser {
           result.finishReason = data.delta.stop_reason;
         }
         if (data.usage) {
-          // Update output usage
-          const currentInput = result.usage?.promptTokens || 0;
-          const output = data.usage.output_tokens;
+          // message_delta carries output_tokens; preserve cache fields from message_start
+          const outputTokens = data.usage.output_tokens ?? 0;
+          const existing = result.usage;
+          const promptTokens = existing?.promptTokens ?? 0;
+          const cacheCreationTokens = existing?.cacheCreationTokens ?? 0;
+          const cacheReadTokens = existing?.cacheReadTokens ?? 0;
           result.usage = {
-            promptTokens: currentInput,
-            completionTokens: output,
-            totalTokens: currentInput + output,
+            promptTokens,
+            completionTokens: outputTokens,
+            totalTokens: promptTokens + cacheCreationTokens + cacheReadTokens + outputTokens,
+            cacheWrite5mTokens: existing?.cacheWrite5mTokens,
+            cacheWrite1hTokens: existing?.cacheWrite1hTokens,
+            cacheCreationTokens: existing?.cacheCreationTokens,
+            cacheReadTokens: existing?.cacheReadTokens,
           };
         }
         break;
-        
+
       case 'message_stop':
-        // Final event
         break;
       case 'error':
         result.finishReason = 'error';
@@ -200,6 +212,37 @@ export class AnthropicParser {
       finishReason: undefined,
       usage: undefined,
       thinkingBlocks: undefined,
+    };
+  }
+
+  /**
+   * Extract usage from an Anthropic usage object.
+   * @param usageData  Raw usage block from Anthropic response.
+   * @param outputTokens  Override for output tokens (0 during message_start in streaming).
+   */
+  private static extractUsage(
+    usageData: NonNullable<AnthropicMessageResponse['usage']>,
+    outputTokens?: number
+  ): ParsedResponse['usage'] {
+    const inputTokens = usageData.input_tokens ?? 0;
+    const output = outputTokens !== undefined ? outputTokens : (usageData.output_tokens ?? 0);
+
+    // TTL-split cache write tokens from the cache_creation sub-object
+    const cache5m: number | undefined = (usageData.cache_creation as any)?.ephemeral_5m_input_tokens ?? undefined;
+    const cache1h: number | undefined = (usageData.cache_creation as any)?.ephemeral_1h_input_tokens ?? undefined;
+
+    // Top-level total cache creation tokens (sum of both TTLs)
+    const cacheCreationTotal: number = usageData.cache_creation_input_tokens ?? 0;
+    const cacheReadTotal: number = usageData.cache_read_input_tokens ?? 0;
+
+    return {
+      promptTokens: inputTokens,
+      completionTokens: output,
+      totalTokens: inputTokens + cacheCreationTotal + cacheReadTotal + output,
+      cacheWrite5mTokens: cache5m,
+      cacheWrite1hTokens: cache1h,
+      cacheCreationTokens: cacheCreationTotal > 0 ? cacheCreationTotal : undefined,
+      cacheReadTokens: cacheReadTotal > 0 ? cacheReadTotal : undefined,
     };
   }
 }
