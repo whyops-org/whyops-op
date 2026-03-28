@@ -29,9 +29,21 @@ interface TraceHeaderProps {
   agentId?: string;
 }
 
+function fmtTokens(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
+  return String(n);
+}
+
+function fmtCacheSubline(m: TraceModelBreakdown): string | null {
+  const parts: string[] = [];
+  if (m.cacheCreationTokens > 0) parts.push(`${fmtTokens(m.cacheCreationTokens)} write`);
+  if (m.cacheReadTokens > 0) parts.push(`${fmtTokens(m.cacheReadTokens)} cached`);
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
+
 export function TraceHeader({ trace, view, onViewChange, agentId }: TraceHeaderProps) {
   const hasErrors = trace.errorCount > 0;
-  const statusLabel = hasErrors ? "Error" : "Healthy";
 
   const pricing = getPrimaryCostRate(trace.cost ?? null);
   const totalCostValue = getTraceTotalCost(trace.totalCost, trace.events ?? [], pricing);
@@ -59,166 +71,134 @@ export function TraceHeader({ trace, view, onViewChange, agentId }: TraceHeaderP
     ? `/agents/${trace.entityId}`
     : "/agents";
 
+  const primaryModel =
+    lastBreakdown?.model ?? modelBreakdowns[0]?.model ?? trace.model ?? null;
+
   return (
-    <div className="flex h-12 items-center justify-between border-b border-border/50 bg-background px-4 lg:px-5">
+    <div className="flex h-11 items-center justify-between border-b border-border bg-background px-4 lg:px-5">
+
       {/* Left: breadcrumb + status */}
-      <div className="flex min-w-0 items-center gap-3">
-        <div className="flex min-w-0 items-center text-sm font-medium text-muted-foreground">
-          <Link href="/agents" className="truncate transition-colors hover:text-foreground">
+      <div className="flex min-w-0 items-center gap-2.5">
+        <nav className="flex min-w-0 items-center text-sm text-muted-foreground">
+          <Link href="/agents" className="shrink-0 transition-colors hover:text-foreground">
             Agents
           </Link>
-          <span className="mx-1.5 text-border">/</span>
+          <span className="mx-1.5 text-border/80">/</span>
           <Link href={agentHref} className="truncate transition-colors hover:text-foreground">
             {trace.entityName || "Agent"}
           </Link>
-          <span className="mx-1.5 text-border">/</span>
-          <span className="truncate text-foreground">{trace.threadId.substring(0, 16)}…</span>
-        </div>
+          <span className="mx-1.5 text-border/80">/</span>
+          <span className="shrink-0 text-foreground font-mono text-xs">
+            {trace.threadId.substring(0, 14)}
+          </span>
+        </nav>
 
         <Badge
+          variant="outline"
           className={cn(
-            "h-5 px-1.5 text-[10px]",
+            "h-4.5 px-1.5 text-[10px] font-normal",
             hasErrors
-              ? "border-destructive/30 bg-destructive/10 text-destructive"
-              : "border-border/60 bg-transparent text-muted-foreground"
+              ? "border-destructive/40 text-destructive"
+              : "border-border text-muted-foreground"
           )}
         >
-          {statusLabel}
+          {hasErrors ? "error" : "ok"}
         </Badge>
       </div>
 
-      {/* Center: icon metrics */}
-      <div className="hidden items-center gap-0.5 lg:flex">
-        <HoverMetric icon={<Clock className="h-3.5 w-3.5" />}>
-          <PopoverRow label="Duration" value={formatDuration(trace.duration)} />
-        </HoverMetric>
+      {/* Center: inline metrics with hover popovers */}
+      <div className="hidden items-center divide-x divide-border lg:flex">
 
-        <HoverMetric icon={<DollarSign className="h-3.5 w-3.5" />}>
-          <PopoverRow label="Total cost" value={formatCostUsd(totalCostValue)} />
+        <MetricButton icon={<Clock className="h-3 w-3" />} value={formatDuration(trace.duration)}>
+          <Row label="Duration" value={formatDuration(trace.duration)} />
+          <Row label="Events" value={trace.eventCount.toLocaleString()} />
+        </MetricButton>
+
+        <MetricButton
+          icon={<DollarSign className="h-3 w-3" />}
+          value={totalCostValue > 0 ? formatCostUsd(totalCostValue) : "—"}
+        >
+          <Row label="Total" value={totalCostValue > 0 ? formatCostUsd(totalCostValue) : "—"} />
           {modelBreakdowns.length > 0 && (
-            <div className="mt-2 space-y-1 border-t border-border/40 pt-2">
+            <div className="mt-2 space-y-2 border-t border-border pt-2">
               {modelBreakdowns.map((m) => (
-                <ModelCostRow key={m.model} breakdown={m} />
+                <CostModelRow key={m.model} breakdown={m} />
               ))}
             </div>
           )}
-        </HoverMetric>
+        </MetricButton>
 
-        <HoverMetric icon={<Hash className="h-3.5 w-3.5" />}>
-          <PopoverRow label="Total tokens" value={trace.totalTokens.toLocaleString()} />
+        <MetricButton
+          icon={<Hash className="h-3 w-3" />}
+          value={fmtTokens(totalUsedTokens)}
+        >
+          <Row label="Total tokens" value={totalUsedTokens.toLocaleString()} />
           {modelBreakdowns.length > 0 && (
-            <div className="mt-2 space-y-1.5 border-t border-border/40 pt-2">
+            <div className="mt-2 space-y-2 border-t border-border pt-2">
               {modelBreakdowns.map((m) => (
-                <div key={m.model} className="space-y-0.5">
-                  <div className="flex items-center justify-between gap-4 text-xs">
-                    <span className="truncate font-mono text-muted-foreground">{m.model}</span>
-                    <span className="tabular-nums text-foreground">{m.totalTokens.toLocaleString()}</span>
-                  </div>
-                  {(m.cacheCreationTokens > 0 || m.cacheReadTokens > 0) && (
-                    <div className="ml-0.5 space-y-0.5 border-l border-border/40 pl-2">
-                      <div className="flex items-center justify-between gap-4 text-[11px] text-muted-foreground">
-                        <span>Input</span>
-                        <span className="tabular-nums">{m.inputTokens.toLocaleString()}</span>
-                      </div>
-                      {m.cacheCreationTokens > 0 && (
-                        <div className="flex items-center justify-between gap-4 text-[11px] text-muted-foreground">
-                          <span>Cache write</span>
-                          <span className="tabular-nums">{m.cacheCreationTokens.toLocaleString()}</span>
-                        </div>
-                      )}
-                      {m.cacheReadTokens > 0 && (
-                        <div className="flex items-center justify-between gap-4 text-[11px] text-muted-foreground">
-                          <span>Cache read</span>
-                          <span className="tabular-nums">{m.cacheReadTokens.toLocaleString()}</span>
-                        </div>
-                      )}
-                      <div className="flex items-center justify-between gap-4 text-[11px] text-muted-foreground">
-                        <span>Output</span>
-                        <span className="tabular-nums">{m.outputTokens.toLocaleString()}</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <TokenModelRow key={m.model} breakdown={m} />
               ))}
             </div>
           )}
-        </HoverMetric>
+        </MetricButton>
 
-        <HoverMetric icon={<Cpu className="h-3.5 w-3.5" />}>
-          <p className="mb-1.5 text-[11px] font-medium text-muted-foreground">
-            Models{modelBreakdowns.length > 1 ? ` (${modelBreakdowns.length})` : ""}
-          </p>
+        <MetricButton
+          icon={<Cpu className="h-3 w-3" />}
+          value={
+            primaryModel
+              ? primaryModel.split("-").slice(0, 2).join("-")
+              : "—"
+          }
+        >
           {modelBreakdowns.length > 0 ? (
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               {modelBreakdowns.map((m) => (
-                <div key={m.model} className="flex items-center gap-2 text-xs">
+                <div key={m.model} className="flex items-baseline justify-between gap-6 text-xs">
                   <span className="truncate font-mono text-foreground">{m.model}</span>
                   {m.isLastModel && (
-                    <span className="shrink-0 rounded border border-border/50 px-1 py-0.5 text-[10px] text-muted-foreground">
-                      last
-                    </span>
+                    <span className="shrink-0 text-[10px] text-muted-foreground">active</span>
                   )}
                 </div>
               ))}
             </div>
           ) : (
-            <span className="text-xs text-foreground">{trace.model ?? "N/A"}</span>
+            <span className="text-xs text-foreground font-mono">{trace.model ?? "—"}</span>
           )}
-        </HoverMetric>
+        </MetricButton>
 
-        {lastContextWindow !== null && (
-          <HoverMetric icon={<Layers className="h-3.5 w-3.5" />}>
-            <PopoverRow
+        {lastContextWindow !== null && ctxFillPct !== null && (
+          <MetricButton
+            icon={<Layers className="h-3 w-3" />}
+            value={`${(ctxFillPct * 100).toFixed(0)}%`}
+          >
+            <Row
               label="Context used"
-              value={`${totalUsedTokens.toLocaleString()} / ${(lastContextWindow / 1000).toFixed(0)}k`}
+              value={`${fmtTokens(totalUsedTokens)} / ${fmtTokens(lastContextWindow)}`}
             />
-            {ctxFillPct !== null && (
-              <>
-                <div className="mt-2 h-1 w-full overflow-hidden rounded-sm bg-border/40">
-                  <div
-                    className="h-full bg-foreground/30 transition-all"
-                    style={{ width: `${(ctxFillPct * 100).toFixed(1)}%` }}
-                  />
-                </div>
-                <p className="mt-1 text-right text-[11px] tabular-nums text-muted-foreground">
-                  {(ctxFillPct * 100).toFixed(1)}%
-                </p>
-              </>
-            )}
-            {lastBreakdown && (
-              <p className="mt-1.5 truncate font-mono text-[11px] text-muted-foreground">
-                {lastBreakdown.model}
-              </p>
-            )}
-          </HoverMetric>
+            <div className="mt-2 h-0.5 w-full bg-border">
+              <div
+                className="h-full bg-foreground/40"
+                style={{ width: `${(ctxFillPct * 100).toFixed(1)}%` }}
+              />
+            </div>
+            <div className="mt-1 flex items-center justify-between text-[11px] text-muted-foreground">
+              <span className="font-mono truncate">{lastBreakdown?.model}</span>
+              <span className="tabular-nums">{(ctxFillPct * 100).toFixed(1)}%</span>
+            </div>
+          </MetricButton>
         )}
       </div>
 
       {/* Right: view toggle + replay */}
-      <div className="flex items-center gap-3">
-        <div className="flex items-center rounded-sm border border-border/60 bg-card p-0.5">
-          <ViewToggleButton
-            active={view === "graph"}
-            onClick={() => onViewChange("graph")}
-            label="Graph"
-            icon={<GitGraph className="h-3.5 w-3.5" />}
-          />
-          <ViewToggleButton
-            active={view === "timeline"}
-            onClick={() => onViewChange("timeline")}
-            label="Timeline"
-            icon={<List className="h-3.5 w-3.5" />}
-          />
-          <ViewToggleButton
-            active={view === "judge"}
-            onClick={() => onViewChange("judge")}
-            label="Judge"
-            icon={<Scale className="h-3.5 w-3.5" />}
-          />
+      <div className="flex items-center gap-2">
+        <div className="flex items-center rounded border border-border bg-card p-0.5">
+          <ViewToggleButton active={view === "graph"} onClick={() => onViewChange("graph")} label="Graph" icon={<GitGraph className="h-3.5 w-3.5" />} />
+          <ViewToggleButton active={view === "timeline"} onClick={() => onViewChange("timeline")} label="Timeline" icon={<List className="h-3.5 w-3.5" />} />
+          <ViewToggleButton active={view === "judge"} onClick={() => onViewChange("judge")} label="Judge" icon={<Scale className="h-3.5 w-3.5" />} />
         </div>
 
-        <Button variant="outline" size="sm" className="h-8 gap-1.5">
-          <RefreshCw className="h-3.5 w-3.5" />
+        <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs">
+          <RefreshCw className="h-3 w-3" />
           Replay
         </Button>
       </div>
@@ -226,14 +206,15 @@ export function TraceHeader({ trace, view, onViewChange, agentId }: TraceHeaderP
   );
 }
 
-// ── Icon metric button with hover popover ──────────────────────────────────
+// ── Metric button with popover ─────────────────────────────────────────────
 
-interface HoverMetricProps {
+interface MetricButtonProps {
   icon: React.ReactNode;
+  value: string;
   children: React.ReactNode;
 }
 
-function HoverMetric({ icon, children }: HoverMetricProps) {
+function MetricButton({ icon, value, children }: MetricButtonProps) {
   const [open, setOpen] = React.useState(false);
   const closeTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -243,7 +224,7 @@ function HoverMetric({ icon, children }: HoverMetricProps) {
   };
 
   const handleMouseLeave = () => {
-    closeTimer.current = setTimeout(() => setOpen(false), 120);
+    closeTimer.current = setTimeout(() => setOpen(false), 100);
   };
 
   return (
@@ -252,16 +233,17 @@ function HoverMetric({ icon, children }: HoverMetricProps) {
         <button
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
-          className="flex h-8 w-8 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-surface-2/50 hover:text-foreground"
+          className="flex h-11 items-center gap-1.5 px-3 text-xs text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
         >
           {icon}
+          <span className="tabular-nums">{value}</span>
         </button>
       </PopoverTrigger>
       <PopoverContent
         align="center"
         side="bottom"
-        sideOffset={4}
-        className="w-56 p-3"
+        sideOffset={0}
+        className="w-60 p-3"
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
@@ -271,7 +253,9 @@ function HoverMetric({ icon, children }: HoverMetricProps) {
   );
 }
 
-function PopoverRow({ label, value }: { label: string; value: string }) {
+// ── Popover content helpers ────────────────────────────────────────────────
+
+function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-4 text-xs">
       <span className="text-muted-foreground">{label}</span>
@@ -280,48 +264,58 @@ function PopoverRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ModelCostRow({ breakdown }: { breakdown: TraceModelBreakdown }) {
-  const hasCacheRead = breakdown.cacheReadTokens > 0;
-  const hasCacheWrite = breakdown.cacheCreationTokens > 0;
-
-  // Savings = what user would have paid at input price vs what they paid at cache read price
-  const cacheReadPrice = breakdown.cost?.cacheReadTokenPricePerMillionToken ?? breakdown.cost?.cachedTokenPricePerMillionToken ?? 0;
+function CostModelRow({ breakdown }: { breakdown: TraceModelBreakdown }) {
+  const cacheReadPrice =
+    breakdown.cost?.cacheReadTokenPricePerMillionToken ??
+    breakdown.cost?.cachedTokenPricePerMillionToken ?? 0;
   const inputPrice = breakdown.cost?.inputTokenPricePerMillionToken ?? 0;
-  const cacheSavings = hasCacheRead && inputPrice > cacheReadPrice
-    ? ((inputPrice - cacheReadPrice) * breakdown.cacheReadTokens) / 1_000_000
-    : 0;
+  const cacheSavings =
+    breakdown.cacheReadTokens > 0 && inputPrice > cacheReadPrice
+      ? ((inputPrice - cacheReadPrice) * breakdown.cacheReadTokens) / 1_000_000
+      : 0;
+
+  const cacheSubline = fmtCacheSubline(breakdown);
 
   return (
-    <div className="space-y-1">
-      <div className="flex items-center justify-between gap-4 text-xs">
-        <span className="min-w-0 flex-1 truncate font-mono text-muted-foreground">
-          {breakdown.model}
-        </span>
-        <span className="tabular-nums font-medium text-foreground">
+    <div className="space-y-0.5">
+      <div className="flex items-baseline justify-between gap-4 text-xs">
+        <span className="min-w-0 truncate font-mono text-foreground">{breakdown.model}</span>
+        <span className="shrink-0 tabular-nums text-foreground">
           {breakdown.totalCost > 0 ? formatCostUsd(breakdown.totalCost) : "—"}
         </span>
       </div>
-      {(hasCacheRead || hasCacheWrite) && (
-        <div className="ml-0.5 space-y-0.5 border-l border-border/40 pl-2">
-          {hasCacheWrite && (
-            <div className="flex items-center justify-between gap-4 text-[11px] text-muted-foreground">
-              <span>Cache write</span>
-              <span className="tabular-nums">{breakdown.cacheCreationTokens.toLocaleString()} tok</span>
-            </div>
-          )}
-          {hasCacheRead && (
-            <div className="flex items-center justify-between gap-4 text-[11px] text-muted-foreground">
-              <span>Cache read</span>
-              <span className="tabular-nums">{breakdown.cacheReadTokens.toLocaleString()} tok</span>
-            </div>
-          )}
+      {cacheSubline && (
+        <div className="flex items-baseline justify-between gap-4 text-[11px] text-muted-foreground">
+          <span>{cacheSubline}</span>
           {cacheSavings > 0.000001 && (
-            <div className="flex items-center justify-between gap-4 text-[11px] text-emerald-600 dark:text-emerald-400">
-              <span>Saved</span>
-              <span className="tabular-nums">−{formatCostUsd(cacheSavings)}</span>
-            </div>
+            <span className="shrink-0 tabular-nums text-emerald-600 dark:text-emerald-500">
+              −{formatCostUsd(cacheSavings)}
+            </span>
           )}
         </div>
+      )}
+    </div>
+  );
+}
+
+function TokenModelRow({ breakdown }: { breakdown: TraceModelBreakdown }) {
+  const hasCaching = breakdown.cacheCreationTokens > 0 || breakdown.cacheReadTokens > 0;
+  const parts: string[] = [];
+  if (hasCaching) {
+    parts.push(`${fmtTokens(breakdown.inputTokens)} in`);
+    if (breakdown.cacheCreationTokens > 0) parts.push(`${fmtTokens(breakdown.cacheCreationTokens)} write`);
+    if (breakdown.cacheReadTokens > 0) parts.push(`${fmtTokens(breakdown.cacheReadTokens)} cached`);
+    parts.push(`${fmtTokens(breakdown.outputTokens)} out`);
+  }
+
+  return (
+    <div className="space-y-0.5">
+      <div className="flex items-baseline justify-between gap-4 text-xs">
+        <span className="min-w-0 truncate font-mono text-foreground">{breakdown.model}</span>
+        <span className="shrink-0 tabular-nums text-foreground">{breakdown.totalTokens.toLocaleString()}</span>
+      </div>
+      {hasCaching && (
+        <p className="text-[11px] text-muted-foreground">{parts.join(" · ")}</p>
       )}
     </div>
   );
@@ -341,8 +335,10 @@ function ViewToggleButton({ active, onClick, label, icon }: ViewToggleButtonProp
     <button
       onClick={onClick}
       className={cn(
-        "flex h-8 items-center gap-1.5 rounded-sm px-3 text-sm font-medium transition-colors",
-        active ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground"
+        "flex h-7 items-center gap-1.5 rounded-sm px-2.5 text-xs font-medium transition-colors",
+        active
+          ? "bg-background text-foreground shadow-sm"
+          : "text-muted-foreground hover:text-foreground"
       )}
     >
       {icon}
