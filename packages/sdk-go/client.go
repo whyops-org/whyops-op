@@ -1,5 +1,7 @@
 // Package whyops is the Go SDK for WhyOps AI agent observability.
 //
+// Import path: github.com/whyops-org/whyops-op/packages/sdk-go
+//
 // Quick start:
 //
 //	sdk := whyops.New(whyops.Config{

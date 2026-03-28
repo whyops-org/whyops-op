@@ -24,15 +24,15 @@ export class AgentRegistry {
   async init(agentName: string, metadata: AgentMetadata): Promise<AgentInfo | null> {
     // Try proxy first, fall back to analyse
     const urls = [
-      `${this.proxyBaseUrl}/v1/agents/init`,
       `${this.analyseBaseUrl}/entities/init`,
+      `${this.proxyBaseUrl}/v1/agents/init`,
     ];
 
     for (const url of urls) {
       try {
         const res = await post<{ success: boolean } & AgentInfo>(
           url,
-          { agentName, metadata },
+          { agentName, metadata: { tools: [], ...metadata } },
           { Authorization: `Bearer ${this.apiKey}` },
         );
 

@@ -1,4 +1,4 @@
-module github.com/whyops-org/sdk-go
+module github.com/whyops-org/whyops-op/packages/sdk-go
 
 go 1.21
 

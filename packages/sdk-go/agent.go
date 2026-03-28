@@ -47,15 +47,24 @@ func (r *agentRegistry) ensure(ctx context.Context, agentName string, metadata A
 }
 
 func (r *agentRegistry) init(ctx context.Context, agentName string, metadata AgentMetadata) *AgentInfo {
+	// Ensure tools is always an array (backend requires it)
+	tools := metadata.Tools
+	if tools == nil {
+		tools = []AgentTool{}
+	}
 	body := map[string]any{
 		"agentName": agentName,
-		"metadata":  metadata,
+		"metadata": map[string]any{
+			"systemPrompt": metadata.SystemPrompt,
+			"description":  metadata.Description,
+			"tools":        tools,
+		},
 	}
 	headers := map[string]string{"Authorization": "Bearer " + r.apiKey}
 
 	urls := []string{
-		r.proxyBaseURL + "/v1/agents/init",
 		r.analyseBaseURL + "/entities/init",
+		r.proxyBaseURL + "/v1/agents/init",
 	}
 
 	for _, url := range urls {

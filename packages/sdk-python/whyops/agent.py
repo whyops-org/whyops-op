@@ -21,15 +21,16 @@ class AgentRegistry:
 
     def _urls(self) -> list[str]:
         return [
-            f"{self._proxy_base_url}/v1/agents/init",
             f"{self._analyse_base_url}/entities/init",
+            f"{self._proxy_base_url}/v1/agents/init",
         ]
 
     def _headers(self) -> dict[str, str]:
         return {"Authorization": f"Bearer {self._api_key}"}
 
     def _body(self, agent_name: str, metadata: AgentMetadata) -> dict:
-        return {"agentName": agent_name, "metadata": dict(metadata)}
+        m = {"tools": [], **dict(metadata)}
+        return {"agentName": agent_name, "metadata": m}
 
     # ── Sync ─────────────────────────────────────────────────────────────────
 
