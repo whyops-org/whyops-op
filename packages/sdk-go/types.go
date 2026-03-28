@@ -1,20 +1,8 @@
 package whyops
 
 // EventType is a string enum of all supported event types.
+// Constants are defined in config_gen.go (generated from packages/sdk/config.json).
 type EventType string
-
-const (
-	EventTypeUserMessage        EventType = "user_message"
-	EventTypeLLMResponse        EventType = "llm_response"
-	EventTypeLLMThinking        EventType = "llm_thinking"
-	EventTypeEmbeddingRequest   EventType = "embedding_request"
-	EventTypeEmbeddingResponse  EventType = "embedding_response"
-	EventTypeToolCall           EventType = "tool_call"
-	EventTypeToolCallRequest    EventType = "tool_call_request"
-	EventTypeToolCallResponse   EventType = "tool_call_response"
-	EventTypeToolResult         EventType = "tool_result"
-	EventTypeError              EventType = "error"
-)
 
 // ─── Agent types ──────────────────────────────────────────────────────────────
 
@@ -154,6 +142,6 @@ type Config struct {
 	APIKey          string
 	AgentName       string
 	AgentMetadata   AgentMetadata
-	ProxyBaseURL    string // default: https://proxy.whyops.com
-	AnalyseBaseURL  string // default: https://api.whyops.com/api
+	ProxyBaseURL    string // default: from shared SDK config
+	AnalyseBaseURL  string // default: from shared SDK config
 }

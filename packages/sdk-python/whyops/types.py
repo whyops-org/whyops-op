@@ -7,33 +7,9 @@ from __future__ import annotations
 from typing import Any, Literal, Optional, Sequence
 from typing_extensions import TypedDict, Required, NotRequired
 
+from ._config import EVENT_TYPES, EventType
+
 # ─── Event type literal ────────────────────────────────────────────────────────
-
-EventType = Literal[
-    "user_message",
-    "llm_response",
-    "llm_thinking",
-    "embedding_request",
-    "embedding_response",
-    "tool_call",
-    "tool_call_request",
-    "tool_call_response",
-    "tool_result",
-    "error",
-]
-
-EVENT_TYPES: tuple[EventType, ...] = (
-    "user_message",
-    "llm_response",
-    "llm_thinking",
-    "embedding_request",
-    "embedding_response",
-    "tool_call",
-    "tool_call_request",
-    "tool_call_response",
-    "tool_result",
-    "error",
-)
 
 # ─── Shared small types ────────────────────────────────────────────────────────
 

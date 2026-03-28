@@ -199,16 +199,16 @@ func (t *Trace) build(eventType EventType, content, metadata any, opts EventOpti
 }
 
 func (t *Trace) send(ctx context.Context, payload eventPayload) error {
-	url := t.analyseBaseURL + "/events/ingest"
+	url := t.analyseBaseURL + EndpointEventsIngest
 	headers := map[string]string{"Authorization": "Bearer " + t.apiKey}
 
 	status, _, err := t.http.post(ctx, url, payload, headers)
 	if err != nil {
-		log.Printf("[whyops] event send error (%s): %v", payload.EventType, err)
+		log.Printf("%s event send error (%s): %v", LogPrefix, payload.EventType, err)
 		return fmt.Errorf("whyops: send: %w", err)
 	}
 	if status < 200 || status >= 300 {
-		log.Printf("[whyops] event send failed: HTTP %d (%s)", status, payload.EventType)
+		log.Printf("%s event send failed: HTTP %d (%s)", LogPrefix, status, payload.EventType)
 		return fmt.Errorf("whyops: HTTP %d", status)
 	}
 	return nil

@@ -9,6 +9,7 @@ import sys
 import uuid
 from typing import Any, Callable, Coroutine, Optional
 
+from ._config import ENDPOINT_EVENTS_INGEST, LOG_PREFIX
 from .http import post_async, post_sync
 from .types import (
     AgentMetadata,
@@ -50,7 +51,7 @@ class WhyOpsTrace:
         self._trace_id = trace_id
         self._agent_name = agent_name
         self._api_key = api_key
-        self._url = f"{analyse_base_url.rstrip('/')}/events/ingest"
+        self._url = f"{analyse_base_url.rstrip('/')}{ENDPOINT_EVENTS_INGEST}"
         self._on_init_sync = on_init_sync
         self._on_init_async = on_init_async
 
@@ -336,14 +337,14 @@ class WhyOpsTrace:
         try:
             r = post_sync(self._url, dict(payload), {"Authorization": f"Bearer {self._api_key}"})
             if not r.is_success:
-                print(f"[whyops] event send failed: HTTP {r.status_code} ({payload['eventType']})", file=sys.stderr)
+                print(f"{LOG_PREFIX} event send failed: HTTP {r.status_code} ({payload['eventType']})", file=sys.stderr)
         except Exception as exc:
-            print(f"[whyops] event send error: {exc}", file=sys.stderr)
+            print(f"{LOG_PREFIX} event send error: {exc}", file=sys.stderr)
 
     async def _send_async(self, payload: EventPayload) -> None:
         try:
             r = await post_async(self._url, dict(payload), {"Authorization": f"Bearer {self._api_key}"})
             if not r.is_success:
-                print(f"[whyops] event send failed: HTTP {r.status_code} ({payload['eventType']})", file=sys.stderr)
+                print(f"{LOG_PREFIX} event send failed: HTTP {r.status_code} ({payload['eventType']})", file=sys.stderr)
         except Exception as exc:
-            print(f"[whyops] event send error: {exc}", file=sys.stderr)
+            print(f"{LOG_PREFIX} event send error: {exc}", file=sys.stderr)

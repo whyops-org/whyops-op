@@ -1,5 +1,4 @@
-const RETRY_DELAYS_MS = [200, 400, 800];
-const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
+import { HEADERS, HTTP_TIMEOUT_MS, RETRY_DELAYS_MS, RETRYABLE_STATUSES } from './config.js';
 
 export interface HttpResponse<T = unknown> {
   ok: boolean;
@@ -23,12 +22,12 @@ export async function post<T = unknown>(
     try {
       response = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...headers },
+        headers: { [HEADERS.contentTypeName]: HEADERS.contentTypeValue, ...headers },
         body: JSON.stringify(body),
+        signal: AbortSignal.timeout(HTTP_TIMEOUT_MS),
       });
     } catch (err) {
       lastError = err;
-      // Network error — retry
       continue;
     }
 

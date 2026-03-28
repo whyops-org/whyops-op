@@ -4,6 +4,11 @@ import json
 import sys
 from typing import Optional
 
+from ._config import (
+    ENDPOINT_AGENT_INIT_FALLBACK,
+    ENDPOINT_AGENT_INIT_PRIMARY,
+    LOG_PREFIX,
+)
 from .http import post_async, post_sync
 from .types import AgentInfo, AgentMetadata
 
@@ -21,8 +26,8 @@ class AgentRegistry:
 
     def _urls(self) -> list[str]:
         return [
-            f"{self._analyse_base_url}/entities/init",
-            f"{self._proxy_base_url}/v1/agents/init",
+            f"{self._analyse_base_url}{ENDPOINT_AGENT_INIT_PRIMARY}",
+            f"{self._proxy_base_url}{ENDPOINT_AGENT_INIT_FALLBACK}",
         ]
 
     def _headers(self) -> dict[str, str]:
@@ -38,7 +43,6 @@ class AgentRegistry:
         key = _stable_key(agent_name, metadata)
         if key in self._cache:
             return self._cache[key]
-
         info = self._init_sync(agent_name, metadata)
         if info:
             self._cache[key] = info
@@ -47,7 +51,6 @@ class AgentRegistry:
     def _init_sync(self, agent_name: str, metadata: AgentMetadata) -> Optional[AgentInfo]:
         body = self._body(agent_name, metadata)
         headers = self._headers()
-
         for url in self._urls():
             try:
                 r = post_sync(url, body, headers)
@@ -61,9 +64,8 @@ class AgentRegistry:
                             versionHash=data["versionHash"],
                         )
             except Exception:
-                pass  # try next url
-
-        print("[whyops] agent init failed — continuing without registration", file=sys.stderr)
+                pass
+        print(f"{LOG_PREFIX} agent init failed — continuing without registration", file=sys.stderr)
         return None
 
     # ── Async ────────────────────────────────────────────────────────────────
@@ -72,7 +74,6 @@ class AgentRegistry:
         key = _stable_key(agent_name, metadata)
         if key in self._cache:
             return self._cache[key]
-
         info = await self._init_async(agent_name, metadata)
         if info:
             self._cache[key] = info
@@ -81,7 +82,6 @@ class AgentRegistry:
     async def _init_async(self, agent_name: str, metadata: AgentMetadata) -> Optional[AgentInfo]:
         body = self._body(agent_name, metadata)
         headers = self._headers()
-
         for url in self._urls():
             try:
                 r = await post_async(url, body, headers)
@@ -96,6 +96,5 @@ class AgentRegistry:
                         )
             except Exception:
                 pass
-
-        print("[whyops] agent init failed — continuing without registration", file=sys.stderr)
+        print(f"{LOG_PREFIX} agent init failed — continuing without registration", file=sys.stderr)
         return None

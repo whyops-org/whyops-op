@@ -10,15 +10,14 @@ import (
 	"time"
 )
 
-var retryDelays = []time.Duration{200 * time.Millisecond, 400 * time.Millisecond, 800 * time.Millisecond}
-var retryableStatuses = map[int]bool{429: true, 500: true, 502: true, 503: true, 504: true}
+// retryDelays and retryableStatuses are defined in config_gen.go
 
 type httpClient struct {
 	inner *http.Client
 }
 
 func newHTTPClient() *httpClient {
-	return &httpClient{inner: &http.Client{Timeout: 15 * time.Second}}
+	return &httpClient{inner: &http.Client{Timeout: HTTPTimeoutMs * time.Millisecond}}
 }
 
 func (c *httpClient) post(ctx context.Context, url string, body any, headers map[string]string) (int, []byte, error) {
@@ -43,7 +42,7 @@ func (c *httpClient) post(ctx context.Context, url string, body any, headers map
 		if err != nil {
 			return 0, nil, fmt.Errorf("whyops: new request: %w", err)
 		}
-		req.Header.Set("Content-Type", "application/json")
+	req.Header.Set(HeaderContentType, HeaderContentJSON)
 		for k, v := range headers {
 			req.Header.Set(k, v)
 		}

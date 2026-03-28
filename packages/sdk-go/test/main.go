@@ -13,17 +13,23 @@ import (
 	whyops "github.com/whyops-org/whyops-op/packages/sdk-go"
 )
 
-const (
-	apiKey      = "YOPS-P7t8nP6yTZ-p0GQNkiEa4bDlBvD3fa5d"
-	proxyURL    = "https://proxy.whyops.com"
-	analyseURL  = "https://a.whyops.com/api"
-	agentName   = "sdk-ts-test-agent"
-)
-
 func pass(msg string) { fmt.Printf("  ✓ %s\n", msg) }
 func fail(msg string, err error) { fmt.Fprintf(os.Stderr, "  ✗ %s — %v\n", msg, err) }
 
 func main() {
+	apiKey := os.Getenv("WHYOPS_SDK_TEST_API_KEY")
+	if apiKey == "" {
+		fmt.Fprintln(os.Stderr, "Set WHYOPS_SDK_TEST_API_KEY to run the integration test.")
+		os.Exit(1)
+	}
+
+	proxyURL := os.Getenv("WHYOPS_SDK_TEST_PROXY_URL")
+	analyseURL := os.Getenv("WHYOPS_SDK_TEST_ANALYSE_URL")
+	agentName := os.Getenv("WHYOPS_SDK_TEST_AGENT_NAME")
+	if agentName == "" {
+		agentName = "sdk-ts-test-agent"
+	}
+
 	// Skip TLS verification (same cert issue as other SDKs on this machine)
 	http.DefaultTransport = &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec

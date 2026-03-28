@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from typing import Any, Optional, TypeVar
+from typing import Optional, TypeVar
 
+from ._config import DEFAULT_ANALYSE_URL, DEFAULT_PROXY_URL
 from .agent import AgentRegistry
 from .proxy import patch_anthropic, patch_openai
 from .trace import WhyOpsTrace
@@ -9,19 +10,16 @@ from .types import AgentInfo, AgentMetadata
 
 T = TypeVar("T")
 
-DEFAULT_PROXY_URL = "https://proxy.whyops.com"
-DEFAULT_ANALYSE_URL = "https://api.whyops.com/api"
-
 
 class WhyOps:
     """
     Main WhyOps client. Instantiate once per service/process.
 
-    :param api_key:         Your WhyOps API key.
-    :param agent_name:      Stable identifier for this agent (1–255 chars).
-    :param agent_metadata:  System prompt, tools, and description.
-    :param proxy_base_url:  Override the proxy URL (default: https://proxy.whyops.com).
-    :param analyse_base_url: Override the analyse URL (default: https://api.whyops.com/api).
+    :param api_key:          Your WhyOps API key.
+    :param agent_name:       Stable identifier for this agent (1–255 chars).
+    :param agent_metadata:   System prompt, tools, and description.
+    :param proxy_base_url:   Optional. Defaults to https://proxy.whyops.com
+    :param analyse_base_url: Optional. Defaults to https://a.whyops.com/api
 
     Example::
 
@@ -39,16 +37,15 @@ class WhyOps:
         api_key: str,
         agent_name: str,
         agent_metadata: AgentMetadata,
-        proxy_base_url: str = DEFAULT_PROXY_URL,
-        analyse_base_url: str = DEFAULT_ANALYSE_URL,
+        proxy_base_url: str = "",
+        analyse_base_url: str = "",
     ) -> None:
         self._api_key = api_key
         self._agent_name = agent_name
         self._agent_metadata = agent_metadata
-        self._proxy_base_url = proxy_base_url
-        self._analyse_base_url = analyse_base_url
-        self._registry = AgentRegistry(api_key, proxy_base_url, analyse_base_url)
-        self._init_done = False
+        self._proxy_base_url = proxy_base_url or DEFAULT_PROXY_URL
+        self._analyse_base_url = analyse_base_url or DEFAULT_ANALYSE_URL
+        self._registry = AgentRegistry(api_key, self._proxy_base_url, self._analyse_base_url)
 
     # ─── Agent init ──────────────────────────────────────────────────────────
 
@@ -67,11 +64,6 @@ class WhyOps:
         Create a trace builder for a session or conversation.
 
         :param trace_id: Your session/conversation identifier.
-
-        Example::
-
-            trace = sdk.trace("session-abc")
-            trace.user_message_sync([{"role": "user", "content": "Hello"}])
         """
         return WhyOpsTrace(
             trace_id=trace_id,
@@ -85,24 +77,9 @@ class WhyOps:
     # ─── Proxy helpers ───────────────────────────────────────────────────────
 
     def openai(self, client: T) -> T:
-        """
-        Patch an openai client to route through the WhyOps proxy.
-
-        Example::
-
-            import openai
-            client = sdk.openai(openai.OpenAI(api_key=os.environ["OPENAI_API_KEY"]))
-            # Use client exactly as before
-        """
+        """Patch an openai client to route through the WhyOps proxy."""
         return patch_openai(client, self._proxy_base_url, self._api_key, self._agent_name)
 
     def anthropic(self, client: T) -> T:
-        """
-        Patch an anthropic client to route through the WhyOps proxy.
-
-        Example::
-
-            import anthropic
-            client = sdk.anthropic(anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"]))
-        """
+        """Patch an anthropic client to route through the WhyOps proxy."""
         return patch_anthropic(client, self._proxy_base_url, self._api_key, self._agent_name)

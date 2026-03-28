@@ -63,8 +63,8 @@ func (r *agentRegistry) init(ctx context.Context, agentName string, metadata Age
 	headers := map[string]string{"Authorization": "Bearer " + r.apiKey}
 
 	urls := []string{
-		r.analyseBaseURL + "/entities/init",
-		r.proxyBaseURL + "/v1/agents/init",
+		r.analyseBaseURL + EndpointAgentInitPrimary,
+		r.proxyBaseURL + EndpointAgentInitFallback,
 	}
 
 	for _, url := range urls {
@@ -91,7 +91,7 @@ func (r *agentRegistry) init(ctx context.Context, agentName string, metadata Age
 		}
 	}
 
-	log.Println("[whyops] agent init failed — continuing without registration")
+	log.Println(LogPrefix + " agent init failed — continuing without registration")
 	return nil
 }
 

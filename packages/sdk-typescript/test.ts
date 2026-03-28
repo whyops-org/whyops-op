@@ -4,11 +4,15 @@
  */
 import { WhyOps } from './src/client.js';
 
-const API_KEY = 'YOPS-P7t8nP6yTZ-p0GQNkiEa4bDlBvD3fa5d';
-const PROXY_URL = 'https://proxy.whyops.com';
-const ANALYSE_URL = 'https://a.whyops.com/api';
+const API_KEY = process.env.WHYOPS_SDK_TEST_API_KEY;
+const PROXY_URL = process.env.WHYOPS_SDK_TEST_PROXY_URL;
+const ANALYSE_URL = process.env.WHYOPS_SDK_TEST_ANALYSE_URL;
 
-const AGENT_NAME = 'sdk-ts-test-agent';
+const AGENT_NAME = process.env.WHYOPS_SDK_TEST_AGENT_NAME ?? 'sdk-ts-test-agent';
+
+if (!API_KEY) {
+  throw new Error('Set WHYOPS_SDK_TEST_API_KEY to run the integration test.');
+}
 
 const sdk = new WhyOps({
   apiKey: API_KEY,
@@ -25,8 +29,8 @@ const sdk = new WhyOps({
       },
     ],
   },
-  proxyBaseUrl: PROXY_URL,
-  analyseBaseUrl: ANALYSE_URL,
+  ...(PROXY_URL ? { proxyBaseUrl: PROXY_URL } : {}),
+  ...(ANALYSE_URL ? { analyseBaseUrl: ANALYSE_URL } : {}),
 });
 
 function pass(msg: string) { console.log(`  ✓ ${msg}`); }

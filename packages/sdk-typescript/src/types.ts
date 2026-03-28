@@ -1,16 +1,8 @@
+import type { EVENT_TYPES } from './config.generated.js';
+
 // ─── Event types ──────────────────────────────────────────────────────────────
 
-export type EventType =
-  | 'user_message'
-  | 'llm_response'
-  | 'llm_thinking'
-  | 'embedding_request'
-  | 'embedding_response'
-  | 'tool_call'
-  | 'tool_call_request'
-  | 'tool_call_response'
-  | 'tool_result'
-  | 'error';
+export type EventType = typeof EVENT_TYPES[number];
 
 // ─── Content shapes (per event type) ─────────────────────────────────────────
 
@@ -215,7 +207,15 @@ export interface WhyOpsConfig {
   apiKey: string;
   agentName: string;
   agentMetadata: AgentMetadata;
+  /**
+   * Optional. Defaults to https://proxy.whyops.com (from packages/sdk/config.json).
+   * Only set this if you're self-hosting the WhyOps proxy.
+   */
   proxyBaseUrl?: string;
+  /**
+   * Optional. Defaults to https://a.whyops.com/api (from packages/sdk/config.json).
+   * Only set this if you're self-hosting the WhyOps analyse service.
+   */
   analyseBaseUrl?: string;
 }
 

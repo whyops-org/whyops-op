@@ -1,3 +1,4 @@
+import { ENDPOINTS, LOG_PREFIX } from './config.js';
 import { post } from './http.js';
 import type {
   ErrorOptions,
@@ -183,15 +184,15 @@ export class WhyOpsTrace {
     await this.onInit();
     try {
       const res = await post(
-        `${this.analyseBaseUrl}/events/ingest`,
+        `${this.analyseBaseUrl}${ENDPOINTS.eventsIngest}`,
         payload,
         { Authorization: `Bearer ${this.apiKey}` },
       );
       if (!res.ok) {
-        console.error(`[whyops] event send failed: HTTP ${res.status}`, payload.eventType);
+        console.error(`${LOG_PREFIX} event send failed: HTTP ${res.status}`, payload.eventType);
       }
     } catch (err) {
-      console.error('[whyops] event send error:', err);
+      console.error(`${LOG_PREFIX} event send error:`, err);
     }
   }
 }

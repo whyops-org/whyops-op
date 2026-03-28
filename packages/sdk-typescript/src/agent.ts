@@ -1,3 +1,4 @@
+import { ENDPOINTS, LOG_PREFIX } from './config.js';
 import { post } from './http.js';
 import type { AgentInfo, AgentMetadata } from './types.js';
 
@@ -10,7 +11,6 @@ export class AgentRegistry {
     private readonly analyseBaseUrl: string,
   ) {}
 
-  /** Returns cached AgentInfo, or calls init if not yet registered. */
   async ensure(agentName: string, metadata: AgentMetadata): Promise<AgentInfo | null> {
     const key = `${agentName}:${stableHash(metadata)}`;
     const hit = this.cache.get(key);
@@ -22,20 +22,16 @@ export class AgentRegistry {
   }
 
   async init(agentName: string, metadata: AgentMetadata): Promise<AgentInfo | null> {
-    // Try proxy first, fall back to analyse
     const urls = [
-      `${this.analyseBaseUrl}/entities/init`,
-      `${this.proxyBaseUrl}/v1/agents/init`,
+      `${this.analyseBaseUrl}${ENDPOINTS.agentInitPrimary}`,
+      `${this.proxyBaseUrl}${ENDPOINTS.agentInitFallback}`,
     ];
+    const body = { agentName, metadata: { tools: [], ...metadata } };
+    const headers = { Authorization: `Bearer ${this.apiKey}` };
 
     for (const url of urls) {
       try {
-        const res = await post<{ success: boolean } & AgentInfo>(
-          url,
-          { agentName, metadata: { tools: [], ...metadata } },
-          { Authorization: `Bearer ${this.apiKey}` },
-        );
-
+        const res = await post<{ success: boolean } & AgentInfo>(url, body, headers);
         if (res.ok && res.data.agentId) {
           return {
             agentId: res.data.agentId,
@@ -49,12 +45,11 @@ export class AgentRegistry {
       }
     }
 
-    console.error('[whyops] agent init failed — continuing without registration');
+    console.error(`${LOG_PREFIX} agent init failed — continuing without registration`);
     return null;
   }
 }
 
-/** Stable deterministic hash of an object (order-independent keys). */
 function stableHash(obj: unknown): string {
   return JSON.stringify(sortKeys(obj));
 }

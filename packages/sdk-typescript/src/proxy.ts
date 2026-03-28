@@ -6,9 +6,7 @@
  * It accepts whatever client the user already has and patches it.
  */
 
-export interface ProxyOptions {
-  traceId?: string;
-}
+import { HEADERS } from './config.js';
 
 // ─── OpenAI ─────────────────────────────────────────────────────────────────
 
@@ -38,7 +36,7 @@ export function patchOpenAI<T extends OpenAILike>(
   (client as any).defaultHeaders = {
     ...existing,
     'Authorization': `Bearer ${apiKey}`,
-    'X-Agent-Name': agentName,
+    [HEADERS.agentName]: agentName,
   };
 
   return client;
@@ -65,8 +63,8 @@ export function patchAnthropic<T extends AnthropicLike>(
   const existing = (client as any).defaultHeaders ?? {};
   (client as any).defaultHeaders = {
     ...existing,
-    'x-api-key': apiKey,
-    'X-Agent-Name': agentName,
+    [HEADERS.apiKeyAnthropic]: apiKey,
+    [HEADERS.agentName]: agentName,
   };
 
   return client;

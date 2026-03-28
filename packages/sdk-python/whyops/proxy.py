@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from typing import Any, TypeVar
 
+from ._config import HEADER_AGENT_NAME, HEADER_ANTHROPIC_KEY
+
 T = TypeVar("T")
 
 
@@ -34,7 +36,7 @@ def patch_openai(client: T, proxy_url: str, api_key: str, agent_name: str) -> T:
     obj.default_headers = {
         **existing,
         "Authorization": f"Bearer {api_key}",
-        "X-Agent-Name": agent_name,
+        HEADER_AGENT_NAME: agent_name,
     }
     return client
 
@@ -58,7 +60,7 @@ def patch_anthropic(client: T, proxy_url: str, api_key: str, agent_name: str) ->
     existing = getattr(obj, "default_headers", {}) or {}
     obj.default_headers = {
         **existing,
-        "x-api-key": api_key,
-        "X-Agent-Name": agent_name,
+        HEADER_ANTHROPIC_KEY: api_key,
+        HEADER_AGENT_NAME: agent_name,
     }
     return client

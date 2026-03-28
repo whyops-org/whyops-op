@@ -8,6 +8,7 @@
 //	    APIKey:        os.Getenv("WHYOPS_API_KEY"),
 //	    AgentName:     "my-agent",
 //	    AgentMetadata: whyops.AgentMetadata{SystemPrompt: "You are helpful."},
+//	    // ProxyBaseURL and AnalyseBaseURL are optional — defaults from config.json
 //	})
 //
 //	// Proxy mode
@@ -23,11 +24,6 @@ import (
 	"strings"
 )
 
-const (
-	defaultProxyURL   = "https://proxy.whyops.com"
-	defaultAnalyseURL = "https://api.whyops.com/api"
-)
-
 // Client is the main WhyOps SDK client.
 type Client struct {
 	apiKey         string
@@ -40,12 +36,18 @@ type Client struct {
 }
 
 // New creates a new WhyOps client.
+//
+// ProxyBaseURL and AnalyseBaseURL are optional. If empty, the SDK uses the
+// defaults defined in packages/sdk/config.json:
+//
+//	ProxyBaseURL:   https://proxy.whyops.com
+//	AnalyseBaseURL: https://a.whyops.com/api
 func New(cfg Config) *Client {
-	proxyURL := defaultProxyURL
+	proxyURL := DefaultProxyURL
 	if cfg.ProxyBaseURL != "" {
 		proxyURL = strings.TrimRight(cfg.ProxyBaseURL, "/")
 	}
-	analyseURL := defaultAnalyseURL
+	analyseURL := DefaultAnalyseURL
 	if cfg.AnalyseBaseURL != "" {
 		analyseURL = strings.TrimRight(cfg.AnalyseBaseURL, "/")
 	}
@@ -62,8 +64,8 @@ func New(cfg Config) *Client {
 	return c
 }
 
-// InitAgent explicitly initialises the agent. This is called automatically
-// before the first event — only call directly if you want early registration.
+// InitAgent explicitly initialises the agent. Called automatically before
+// the first event — only call directly if you want early registration.
 func (c *Client) InitAgent(ctx context.Context) *AgentInfo {
 	return c.registry.ensure(ctx, c.agentName, c.agentMetadata)
 }

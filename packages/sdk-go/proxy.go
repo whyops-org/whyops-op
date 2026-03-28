@@ -17,7 +17,7 @@ func (t *WhyOpsTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	// Clone the request to avoid mutating the original
 	clone := req.Clone(req.Context())
 	clone.Header.Set("Authorization", "Bearer "+t.apiKey)
-	clone.Header.Set("X-Agent-Name", t.agentName)
+	clone.Header.Set(HeaderAgentName, t.agentName)
 
 	inner := t.Inner
 	if inner == nil {

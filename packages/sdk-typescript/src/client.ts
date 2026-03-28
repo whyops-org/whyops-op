@@ -1,10 +1,8 @@
 import { AgentRegistry } from './agent.js';
+import { DEFAULT_ANALYSE_URL, DEFAULT_PROXY_URL } from './config.js';
 import { patchAnthropic, patchOpenAI } from './proxy.js';
 import { WhyOpsTrace } from './trace.js';
 import type { AgentInfo, AgentMetadata, WhyOpsConfig } from './types.js';
-
-const DEFAULT_PROXY_URL = 'https://proxy.whyops.com';
-const DEFAULT_ANALYSE_URL = 'https://api.whyops.com/api';
 
 export class WhyOps {
   private readonly apiKey: string;
@@ -19,8 +17,9 @@ export class WhyOps {
     this.apiKey = config.apiKey;
     this.agentName = config.agentName;
     this.agentMetadata = config.agentMetadata;
-    this.proxyBaseUrl = config.proxyBaseUrl ?? DEFAULT_PROXY_URL;
-    this.analyseBaseUrl = config.analyseBaseUrl ?? DEFAULT_ANALYSE_URL;
+    // Fall back to defaults from config.json if not provided
+    this.proxyBaseUrl = config.proxyBaseUrl || DEFAULT_PROXY_URL;
+    this.analyseBaseUrl = config.analyseBaseUrl || DEFAULT_ANALYSE_URL;
     this.registry = new AgentRegistry(this.apiKey, this.proxyBaseUrl, this.analyseBaseUrl);
   }
 
@@ -38,8 +37,7 @@ export class WhyOps {
   /**
    * Create a trace builder for a given session / conversation ID.
    *
-   * @param traceId  Your session or conversation identifier. Keep it stable
-   *                 across turns of the same conversation.
+   * @param traceId  Your session or conversation identifier.
    */
   trace(traceId: string): WhyOpsTrace {
     return new WhyOpsTrace(
@@ -56,7 +54,6 @@ export class WhyOps {
    *
    * @example
    * const openai = whyops.openai(new OpenAI({ apiKey: process.env.OPENAI_API_KEY }));
-   * // Use `openai` exactly as before — all calls are now observed.
    */
   openai<T extends object>(client: T): T {
     return patchOpenAI(client as any, this.proxyBaseUrl, this.apiKey, this.agentName) as T;

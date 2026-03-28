@@ -26,9 +26,10 @@ Both modes require an agent to be initialised once. Both are first-class in ever
 packages/
   sdk/
     CLAUDE.md                ← this file
+    config.json              ← canonical shared SDK config source
   sdk-typescript/            ← @whyops/sdk (npm)
   sdk-python/                ← whyops (PyPI)
-  sdk-go/                    ← github.com/whyops-org/sdk-go (Go module)
+  sdk-go/                    ← github.com/whyops-org/whyops-op/packages/sdk-go
 ```
 
 ---
@@ -50,7 +51,7 @@ All proxy requests require:
 - `X-Agent-Name: <agentName>` (on LLM calls)
 - `X-Trace-ID: <traceId>` (optional — for explicit trace linking)
 
-### Analyse service (`WHYOPS_ANALYSE_URL`, default `https://api.whyops.com/api`)
+### Analyse service (`WHYOPS_ANALYSE_URL`, default `https://a.whyops.com/api`)
 
 | Method | Path | Purpose |
 |--------|------|---------|
@@ -358,6 +359,35 @@ WhyOps
 
 ---
 
+## Shared config rule
+
+There is exactly one source of truth for shared SDK constants:
+
+`packages/sdk/config.json`
+
+Do not duplicate default URLs, endpoint paths, retry settings, header names, event type
+lists, or logging prefixes by hand inside any SDK package.
+
+Instead:
+
+- Edit `packages/sdk/config.json`
+- Run `npm run sync:sdk-config`
+- Commit the generated artifacts
+
+Generated artifacts:
+
+- TypeScript: `packages/sdk-typescript/src/config.generated.ts`
+- Python: `packages/sdk-python/whyops/_config_gen.py`
+- Go: `packages/sdk-go/config_gen.go`
+
+Why this exists:
+
+- The repo keeps one canonical config file.
+- Published SDK packages must not read `../../sdk/config.json` at runtime.
+- Generated typed files keep packaging clean while preserving one source of truth.
+
+---
+
 ## Zero-dependency rule
 
 | SDK | Allowed runtime deps |
@@ -375,6 +405,8 @@ existing client instance and patch it — they do not import the SDK themselves.
 
 ```
 src/
+  config.ts        # thin wrapper around generated config exports
+  config.generated.ts
   types.ts         # all types: EventType, event content/metadata interfaces,
                    # AgentMetadata, AgentInfo, WhyOpsConfig
   client.ts        # WhyOps class — config, lazy init, .trace(), .openai(), .anthropic()
@@ -392,6 +424,8 @@ README.md
 
 ```
 whyops/
+  _config.py       # thin wrapper around generated config exports
+  _config_gen.py
   __init__.py      # re-exports: WhyOps, WhyOpsTrace, all types
   types.py         # TypedDicts, Literals, dataclasses for all event shapes
   client.py        # WhyOps class
@@ -407,12 +441,13 @@ README.md
 
 ```
 client.go          # WhyOps struct + New() + Trace() + OpenAITransport()
+config_gen.go      # generated from packages/sdk/config.json
 trace.go           # Trace struct — one method per event type
 agent.go           # InitAgent() + caching
 http.go            # doWithRetry() using net/http
 proxy.go           # http.RoundTripper that injects headers
-types.go           # all types: EventType constants, event param structs
-go.mod             # module: github.com/whyops-org/sdk-go
+types.go           # all types: event param structs
+go.mod             # module: github.com/whyops-org/whyops-op/packages/sdk-go
 README.md
 ```
 

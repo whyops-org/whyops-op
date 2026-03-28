@@ -13,19 +13,23 @@ import ssl; ssl._create_default_https_context = ssl._create_unverified_context  
 
 from whyops import WhyOps
 
-API_KEY = "YOPS-P7t8nP6yTZ-p0GQNkiEa4bDlBvD3fa5d"
-PROXY_URL = "https://proxy.whyops.com"
-ANALYSE_URL = "https://a.whyops.com/api"
+API_KEY = os.environ.get("WHYOPS_SDK_TEST_API_KEY")
+PROXY_URL = os.environ.get("WHYOPS_SDK_TEST_PROXY_URL")
+ANALYSE_URL = os.environ.get("WHYOPS_SDK_TEST_ANALYSE_URL")
+AGENT_NAME = os.environ.get("WHYOPS_SDK_TEST_AGENT_NAME", "sdk-ts-test-agent")
+
+if not API_KEY:
+    raise RuntimeError("Set WHYOPS_SDK_TEST_API_KEY to run the integration test.")
 
 sdk = WhyOps(
     api_key=API_KEY,
-    agent_name="sdk-ts-test-agent",  # reuse existing agent
+    agent_name=AGENT_NAME,
     agent_metadata={
         "systemPrompt": "You are a test agent for the WhyOps Python SDK.",
         "tools": [],
     },
-    proxy_base_url=PROXY_URL,
-    analyse_base_url=ANALYSE_URL,
+    **({"proxy_base_url": PROXY_URL} if PROXY_URL else {}),
+    **({"analyse_base_url": ANALYSE_URL} if ANALYSE_URL else {}),
 )
 
 
