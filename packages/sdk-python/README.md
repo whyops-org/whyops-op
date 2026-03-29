@@ -50,7 +50,13 @@ sdk = WhyOps(
     agent_metadata={"systemPrompt": "You are a helpful support agent.", "tools": []},
 )
 
-client = sdk.openai(OpenAI(api_key="YOUR_OPENAI_API_KEY"))
+trace_id = "session-123"
+client = sdk.openai(OpenAI(api_key="YOUR_WHYOPS_API_KEY"))
+client.default_headers = {
+    **(client.default_headers or {}),
+    "X-Trace-ID": trace_id,
+    "X-Thread-ID": trace_id,
+}
 ```
 
 If `proxy_base_url` or `analyse_base_url` are omitted, the SDK uses WhyOps hosted defaults.

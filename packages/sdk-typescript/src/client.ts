@@ -53,7 +53,7 @@ export class WhyOps {
    * Patch an OpenAI client to route through the WhyOps proxy.
    *
    * @example
-   * const openai = whyops.openai(new OpenAI({ apiKey: process.env.OPENAI_API_KEY }));
+   * const openai = whyops.openai(new OpenAI({ apiKey: process.env.WHYOPS_API_KEY }));
    */
   openai<T extends object>(client: T): T {
     return patchOpenAI(client as any, this.proxyBaseUrl, this.apiKey, this.agentName) as T;
@@ -63,7 +63,7 @@ export class WhyOps {
    * Patch an Anthropic client to route through the WhyOps proxy.
    *
    * @example
-   * const anthropic = whyops.anthropic(new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }));
+   * const anthropic = whyops.anthropic(new Anthropic({ apiKey: process.env.WHYOPS_API_KEY }));
    */
   anthropic<T extends object>(client: T): T {
     return patchAnthropic(client as any, this.proxyBaseUrl, this.apiKey, this.agentName) as T;

@@ -55,9 +55,16 @@ const whyops = new WhyOps({
   },
 });
 
+const traceId = 'session-123';
 const openai = whyops.openai(
-  new OpenAI({ apiKey: process.env.OPENAI_API_KEY }),
+  new OpenAI({ apiKey: process.env.WHYOPS_API_KEY }),
 );
+
+openai.defaultHeaders = {
+  ...(openai as any).defaultHeaders,
+  'X-Trace-ID': traceId,
+  'X-Thread-ID': traceId,
+};
 ```
 
 If `proxyBaseUrl` or `analyseBaseUrl` are omitted, the SDK uses WhyOps hosted defaults.

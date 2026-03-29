@@ -26,7 +26,7 @@ def patch_openai(client: T, proxy_url: str, api_key: str, agent_name: str) -> T:
         from whyops import WhyOps
 
         sdk = WhyOps(api_key="...", agent_name="my-agent", agent_metadata={...})
-        client = sdk.openai(openai.OpenAI(api_key="sk-..."))
+        client = sdk.openai(openai.OpenAI(api_key="whyops_..."))
     """
     obj: Any = client
     obj.base_url = proxy_url.rstrip("/")
@@ -51,7 +51,7 @@ def patch_anthropic(client: T, proxy_url: str, api_key: str, agent_name: str) ->
         from whyops import WhyOps
 
         sdk = WhyOps(api_key="...", agent_name="my-agent", agent_metadata={...})
-        client = sdk.anthropic(anthropic.Anthropic(api_key="sk-ant-..."))
+        client = sdk.anthropic(anthropic.Anthropic(api_key="whyops_..."))
     """
     obj: Any = client
     obj.base_url = proxy_url.rstrip("/")
