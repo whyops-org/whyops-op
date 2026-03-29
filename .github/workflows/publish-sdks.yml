@@ -30,8 +30,10 @@ jobs:
           registry-url: https://registry.npmjs.org
       - run: npm ci
       - run: npm run sync:sdk-config
-      - run: npm run build --workspace @whyops/sdk
-      - run: npm publish --workspace @whyops/sdk --access public
+      - run: npm run build
+        working-directory: packages/sdk-typescript
+      - run: npm publish --access public
+        working-directory: packages/sdk-typescript
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - run: |
