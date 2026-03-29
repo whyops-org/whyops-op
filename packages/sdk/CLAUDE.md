@@ -457,7 +457,7 @@ README.md
 
 - TypeScript: semantic versioning, published to npm as `@whyops/sdk`
 - Python: semantic versioning, published to PyPI as `whyops`
-- Go: semantic versioning via git tags `sdk-go/v0.1.0`, module `github.com/whyops-org/whyops-op/packages/sdk-go`
+- Go: semantic versioning via git tags `packages/sdk-go/v0.1.0`, module `github.com/whyops-org/whyops-op/packages/sdk-go`
 
 Start all at `v0.1.0`. Breaking changes bump minor until `v1.0.0`.
 

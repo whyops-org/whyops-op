@@ -1,0 +1,83 @@
+name: Publish SDKs
+
+on:
+  workflow_dispatch:
+    inputs:
+      sdk:
+        description: SDK to publish
+        required: true
+        type: choice
+        options:
+          - typescript
+          - python
+          - go
+      version:
+        description: Version without leading v, e.g. 0.1.0
+        required: true
+        type: string
+
+jobs:
+  publish-typescript:
+    if: inputs.sdk == 'typescript'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - run: npm ci
+      - run: npm run sync:sdk-config
+      - run: npm run build --workspace @whyops/sdk
+      - run: npm publish --workspace @whyops/sdk --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - run: |
+          git tag sdk-typescript/v${{ inputs.version }}
+          git push origin sdk-typescript/v${{ inputs.version }}
+
+  publish-python:
+    if: inputs.sdk == 'python'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --upgrade pip build twine
+      - run: npm ci
+      - run: npm run sync:sdk-config
+      - run: python -m build
+        working-directory: packages/sdk-python
+      - run: python -m twine check dist/*
+        working-directory: packages/sdk-python
+      - run: python -m twine upload dist/*
+        working-directory: packages/sdk-python
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+      - run: |
+          git tag sdk-python/v${{ inputs.version }}
+          git push origin sdk-python/v${{ inputs.version }}
+
+  publish-go:
+    if: inputs.sdk == 'go'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+      - run: npm ci
+      - run: npm run sync:sdk-config
+      - run: go test ./...
+        working-directory: packages/sdk-go
+      - run: |
+          git tag packages/sdk-go/v${{ inputs.version }}
+          git push origin packages/sdk-go/v${{ inputs.version }}
