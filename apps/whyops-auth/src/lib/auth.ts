@@ -7,6 +7,35 @@ import { Kysely, PostgresDialect } from 'kysely';
 import { Pool } from 'pg';
 import { sendMagicLinkEmail } from '../utils/email.util';
 
+function deriveCookieDomainFromUrl(rawUrl: string): string | undefined {
+  try {
+    const hostname = new URL(rawUrl).hostname.toLowerCase();
+    if (
+      hostname === 'localhost' ||
+      hostname.endsWith('.localhost') ||
+      /^\d{1,3}(?:\.\d{1,3}){3}$/.test(hostname) ||
+      hostname.includes(':')
+    ) {
+      return undefined;
+    }
+
+    const labels = hostname.split('.').filter(Boolean);
+    if (labels.length < 2) {
+      return undefined;
+    }
+
+    return `.${labels.slice(-2).join('.')}`;
+  } catch {
+    return undefined;
+  }
+}
+
+const cookieDomain =
+  env.COOKIE_DOMAIN ||
+  (env.NODE_ENV === 'production'
+    ? deriveCookieDomainFromUrl(env.BETTER_AUTH_URL || env.AUTH_URL)
+    : undefined);
+
 const parsedDbUrl = env.DATABASE_URL ? parseDatabaseUrl(env.DATABASE_URL) : null;
 
 const poolConfig = env.DATABASE_URL
@@ -47,6 +76,7 @@ const db = new Kysely({
 logger.info(
   {
     baseURL: env.BETTER_AUTH_URL,
+    cookieDomain,
     dbHost: parsedDbUrl?.host || env.DB_HOST,
     dbPort: parsedDbUrl?.port || env.DB_PORT,
     dbName: parsedDbUrl?.database || env.DB_NAME,
@@ -147,7 +177,7 @@ export const auth = betterAuth({
       sameSite: env.NODE_ENV === 'production' ? 'none' : 'lax',
       httpOnly: true,
       path: '/',
-      domain: env.COOKIE_DOMAIN || undefined,
+      domain: cookieDomain,
       secure: env.NODE_ENV === 'production',
     },
     useSecureCookies: env.NODE_ENV === 'production',
