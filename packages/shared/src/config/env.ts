@@ -24,6 +24,12 @@ const envBoolean = z.preprocess((value) => {
   return value;
 }, z.boolean());
 
+const optionalEnvString = z.preprocess((value) => {
+  if (typeof value !== 'string') return value;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}, z.string().optional());
+
 // Environment validation schema
 const envSchema = z.object({
   // Database
@@ -120,7 +126,7 @@ const envSchema = z.object({
   TRUSTED_ORIGINS: z.string().default('http://localhost:3000,http://localhost:5173'),
   CORS_MAX_AGE_SEC: z.coerce.number().default(600),
 
-  COOKIE_DOMAIN: z.string().default('localhost'),
+  COOKIE_DOMAIN: optionalEnvString,
 
   // Auth middleware/session cache tuning
   AUTH_REMOTE_SESSION_CACHE_TTL_MS: z.coerce.number().default(15_000),

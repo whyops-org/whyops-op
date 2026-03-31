@@ -1,6 +1,9 @@
 import env from '@whyops/shared/env';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const serviceDir = path.dirname(fileURLToPath(import.meta.url));
 
 interface EmailObject {
   address: string;
@@ -100,7 +103,7 @@ class MailerooService {
    * Load email template from file
    */
   private loadEmailTemplate(templateName: string, variables: Record<string, string>): string {
-    const templatePath = path.join(__dirname, '../utils/email-templates', templateName);
+    const templatePath = path.join(serviceDir, '../utils/email-templates', templateName);
     let html = fs.readFileSync(templatePath, 'utf-8');
     
     // Replace all variables in the template
@@ -215,4 +218,3 @@ export type {
     MailerooErrorResponse,
     MailerooResponse
 };
-
