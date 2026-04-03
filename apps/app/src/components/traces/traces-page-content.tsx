@@ -140,8 +140,7 @@ export function TracesPageContent() {
             />
           ) : (
             <>
-              <div className="overflow-x-auto">
-              <Table>
+              <Table className="min-w-[920px]">
                 <TableHeader>
                   <TableRow className="bg-surface-2/50 hover:bg-surface-2/50">
                     <TableHead className="px-6 py-3">Status</TableHead>
@@ -200,7 +199,6 @@ export function TracesPageContent() {
                   ))}
                 </TableBody>
               </Table>
-              </div>
 
               {/* Pagination */}
               <div className="flex items-center justify-between border-t border-border/30 px-6 py-4">

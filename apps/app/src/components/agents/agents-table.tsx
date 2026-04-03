@@ -258,8 +258,7 @@ export function AgentsTable({
           }
         />
       ) : (
-        <div className="overflow-x-auto">
-        <Table>
+        <Table className="min-w-[760px]">
           <TableHeader>
             <TableRow className="bg-surface-2/30">
               {AGENTS_TABLE_TEXT.columns.map((column) => (
@@ -378,7 +377,6 @@ export function AgentsTable({
             })}
           </TableBody>
         </Table>
-        </div>
       )}
 
       {/* Footer */}

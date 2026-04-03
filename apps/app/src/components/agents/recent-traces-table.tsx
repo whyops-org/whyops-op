@@ -32,7 +32,6 @@ import {
   X
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import * as React from "react";
 
 import { useThreadsStore } from "@/stores/threadsStore";
 
@@ -155,12 +154,10 @@ export function RecentTracesTable({ agentId }: RecentTracesTableProps) {
         />
       ) : (
         <>
-          <div className="overflow-x-auto">
-          <Table>
+          <Table className="min-w-[760px]">
             <TableHeader>
               <TableRow className="bg-surface-2/50 hover:bg-surface-2/50">
                 <TableHead className="px-6 py-3">Status</TableHead>
-                {externalUserIdFilter && <TableHead className="px-6 py-3">External User</TableHead>}
                 <TableHead className="px-6 py-3">Trace ID</TableHead>
                 <TableHead className="px-6 py-3">Timestamp</TableHead>
                 <TableHead className="px-6 py-3">Duration</TableHead>
@@ -183,11 +180,6 @@ export function RecentTracesTable({ agentId }: RecentTracesTableProps) {
                       </span>
                     </div>
                   </TableCell>
-                  {externalUserIdFilter && (
-                    <TableCell className="px-6 py-4 font-mono text-xs text-muted-foreground">
-                      {thread.externalUserId || "—"}
-                    </TableCell>
-                  )}
                   <TableCell className="px-6 py-4 font-mono text-sm text-primary">
                     {thread.threadId.substring(0, 16)}...
                   </TableCell>
@@ -213,7 +205,6 @@ export function RecentTracesTable({ agentId }: RecentTracesTableProps) {
               ))}
             </TableBody>
           </Table>
-          </div>
 
           {/* Pagination */}
           <div className="flex items-center justify-between border-t border-border/30 px-6 py-4">

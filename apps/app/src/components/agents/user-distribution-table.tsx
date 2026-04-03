@@ -57,7 +57,7 @@ export function UserDistributionTable({ agentId }: UserDistributionTableProps) {
     void fetchUserDistribution(agentId, 1, count).finally(() => setLocalLoading(false));
   };
 
-  const viewUserTraces = (externalUserId: string) => {
+  const viewUserAnalytics = (externalUserId: string) => {
     router.push(`/agents/${agentId}?externalUserId=${encodeURIComponent(externalUserId)}`);
   };
 
@@ -98,8 +98,8 @@ export function UserDistributionTable({ agentId }: UserDistributionTableProps) {
   return (
     <Card className="border-border/30 bg-card">
       {totals && (
-        <div className="flex items-center justify-between border-b border-border/30 px-6 py-4">
-          <div className="flex gap-6">
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border/30 px-6 py-4">
+          <div className="flex min-w-0 flex-wrap gap-x-6 gap-y-3">
             <div className="flex flex-col">
               <span className="text-xs text-muted-foreground">Unique Users</span>
               <span className="text-lg font-semibold text-foreground">{totals.uniqueUsers}</span>
@@ -121,20 +121,19 @@ export function UserDistributionTable({ agentId }: UserDistributionTableProps) {
             value={pagination.count.toString()}
             onValueChange={(value) => handleCountChange(parseInt(value, 10))}
           >
-            <SelectTrigger className="h-8 w-28">
+            <SelectTrigger className="h-8 w-[110px] shrink-0">
               <SelectValue placeholder="Per page" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="10">10 per page</SelectItem>
-              <SelectItem value="20">20 per page</SelectItem>
-              <SelectItem value="50">50 per page</SelectItem>
-              <SelectItem value="100">100 per page</SelectItem>
+              <SelectItem value="10">10 / page</SelectItem>
+              <SelectItem value="20">20 / page</SelectItem>
+              <SelectItem value="50">50 / page</SelectItem>
+              <SelectItem value="100">100 / page</SelectItem>
             </SelectContent>
           </Select>
         </div>
       )}
-      <div className="overflow-x-auto">
-      <Table>
+      <Table className="min-w-[920px]">
         <TableHeader>
           <TableRow className="bg-surface-2/50 hover:bg-surface-2/50">
             <TableHead className="px-6 py-3">External User ID</TableHead>
@@ -149,7 +148,7 @@ export function UserDistributionTable({ agentId }: UserDistributionTableProps) {
         <TableBody>
           {users.map((user) => (
             <TableRow key={user.externalUserId} className="hover:bg-surface-2/50">
-              <TableCell className="px-6 py-4 font-mono text-sm text-foreground">
+              <TableCell className="px-6 py-4 font-mono text-sm text-foreground whitespace-nowrap">
                 {user.externalUserId}
               </TableCell>
               <TableCell className="px-6 py-4 text-sm text-foreground">
@@ -176,16 +175,15 @@ export function UserDistributionTable({ agentId }: UserDistributionTableProps) {
                   variant="ghost"
                   size="sm"
                   className="h-8 gap-1 text-muted-foreground hover:text-foreground"
-                  onClick={() => viewUserTraces(user.externalUserId)}
+                  onClick={() => viewUserAnalytics(user.externalUserId)}
                 >
-                  View Traces <ArrowRight className="h-3.5 w-3.5" />
+                  View Analytics <ArrowRight className="h-3.5 w-3.5" />
                 </Button>
               </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
-      </div>
       <div className="flex items-center justify-between border-t border-border/30 px-6 py-4">
         <p className="text-sm text-muted-foreground">
           Showing {users.length} of {pagination.total} users

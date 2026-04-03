@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 
 import { AgentDetailHeader } from "@/components/agents/agent-detail-header";
 import { AgentDetailStats } from "@/components/agents/agent-detail-stats";
 import { AgentTraceCountTimeline } from "@/components/agents/agent-trace-count-timeline";
 import { AgentTraceTimeline } from "@/components/agents/agent-trace-timeline";
+import { AgentUserScope } from "@/components/agents/agent-user-scope";
 import { AgentVersionConfigTab } from "@/components/agents/agent-version-config-tab";
 import { AgentAnalysisTab } from "@/components/agents/analysis/AgentAnalysisTab";
 import { AgentEvalsTab } from "@/components/agents/evals/AgentEvalsTab";
@@ -20,7 +21,10 @@ import { useConfigStore } from "@/stores/configStore";
 
 export function AgentDetailsPage() {
   const params = useParams();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const agentId = params.agentId as string;
+  const externalUserId = searchParams.get("externalUserId")?.trim() || null;
 
   const { fetchAgentById, currentAgent, isLoading } = useAgentsStore();
   const config = useConfigStore((state) => state.config);
@@ -37,20 +41,22 @@ export function AgentDetailsPage() {
       fetchAgentById(
         agentId,
         DEFAULT_TIMELINE_PERIOD,
-        DEFAULT_TIMELINE_PERIOD
+        DEFAULT_TIMELINE_PERIOD,
+        false,
+        externalUserId
       ).catch((err) => {
         setError(err instanceof Error ? err.message : "Failed to load agent");
       }).finally(() => {
         setHasAttemptedLoad(true);
       });
     }
-  }, [config?.analyseBaseUrl, agentId, fetchAgentById]);
+  }, [config?.analyseBaseUrl, agentId, externalUserId, fetchAgentById]);
 
   const handleSuccessRatePeriodChange = (period: number) => {
     if (agentId) {
       setSuccessRatePeriod(period);
       setIsSuccessRateLoading(true);
-      fetchAgentById(agentId, period, traceCountPeriod, true)
+      fetchAgentById(agentId, period, traceCountPeriod, true, externalUserId)
         .catch((err) => {
           setError(err instanceof Error ? err.message : "Failed to load agent");
         })
@@ -64,7 +70,7 @@ export function AgentDetailsPage() {
     if (agentId) {
       setTraceCountPeriod(period);
       setIsTraceCountLoading(true);
-      fetchAgentById(agentId, successRatePeriod, period, true)
+      fetchAgentById(agentId, successRatePeriod, period, true, externalUserId)
         .catch((err) => {
           setError(err instanceof Error ? err.message : "Failed to load agent");
         })
@@ -72,6 +78,10 @@ export function AgentDetailsPage() {
           setIsTraceCountLoading(false);
         });
     }
+  };
+
+  const clearExternalUserIdFilter = () => {
+    router.push(`/agents/${agentId}`);
   };
 
   const shouldShowInitialLoader =
@@ -98,6 +108,12 @@ export function AgentDetailsPage() {
   return (
     <div className="space-y-6 p-6 lg:p-8">
       <AgentDetailHeader agent={currentAgent} />
+      {externalUserId ? (
+        <AgentUserScope
+          externalUserId={externalUserId}
+          onClear={clearExternalUserIdFilter}
+        />
+      ) : null}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="w-full max-w-xl">
           <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -127,7 +143,7 @@ export function AgentDetailsPage() {
             </div>
           </div>
           <RecentTracesTable agentId={agentId} />
-          <UserDistributionTable agentId={agentId} />
+          {!externalUserId ? <UserDistributionTable agentId={agentId} /> : null}
         </TabsContent>
 
         <TabsContent value="configuration">

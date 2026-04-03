@@ -20,6 +20,7 @@ export interface Agent {
   projectId: string;
   environmentId: string;
   name: string;
+  externalUserId?: string | null;
   maxTraces?: number;
   maxSpans?: number;
   traceCount: number;
@@ -55,6 +56,7 @@ export interface SingleAgentResponse {
   projectId: string;
   environmentId: string;
   name: string;
+  externalUserId?: string | null;
   maxTraces?: number;
   maxSpans?: number;
   traceCount: number;

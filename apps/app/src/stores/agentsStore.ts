@@ -37,7 +37,8 @@ interface AgentsState {
     agentId: string,
     successRatePeriod?: number,
     traceCountPeriod?: number,
-    isRefetch?: boolean
+    isRefetch?: boolean,
+    externalUserId?: string | null
   ) => Promise<Agent | null>;
   updateAgentSamplingRate: (agentId: string, samplingRate: number) => Promise<number | null>;
   deleteAgent: (agentId: string) => Promise<boolean>;
@@ -110,7 +111,8 @@ export const useAgentsStore = create<AgentsState>()(
         agentId: string,
         successRatePeriod = DEFAULT_TIMELINE_PERIOD,
         traceCountPeriod = DEFAULT_TIMELINE_PERIOD,
-        isRefetch = false
+        isRefetch = false,
+        externalUserId = null
       ) => {
         const config = useConfigStore.getState().config;
         const { apiKey } = get();
@@ -127,7 +129,11 @@ export const useAgentsStore = create<AgentsState>()(
             `${config.analyseBaseUrl}/entities/${agentId}`,
             {
               headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {},
-              params: { successRatePeriod, traceCountPeriod },
+              params: {
+                successRatePeriod,
+                traceCountPeriod,
+                ...(externalUserId ? { externalUserId } : {}),
+              },
             }
           );
           set({ currentAgent: response.data, isLoading: false, isRefetching: false });
