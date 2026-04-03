@@ -258,6 +258,7 @@ export function AgentsTable({
           }
         />
       ) : (
+        <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow className="bg-surface-2/30">
@@ -377,6 +378,7 @@ export function AgentsTable({
             })}
           </TableBody>
         </Table>
+        </div>
       )}
 
       {/* Footer */}

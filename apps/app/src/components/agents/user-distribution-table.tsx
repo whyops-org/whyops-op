@@ -58,7 +58,7 @@ export function UserDistributionTable({ agentId }: UserDistributionTableProps) {
   };
 
   const viewUserTraces = (externalUserId: string) => {
-    router.push(`/agents/${agentId}/traces?externalUserId=${encodeURIComponent(externalUserId)}`);
+    router.push(`/agents/${agentId}?externalUserId=${encodeURIComponent(externalUserId)}`);
   };
 
   const currentLoading = isLoading || localLoading;
@@ -133,6 +133,7 @@ export function UserDistributionTable({ agentId }: UserDistributionTableProps) {
           </Select>
         </div>
       )}
+      <div className="overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow className="bg-surface-2/50 hover:bg-surface-2/50">
@@ -142,6 +143,7 @@ export function UserDistributionTable({ agentId }: UserDistributionTableProps) {
             <TableHead className="px-6 py-3">Cost</TableHead>
             <TableHead className="px-6 py-3">Errors</TableHead>
             <TableHead className="px-6 py-3">Last Active</TableHead>
+            <TableHead className="px-6 py-3 text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -183,6 +185,7 @@ export function UserDistributionTable({ agentId }: UserDistributionTableProps) {
           ))}
         </TableBody>
       </Table>
+      </div>
       <div className="flex items-center justify-between border-t border-border/30 px-6 py-4">
         <p className="text-sm text-muted-foreground">
           Showing {users.length} of {pagination.total} users

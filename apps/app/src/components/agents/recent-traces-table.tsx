@@ -77,32 +77,32 @@ export function RecentTracesTable({ agentId }: RecentTracesTableProps) {
   const clearExternalUserIdFilter = () => {
     setExternalUserIdFilter(null);
     setSearchQuery("");
-    router.push(`/agents/${agentId}/traces`);
+    router.push(`/agents/${agentId}`);
   };
 
   const currentLoading = isLoading || localIsLoading;
 
   return (
     <Card className="border-border/30 bg-card">
-      <div className="flex items-center justify-between border-b border-border/30 px-6 py-4">
-        <div className="flex items-center gap-4">
-          <h2 className="text-lg font-semibold text-foreground">Recent Traces</h2>
+      <div className="flex items-center justify-between border-b border-border/30 px-6 py-4 flex-wrap gap-3">
+        <div className="flex items-center gap-4 min-w-0">
+          <h2 className="text-lg font-semibold text-foreground shrink-0">Recent Traces</h2>
           {externalUserIdFilter && (
-            <div className="flex items-center gap-2 rounded-sm border border-border/60 bg-surface-2/30 px-3 py-1">
-              <span className="text-xs text-muted-foreground">User:</span>
+            <div className="flex items-center gap-2 rounded-sm border border-border/60 bg-surface-2/30 px-3 py-1 min-w-0">
+              <span className="text-xs text-muted-foreground shrink-0">User:</span>
               <span className="max-w-32 truncate font-mono text-xs text-foreground">
                 {externalUserIdFilter}
               </span>
               <button
                 onClick={clearExternalUserIdFilter}
-                className="ml-1 text-muted-foreground hover:text-foreground"
+                className="ml-1 text-muted-foreground hover:text-foreground shrink-0"
               >
                 <X className="h-3 w-3" />
               </button>
             </div>
           )}
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 shrink-0">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -110,21 +110,21 @@ export function RecentTracesTable({ agentId }: RecentTracesTableProps) {
               placeholder="Search trace ID..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-9 w-64 pl-9 pr-4"
+              className="h-9 w-48 pl-9 pr-4 sm:w-64"
             />
           </div>
           <Select
             value={pagination.count.toString()}
             onValueChange={(value) => handleCountChange(parseInt(value, 10))}
           >
-            <SelectTrigger className="h-9 w-32">
+            <SelectTrigger className="h-9 w-[110px]">
               <SelectValue placeholder="Per page" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="10">10 per page</SelectItem>
-              <SelectItem value="20">20 per page</SelectItem>
-              <SelectItem value="50">50 per page</SelectItem>
-              <SelectItem value="100">100 per page</SelectItem>
+              <SelectItem value="10">10 / page</SelectItem>
+              <SelectItem value="20">20 / page</SelectItem>
+              <SelectItem value="50">50 / page</SelectItem>
+              <SelectItem value="100">100 / page</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -155,6 +155,7 @@ export function RecentTracesTable({ agentId }: RecentTracesTableProps) {
         />
       ) : (
         <>
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow className="bg-surface-2/50 hover:bg-surface-2/50">
@@ -212,6 +213,7 @@ export function RecentTracesTable({ agentId }: RecentTracesTableProps) {
               ))}
             </TableBody>
           </Table>
+          </div>
 
           {/* Pagination */}
           <div className="flex items-center justify-between border-t border-border/30 px-6 py-4">

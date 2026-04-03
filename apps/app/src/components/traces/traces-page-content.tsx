@@ -104,14 +104,14 @@ export function TracesPageContent() {
                 value={pagination.count.toString()}
                 onValueChange={(value) => handleCountChange(parseInt(value, 10))}
               >
-                <SelectTrigger className="h-10 w-36">
+                <SelectTrigger className="h-10 w-[110px]">
                   <SelectValue placeholder="Per page" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="10">10 per page</SelectItem>
-                  <SelectItem value="20">20 per page</SelectItem>
-                  <SelectItem value="50">50 per page</SelectItem>
-                  <SelectItem value="100">100 per page</SelectItem>
+                  <SelectItem value="10">10 / page</SelectItem>
+                  <SelectItem value="20">20 / page</SelectItem>
+                  <SelectItem value="50">50 / page</SelectItem>
+                  <SelectItem value="100">100 / page</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -140,6 +140,7 @@ export function TracesPageContent() {
             />
           ) : (
             <>
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-surface-2/50 hover:bg-surface-2/50">
@@ -199,6 +200,7 @@ export function TracesPageContent() {
                   ))}
                 </TableBody>
               </Table>
+              </div>
 
               {/* Pagination */}
               <div className="flex items-center justify-between border-t border-border/30 px-6 py-4">
