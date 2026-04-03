@@ -10,6 +10,7 @@ on:
         options:
           - typescript
           - vercel-ai-sdk
+          - langchain-js
           - python
           - go
       version:
@@ -113,8 +114,55 @@ jobs:
           git tag sdk-vercel-ai/v${{ inputs.version }}
           git push origin sdk-vercel-ai/v${{ inputs.version }}
 
+  publish-langchain-js:
+    if: inputs.sdk == 'langchain-js'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npm run sync:sdk-config
+      - name: Verify package version
+        run: |
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          test "$PKG_VERSION" = "${{ inputs.version }}"
+        working-directory: packages/sdk-langchain-js
+      - run: npm run build --workspace @whyops/sdk
+      - run: npm run build
+        working-directory: packages/sdk-langchain-js
+      - name: Publish to npm if missing
+        working-directory: packages/sdk-langchain-js
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          NPM_TOKEN_CLEAN="$(printf '%s' "$NPM_TOKEN" | tr -d '\r\n')"
+          TMP_NPMRC="$(mktemp)"
+          trap 'rm -f "$TMP_NPMRC"' EXIT
+          cat > "$TMP_NPMRC" <<EOF
+          //registry.npmjs.org/:_authToken=${NPM_TOKEN_CLEAN}
+          registry=https://registry.npmjs.org/
+          always-auth=true
+          EOF
+          export NPM_CONFIG_USERCONFIG="$TMP_NPMRC"
+          npm whoami --registry=https://registry.npmjs.org/
+          if npm view "@whyops/langchain-js@${{ inputs.version }}" version >/dev/null 2>&1; then
+            echo "@whyops/langchain-js@${{ inputs.version }} already exists, skipping publish"
+            exit 0
+          fi
+          npm publish --access public --registry=https://registry.npmjs.org/
+      - run: |
+          if git ls-remote --exit-code --tags origin refs/tags/sdk-langchain-js/v${{ inputs.version }} >/dev/null 2>&1; then
+            echo "Tag sdk-langchain-js/v${{ inputs.version }} already exists, skipping"
+            exit 0
+          fi
+          git tag sdk-langchain-js/v${{ inputs.version }}
+          git push origin sdk-langchain-js/v${{ inputs.version }}
+
   publish-python:
-    if: inputs.sdk == 'python'
     runs-on: ubuntu-latest
     permissions:
       contents: write

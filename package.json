@@ -30,8 +30,8 @@
     "build:analyse": "npm run build --workspace @whyops/analyse",
     "build:auth": "npm run build --workspace @whyops/auth",
     "build:app": "npm run build --workspace @whyops/app",
-    "build:sdk": "npm run build --workspace @whyops/sdk && npm run build --workspace @whyops/vercel-ai-sdk",
-    "typecheck:sdk": "npm run typecheck --workspace @whyops/sdk && npm run typecheck --workspace @whyops/vercel-ai-sdk",
+    "build:sdk": "npm run build --workspace @whyops/sdk && npm run build --workspace @whyops/vercel-ai-sdk && npm run build --workspace @whyops/langchain-js",
+    "typecheck:sdk": "npm run typecheck --workspace @whyops/sdk && npm run typecheck --workspace @whyops/vercel-ai-sdk && npm run typecheck --workspace @whyops/langchain-js",
     "sync:sdk-config": "node scripts/sync-sdk-config.mjs",
     "db:migrate": "npm run db:migrate --workspace @whyops/shared",
     "db:seed": "npm run db:seed --workspace @whyops/shared",
@@ -44,9 +44,11 @@
     "tsx": "^4.21.0"
   },
   "devDependencies": {
+    "@langchain/openai": "^1.4.1",
     "@types/node": "^22.0.0",
     "@types/pg": "^8.18.0",
     "concurrently": "^9.1.0",
+    "langchain": "^1.2.39",
     "typescript": "^5.7.2"
   },
   "installConfig": {

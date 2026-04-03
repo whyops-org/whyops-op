@@ -1,0 +1,57 @@
+{
+  "name": "@whyops/langchain-js",
+  "version": "0.1.0",
+  "description": "WhyOps observability integration for LangChain.js",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/whyops-org/whyops-op.git",
+    "directory": "packages/sdk-langchain-js"
+  },
+  "homepage": "https://whyops.com",
+  "bugs": {
+    "url": "https://github.com/whyops-org/whyops-op/issues"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "rm -rf dist && node ../../node_modules/typescript/bin/tsc -p tsconfig.json",
+    "typecheck": "node ../../node_modules/typescript/bin/tsc --noEmit",
+    "prepack": "npm run build"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "keywords": [
+    "whyops",
+    "observability",
+    "ai",
+    "agents",
+    "llm",
+    "langchain",
+    "tracing"
+  ],
+  "peerDependencies": {
+    "@whyops/sdk": ">=0.1.1",
+    "@langchain/core": ">=0.3.0"
+  },
+  "devDependencies": {
+    "@langchain/core": "^0.3.0",
+    "@whyops/sdk": "*",
+    "typescript": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
