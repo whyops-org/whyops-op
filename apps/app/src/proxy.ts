@@ -33,17 +33,11 @@ function isPrefetchRequest(request: NextRequest) {
 }
 
 interface UserPayload {
-  data?: {
+  user?: {
     onboardingComplete?: boolean;
     [key: string]: unknown;
   };
   onboardingComplete?: boolean;
-  [key: string]: unknown;
-}
-
-interface SessionPayload {
-  session?: unknown;
-  user?: unknown;
   [key: string]: unknown;
 }
 
@@ -82,33 +76,18 @@ export async function proxy(request: NextRequest) {
   let onboardingComplete = false;
 
   try {
-    // Fast path: one request returns both "has session" and onboarding status.
-    const userResponse = await fetchWithTimeout(`${normalizedBaseUrl}/api/users/me`, cookie);
+    const userResponse = await fetchWithTimeout(`${normalizedBaseUrl}/api/session/context`, cookie);
 
     if (userResponse.ok) {
       hasSession = true;
       const userPayload = (await userResponse.json()) as UserPayload;
       onboardingComplete = Boolean(
-        userPayload?.data?.onboardingComplete ?? userPayload?.onboardingComplete
+        userPayload?.user?.onboardingComplete ?? userPayload?.onboardingComplete
       );
     } else if (userResponse.status === 401 || userResponse.status === 403) {
       hasSession = false;
     } else {
-      // Fallback only when user endpoint has transient failures.
-      const sessionResponse = await fetchWithTimeout(
-        `${normalizedBaseUrl}/api/auth/get-session`,
-        cookie
-      );
-
-      if (sessionResponse.ok) {
-        const sessionPayload = (await sessionResponse.json()) as SessionPayload;
-        hasSession = Boolean(sessionPayload?.session || sessionPayload?.user);
-      }
-
-      // If auth backend is degraded but session exists, don't block navigation.
-      if (hasSession) {
-        return NextResponse.next();
-      }
+      return NextResponse.next();
     }
   } catch (err) {
     console.error("proxy: auth check failed", err);

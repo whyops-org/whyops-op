@@ -1,6 +1,7 @@
 import { createServiceLogger } from '@whyops/shared/logger';
 import env from '@whyops/shared/env';
 import type { Context, Next } from 'hono';
+import { getRemoteSessionContext } from './remote-session-context';
 import type { AuthMiddlewareConfig, UnifiedAuthContext, SessionUser, UserSession } from './types';
 import { extractApiKey } from './api-key-extractor';
 import type { BetterAuthSession } from './auth-utils';
@@ -122,6 +123,36 @@ export function createAuthMiddleware(config: Partial<AuthMiddlewareConfig> = {})
       }
 
       if (finalConfig.enableSessionAuth) {
+        if (!finalConfig.hydrateSessionUserFromDb && finalConfig.requireProjectEnv) {
+          const remoteContext = await getRemoteSessionContext(c);
+
+          if (remoteContext) {
+            c.set('sessionUser', remoteContext.user);
+            c.set('sessionData', remoteContext.session);
+
+            if (remoteContext.authContext) {
+              c.set('whyopsAuth', remoteContext.authContext);
+              logger.debug(
+                {
+                  userId: remoteContext.authContext.userId,
+                  projectId: remoteContext.authContext.projectId,
+                  authType: 'session',
+                },
+                'Request authenticated via remote session context'
+              );
+              await next();
+              return;
+            }
+
+            if (finalConfig.requireAuth) {
+              return c.json({ error: 'Unauthorized: Authentication required' }, 401);
+            }
+
+            await next();
+            return;
+          }
+        }
+
         const sessionData = finalConfig.hydrateSessionUserFromDb
           ? await loadUserSession(c)
           : await loadUserSessionFast(c);

@@ -19,6 +19,7 @@ import healthRouter from './routes/health';
 import migrateRouter from './routes/migrate';
 import projectsRouter from './routes/projects';
 import providersRouter from './routes/providers';
+import sessionRouter from './routes/session';
 import usersRouter from './routes/users';
 import { verifyEmailConnection } from './utils/email.util';
 
@@ -156,16 +157,19 @@ const sessionMiddleware = createLocalSessionMiddleware(auth);
 app.use('/api/projects/*', sessionMiddleware);
 app.use('/api/providers/*', sessionMiddleware);
 app.use('/api/api-keys/*', sessionMiddleware);
+app.use('/api/session/*', sessionMiddleware);
 app.use('/api/users/*', sessionMiddleware);
 
 app.use('/api/projects/*', requireSession);
 app.use('/api/providers/*', requireSession);
 app.use('/api/api-keys/*', requireSession);
+app.use('/api/session/*', requireSession);
 app.use('/api/users/*', requireSession);
 
 app.route('/api/projects', projectsRouter);
 app.route('/api/providers', providersRouter);
 app.route('/api/api-keys', apiKeysRouter);
+app.route('/api/session', sessionRouter);
 app.route('/api/users', usersRouter);
 
 app.notFound((c) => {

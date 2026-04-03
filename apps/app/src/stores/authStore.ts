@@ -54,21 +54,10 @@ interface SocialSignInResponse {
   redirect?: boolean;
 }
 
-interface SessionResponse {
+interface SessionContextResponse {
   session?: unknown | null;
   user?: AuthUser | null;
-  data?: {
-    user?: AuthUser | null;
-  };
-}
-
-interface CurrentUserResponse {
-  id: string;
-  email: string;
-  name?: string | null;
-  metadata?: Record<string, unknown>;
-  onboardingComplete?: boolean;
-  isActive?: boolean;
+  authContext?: unknown | null;
 }
 
 const defaultCallbacks = {
@@ -76,6 +65,8 @@ const defaultCallbacks = {
   newUserCallbackURL: "/onboarding",
   errorCallbackURL: "/",
 };
+
+let loadSessionPromise: Promise<void> | null = null;
 
 export const useAuthStore = create<AuthState>((Set, Get) => ({
   user: null,
@@ -157,34 +148,35 @@ export const useAuthStore = create<AuthState>((Set, Get) => ({
     }
   },
   loadSession: async () => {
-    try {
-      const response = await apiRequest<SessionResponse>("/api/auth/get-session", {
-        method: "GET",
-      });
-      const user = response.user ?? response.data?.user ?? null;
-      if (user) {
-        try {
-          const currentUser = await apiRequest<CurrentUserResponse>("/api/users/me", {
-            method: "GET",
-          });
-          Set({
-            user: {
-              ...user,
-              onboardingComplete: Boolean(currentUser.onboardingComplete),
-            },
-            hasSession: true,
-            sessionChecked: true,
-          });
-          return;
-        } catch {
+    if (Get().sessionChecked) {
+      return;
+    }
+
+    if (loadSessionPromise) {
+      return loadSessionPromise;
+    }
+
+    loadSessionPromise = (async () => {
+      try {
+        const response = await apiRequest<SessionContextResponse>("/api/session/context", {
+          method: "GET",
+        });
+        const user = response.user ?? null;
+        if (user) {
           Set({ user, hasSession: true, sessionChecked: true });
           return;
         }
-      }
 
-      Set({ user: null, hasSession: false, sessionChecked: true });
-    } catch {
-      Set({ user: null, hasSession: false, sessionChecked: true });
+        Set({ user: null, hasSession: false, sessionChecked: true });
+      } catch {
+        Set({ user: null, hasSession: false, sessionChecked: true });
+      }
+    })();
+
+    try {
+      await loadSessionPromise;
+    } finally {
+      loadSessionPromise = null;
     }
   },
   fetchOnboardingProgress: async () => {

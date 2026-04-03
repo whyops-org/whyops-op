@@ -1,26 +1,13 @@
 'use client';
 
-import { useAuthStore } from "@/stores/authStore";
-import { useEffect } from "react";
-
 type Props = {
-    children: React.ReactNode;
-}
+  children: React.ReactNode;
+};
 
 const Template = (props: Props) => {
-  const loadSession = useAuthStore((state) => state.loadSession);
+  const { children } = props;
 
-  useEffect(() => {
-    void loadSession();
-  }, [loadSession]);
-  
-  const {children} = props;
+  return <>{children}</>;
+};
 
-  return (
-    <>
-        {children}
-    </>
-  )
-}
-
-export default Template
+export default Template;
