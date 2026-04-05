@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -37,26 +36,29 @@ import { useThreadsStore } from "@/stores/threadsStore";
 
 interface RecentTracesTableProps {
   agentId: string;
+  externalUserId?: string | null;
+  onClearExternalUserId?: () => void;
 }
 
-export function RecentTracesTable({ agentId }: RecentTracesTableProps) {
+export function RecentTracesTable({
+  agentId,
+  externalUserId = null,
+  onClearExternalUserId,
+}: RecentTracesTableProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { threads, pagination, isLoading, isRefetching, fetchThreads, setExternalUserIdFilter } = useThreadsStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [localIsLoading, setLocalIsLoading] = useState(false);
 
-  const externalUserIdFilter = searchParams.get("externalUserId");
-
   useEffect(() => {
-    if (externalUserIdFilter) {
-      setExternalUserIdFilter(externalUserIdFilter);
+    if (externalUserId) {
+      setExternalUserIdFilter(externalUserId);
     } else {
       setExternalUserIdFilter(null);
     }
     void fetchThreads(agentId, 1, pagination.count);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [agentId, externalUserIdFilter]);
+  }, [agentId, externalUserId]);
 
   // Filter threads by search query (client-side for trace ID search)
   const filteredThreads = threads.filter((thread) =>
@@ -76,7 +78,7 @@ export function RecentTracesTable({ agentId }: RecentTracesTableProps) {
   const clearExternalUserIdFilter = () => {
     setExternalUserIdFilter(null);
     setSearchQuery("");
-    router.push(`/agents/${agentId}`);
+    onClearExternalUserId?.();
   };
 
   const currentLoading = isLoading || localIsLoading;
@@ -86,11 +88,11 @@ export function RecentTracesTable({ agentId }: RecentTracesTableProps) {
       <div className="flex items-center justify-between border-b border-border/30 px-6 py-4 flex-wrap gap-3">
         <div className="flex items-center gap-4 min-w-0">
           <h2 className="text-lg font-semibold text-foreground shrink-0">Recent Traces</h2>
-          {externalUserIdFilter && (
+          {externalUserId && (
             <div className="flex items-center gap-2 rounded-sm border border-border/60 bg-surface-2/30 px-3 py-1 min-w-0">
               <span className="text-xs text-muted-foreground shrink-0">User:</span>
               <span className="max-w-32 truncate font-mono text-xs text-foreground">
-                {externalUserIdFilter}
+                {externalUserId}
               </span>
               <button
                 onClick={clearExternalUserIdFilter}
@@ -139,13 +141,13 @@ export function RecentTracesTable({ agentId }: RecentTracesTableProps) {
           description={
             searchQuery
               ? `No traces matching "${searchQuery}"`
-              : externalUserIdFilter
-              ? `No traces found for user "${externalUserIdFilter}"`
+              : externalUserId
+              ? `No traces found for user "${externalUserId}"`
               : "This agent hasn't generated any traces yet. Run a test to see activity."
           }
           icon={ListRestart}
           action={
-            !searchQuery && !externalUserIdFilter && (
+            !searchQuery && !externalUserId && (
               <Button variant="outline" size="sm">
                 Run Test Trace
               </Button>

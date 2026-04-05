@@ -58,7 +58,7 @@ export function UserDistributionTable({ agentId }: UserDistributionTableProps) {
   };
 
   const viewUserAnalytics = (externalUserId: string) => {
-    router.push(`/agents/${agentId}?externalUserId=${encodeURIComponent(externalUserId)}`);
+    router.push(`/agents/${agentId}/users/${encodeURIComponent(externalUserId)}`);
   };
 
   const currentLoading = isLoading || localLoading;

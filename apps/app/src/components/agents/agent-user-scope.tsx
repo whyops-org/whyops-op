@@ -3,14 +3,15 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ChartNoAxesColumn, X } from "lucide-react";
+import { ChartNoAxesColumn } from "lucide-react";
 
 interface AgentUserScopeProps {
   externalUserId: string;
-  onClear: () => void;
+  actionLabel: string;
+  onAction: () => void;
 }
 
-export function AgentUserScope({ externalUserId, onClear }: AgentUserScopeProps) {
+export function AgentUserScope({ externalUserId, actionLabel, onAction }: AgentUserScopeProps) {
   return (
     <Card className="border-border/30 bg-card px-6 py-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -26,9 +27,8 @@ export function AgentUserScope({ externalUserId, onClear }: AgentUserScopeProps)
             Overview cards, trend charts, and traces below are filtered to this external user.
           </p>
         </div>
-        <Button variant="outline" size="sm" className="shrink-0" onClick={onClear}>
-          <X className="h-4 w-4" />
-          Clear filter
+        <Button variant="outline" size="sm" className="shrink-0" onClick={onAction}>
+          {actionLabel}
         </Button>
       </div>
     </Card>
