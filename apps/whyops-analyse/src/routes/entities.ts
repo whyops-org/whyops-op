@@ -3,6 +3,7 @@ import { createServiceLogger } from '@whyops/shared/logger';
 import { Agent, Entity } from '@whyops/shared/models';
 import {
   invalidateApiKeyAuthCacheById,
+  llmCostService,
   prefixedRedisKey,
   redisDeleteByPattern,
   redisGetJson,
@@ -105,6 +106,44 @@ interface SingleAgentDailySuccessRow {
 interface SingleAgentDailyTraceRow {
   day: string;
   traceCount: string | number;
+}
+
+interface UserCostUsageRow {
+  externalUserId: string;
+  model: string | null;
+  inputTokens: string | number;
+  outputTokens: string | number;
+  cachedTokens: string | number;
+  totalTokens: string | number;
+}
+
+function calculateUsageCost(
+  usage: Pick<UserCostUsageRow, 'inputTokens' | 'outputTokens' | 'cachedTokens' | 'totalTokens'>,
+  costRecord: any
+): number {
+  if (!costRecord) return 0;
+
+  const inputTokens = Number(usage.inputTokens || 0);
+  const outputTokens = Number(usage.outputTokens || 0);
+  const cachedTokens = Number(usage.cachedTokens || 0);
+  const totalTokens = Number(usage.totalTokens || 0);
+  const tokensPerMillion = 1_000_000;
+
+  if (inputTokens > 0 || outputTokens > 0 || cachedTokens > 0) {
+    return (
+      (inputTokens / tokensPerMillion) * costRecord.inputTokenPricePerMillionToken +
+      (outputTokens / tokensPerMillion) * costRecord.outputTokenPricePerMillionToken +
+      (cachedTokens / tokensPerMillion) * (costRecord.cachedTokenPricePerMillionToken || 0)
+    );
+  }
+
+  if (totalTokens > 0) {
+    const blendedRate =
+      (costRecord.inputTokenPricePerMillionToken + costRecord.outputTokenPricePerMillionToken) / 2;
+    return (totalTokens / tokensPerMillion) * blendedRate;
+  }
+
+  return 0;
 }
 
 async function getEntityMetrics(entityIds: string[]): Promise<Map<string, EntityMetricRow>> {
@@ -217,7 +256,10 @@ function buildAgentMetrics(
   return result;
 }
 
-async function getSingleAgentMetrics(entityIds: string[], periodDays: number): Promise<AggregatedAgentMetrics> {
+async function getSingleAgentMetrics(
+  entityIds: string[],
+  externalUserId?: string | null
+): Promise<AggregatedAgentMetrics> {
   if (entityIds.length === 0) {
     return {
       traceCount: 0,
@@ -233,10 +275,12 @@ async function getSingleAgentMetrics(entityIds: string[], periodDays: number): P
         MAX(t.created_at) AS "lastActiveAt"
       FROM traces t
       WHERE t.entity_id IN (:entityIds)
+        AND (:externalUserId IS NULL OR t.external_user_id = :externalUserId)
     `,
     {
       replacements: {
         entityIds,
+        externalUserId: externalUserId ?? null,
       },
       type: QueryTypes.SELECT,
     }
@@ -252,7 +296,11 @@ async function getSingleAgentMetrics(entityIds: string[], periodDays: number): P
   };
 }
 
-async function getSingleAgentDailySuccessPercentage(entityIds: string[], periodDays: number): Promise<Record<string, number>> {
+async function getSingleAgentDailySuccessPercentage(
+  entityIds: string[],
+  periodDays: number,
+  externalUserId?: string | null
+): Promise<Record<string, number>> {
   const result: Record<string, number> = {};
 
   if (entityIds.length === 0) {
@@ -273,6 +321,7 @@ async function getSingleAgentDailySuccessPercentage(entityIds: string[], periodD
       FROM traces t
       JOIN trace_events e ON e.trace_id = t.id
       WHERE t.entity_id IN (:entityIds)
+        AND (:externalUserId IS NULL OR t.external_user_id = :externalUserId)
         AND e.timestamp >= :since
       GROUP BY 1
       ORDER BY 1 ASC
@@ -280,6 +329,7 @@ async function getSingleAgentDailySuccessPercentage(entityIds: string[], periodD
     {
       replacements: {
         entityIds,
+        externalUserId: externalUserId ?? null,
         since,
       },
       type: QueryTypes.SELECT,
@@ -308,7 +358,11 @@ async function getSingleAgentDailySuccessPercentage(entityIds: string[], periodD
   return result;
 }
 
-async function getSingleAgentDailyTraceCounts(entityIds: string[], periodDays: number): Promise<Record<string, number>> {
+async function getSingleAgentDailyTraceCounts(
+  entityIds: string[],
+  periodDays: number,
+  externalUserId?: string | null
+): Promise<Record<string, number>> {
   const result: Record<string, number> = {};
 
   if (entityIds.length === 0) {
@@ -327,6 +381,7 @@ async function getSingleAgentDailyTraceCounts(entityIds: string[], periodDays: n
         COUNT(DISTINCT t.id) AS "traceCount"
       FROM traces t
       WHERE t.entity_id IN (:entityIds)
+        AND (:externalUserId IS NULL OR t.external_user_id = :externalUserId)
         AND t.created_at >= :since
       GROUP BY 1
       ORDER BY 1 ASC
@@ -334,6 +389,7 @@ async function getSingleAgentDailyTraceCounts(entityIds: string[], periodDays: n
     {
       replacements: {
         entityIds,
+        externalUserId: externalUserId ?? null,
         since,
       },
       type: QueryTypes.SELECT,
@@ -863,6 +919,7 @@ app.get('/:id', async (c) => {
         );
         const include = parseInclude(c.req.query('include'));
         const includeMetadata = include.has('metadata');
+        const externalUserId = c.req.query('externalUserId')?.trim() || null;
 
         const id = c.req.param('id');
         let agent = await Agent.findOne({
@@ -927,9 +984,17 @@ app.get('/:id', async (c) => {
         });
 
         const entityIds = versions.map((version) => version.id);
-        const agentMetrics = await getSingleAgentMetrics(entityIds, successRatePeriod);
-        const successPercentageByDate = await getSingleAgentDailySuccessPercentage(entityIds, successRatePeriod);
-        const traceCountsByDate = await getSingleAgentDailyTraceCounts(entityIds, traceCountPeriod);
+        const agentMetrics = await getSingleAgentMetrics(entityIds, externalUserId);
+        const successPercentageByDate = await getSingleAgentDailySuccessPercentage(
+          entityIds,
+          successRatePeriod,
+          externalUserId
+        );
+        const traceCountsByDate = await getSingleAgentDailyTraceCounts(
+          entityIds,
+          traceCountPeriod,
+          externalUserId
+        );
 
         return c.json({
           success: true,
@@ -949,6 +1014,7 @@ app.get('/:id', async (c) => {
             successRatePeriod,
             traceCounts: traceCountsByDate,
             traceCountPeriod,
+            externalUserId,
             lastActive: agentMetrics.lastActive,
             createdAt: agent.createdAt.toISOString(),
             updatedAt: agent.updatedAt.toISOString(),
@@ -1033,10 +1099,57 @@ app.get('/:id/user-distribution', async (c) => {
       externalUserId: string;
       traceCount: string | number;
       totalTokens: string | number | null;
-      totalCost: string | number | null;
       errorCount: string | number;
       lastActiveAt: string | Date | null;
     }
+
+    const totalTokensExpr = `
+      COALESCE(
+        NULLIF(e.metadata->'usage'->>'totalTokens', '')::bigint,
+        NULLIF(e.metadata->'usage'->>'total_tokens', '')::bigint,
+        NULLIF(e.content->'usage'->>'totalTokens', '')::bigint,
+        NULLIF(e.content->'usage'->>'total_tokens', '')::bigint,
+        NULLIF(e.metadata->>'totalTokens', '')::bigint,
+        NULLIF(e.metadata->>'total_tokens', '')::bigint,
+        NULLIF(e.content->>'totalTokens', '')::bigint,
+        NULLIF(e.content->>'total_tokens', '')::bigint,
+        0
+      )
+    `;
+
+    const inputTokensExpr = `
+      COALESCE(
+        NULLIF(e.metadata->'usage'->>'inputTokens', '')::bigint,
+        NULLIF(e.metadata->'usage'->>'promptTokens', '')::bigint,
+        NULLIF(e.metadata->'usage'->>'input', '')::bigint,
+        NULLIF(e.content->'usage'->>'inputTokens', '')::bigint,
+        NULLIF(e.content->'usage'->>'promptTokens', '')::bigint,
+        NULLIF(e.content->'usage'->>'input', '')::bigint,
+        0
+      )
+    `;
+
+    const outputTokensExpr = `
+      COALESCE(
+        NULLIF(e.metadata->'usage'->>'outputTokens', '')::bigint,
+        NULLIF(e.metadata->'usage'->>'completionTokens', '')::bigint,
+        NULLIF(e.metadata->'usage'->>'output', '')::bigint,
+        NULLIF(e.content->'usage'->>'outputTokens', '')::bigint,
+        NULLIF(e.content->'usage'->>'completionTokens', '')::bigint,
+        NULLIF(e.content->'usage'->>'output', '')::bigint,
+        0
+      )
+    `;
+
+    const cachedTokensExpr = `
+      COALESCE(
+        NULLIF(e.metadata->'usage'->>'cachedTokens', '')::bigint,
+        NULLIF(e.metadata->'usage'->>'cacheRead', '')::bigint,
+        NULLIF(e.content->'usage'->>'cachedTokens', '')::bigint,
+        NULLIF(e.content->'usage'->>'cacheRead', '')::bigint,
+        0
+      )
+    `;
 
     const countRows = await Entity.sequelize!.query<{ total: string | number }>(
       `
@@ -1066,18 +1179,8 @@ app.get('/:id/user-distribution', async (c) => {
             t.external_user_id AS "externalUserId",
             COUNT(DISTINCT t.id)::bigint AS "traceCount",
             COALESCE(SUM(
-              COALESCE(
-                NULLIF(e.metadata->'usage'->>'totalTokens', '')::bigint,
-                NULLIF(e.metadata->'usage'->>'total_tokens', '')::bigint,
-                0
-              )
+              ${totalTokensExpr}
             ), 0)::bigint AS "totalTokens",
-            COALESCE(SUM(
-              COALESCE(
-                NULLIF(e.metadata->>'cost', '')::numeric,
-                0
-              )
-            ), 0)::numeric AS "totalCost",
             COALESCE(SUM(CASE WHEN e.event_type = 'error' THEN 1 ELSE 0 END), 0)::bigint AS "errorCount",
             MAX(t.created_at) AS "lastActiveAt"
           FROM traces t
@@ -1091,7 +1194,6 @@ app.get('/:id/user-distribution', async (c) => {
           "externalUserId",
           "traceCount",
           "totalTokens",
-          "totalCost",
           "errorCount",
           "lastActiveAt"
         FROM user_stats
@@ -1108,7 +1210,7 @@ app.get('/:id/user-distribution', async (c) => {
       externalUserId: row.externalUserId,
       traceCount: Number(row.traceCount || 0),
       totalTokens: Number(row.totalTokens || 0),
-      totalCost: Number(row.totalCost || 0),
+      totalCost: 0,
       errorCount: Number(row.errorCount || 0),
       lastActiveAt: row.lastActiveAt ? new Date(row.lastActiveAt).toISOString() : null,
     }));
@@ -1130,19 +1232,8 @@ app.get('/:id/user-distribution', async (c) => {
       `
         SELECT
           COUNT(DISTINCT t.id)::bigint AS "totalTraces",
-          COALESCE(SUM(
-            COALESCE(
-              NULLIF(e.metadata->'usage'->>'totalTokens', '')::bigint,
-              NULLIF(e.metadata->'usage'->>'total_tokens', '')::bigint,
-              0
-            )
-          ), 0)::bigint AS "totalTokens",
-          COALESCE(SUM(
-            COALESCE(
-              NULLIF(e.metadata->>'cost', '')::numeric,
-              0
-            )
-          ), 0)::numeric AS "totalCost",
+          COALESCE(SUM(${totalTokensExpr}), 0)::bigint AS "totalTokens",
+          0::numeric AS "totalCost",
           COALESCE(SUM(CASE WHEN e.event_type = 'error' THEN 1 ELSE 0 END), 0)::bigint AS "totalErrors"
         FROM traces t
         LEFT JOIN trace_events e ON e.trace_id = t.id
@@ -1159,9 +1250,82 @@ app.get('/:id/user-distribution', async (c) => {
     if (totalsRows[0]) {
       totals.totalTraces = Number(totalsRows[0].totalTraces || 0);
       totals.totalTokens = Number(totalsRows[0].totalTokens || 0);
-      totals.totalCost = Number(totalsRows[0].totalCost || 0);
       totals.totalErrors = Number(totalsRows[0].totalErrors || 0);
     }
+
+    const userCostRows = await Entity.sequelize!.query<UserCostUsageRow>(
+      `
+        SELECT
+          t.external_user_id AS "externalUserId",
+          COALESCE(
+            NULLIF(e.metadata->>'model', ''),
+            NULLIF(e.metadata->>'modelName', ''),
+            NULLIF(e.content->>'model', ''),
+            NULLIF(e.content->>'modelName', ''),
+            NULLIF(t.model, '')
+          ) AS "model",
+          SUM(${inputTokensExpr})::bigint AS "inputTokens",
+          SUM(${outputTokensExpr})::bigint AS "outputTokens",
+          SUM(${cachedTokensExpr})::bigint AS "cachedTokens",
+          SUM(${totalTokensExpr})::bigint AS "totalTokens"
+        FROM traces t
+        JOIN trace_events e ON e.trace_id = t.id
+        WHERE t.entity_id IN (:entityIds)
+          AND t.external_user_id IS NOT NULL
+          AND t.external_user_id != ''
+          AND e.event_type = 'llm_response'
+        GROUP BY
+          t.external_user_id,
+          COALESCE(
+            NULLIF(e.metadata->>'model', ''),
+            NULLIF(e.metadata->>'modelName', ''),
+            NULLIF(e.content->>'model', ''),
+            NULLIF(e.content->>'modelName', ''),
+            NULLIF(t.model, '')
+          )
+      `,
+      {
+        replacements: { entityIds },
+        type: QueryTypes.SELECT,
+      }
+    );
+
+    const models = Array.from(
+      new Set(
+        userCostRows
+          .map((row) => row.model?.trim())
+          .filter((model): model is string => Boolean(model))
+      )
+    );
+
+    const costsByModel = new Map<string, any | null>(
+      await Promise.all(
+        models.map(async (model) => {
+          try {
+            return [model, await llmCostService.getCosts(model)] as const;
+          } catch (error) {
+            logger.warn({ error, model }, 'Failed to resolve llm cost for user analytics');
+            return [model, null] as const;
+          }
+        })
+      )
+    );
+
+    const costByUserId = new Map<string, number>();
+    let totalCost = 0;
+
+    for (const row of userCostRows) {
+      if (!row.model) continue;
+      const resolvedCost = calculateUsageCost(row, costsByModel.get(row.model) ?? null);
+      if (resolvedCost <= 0) continue;
+      costByUserId.set(row.externalUserId, (costByUserId.get(row.externalUserId) ?? 0) + resolvedCost);
+      totalCost += resolvedCost;
+    }
+
+    for (const user of users) {
+      user.totalCost = costByUserId.get(user.externalUserId) ?? 0;
+    }
+    totals.totalCost = totalCost;
 
     return c.json({
       success: true,
