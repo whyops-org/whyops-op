@@ -24,13 +24,22 @@ export interface TraceEvent {
   externalUserId?: string;
   providerId?: string;
   timestamp: Date;
-  
-  // Generic Payload
+
+  // Generic Payload (normalized at ingestion time)
   content: any; // JSONB
-  
-  // Metadata (Model, Provider, Latency, etc.)
+
+  // Metadata (provider extras, idempotency key, etc.)
   metadata?: Record<string, any>;
-  
+
+  // Typed hot fields extracted from metadata at ingestion (Phase 2)
+  model?: string;
+  promptTokens?: number;
+  completionTokens?: number;
+  cacheReadTokens?: number;
+  cacheWriteTokens?: number;
+  latencyMs?: number;
+  finishReason?: string;
+
   createdAt: Date;
 }
 
@@ -60,6 +69,13 @@ export class LLMEvent extends Model<TraceEvent, EventCreationAttributes> impleme
   declare timestamp: Date;
   declare content: any;
   declare metadata?: Record<string, any>;
+  declare model?: string;
+  declare promptTokens?: number;
+  declare completionTokens?: number;
+  declare cacheReadTokens?: number;
+  declare cacheWriteTokens?: number;
+  declare latencyMs?: number;
+  declare finishReason?: string;
   declare createdAt: Date;
 }
 
@@ -139,6 +155,40 @@ LLMEvent.init(
     metadata: {
       type: DataTypes.JSONB,
       allowNull: true,
+    },
+    model: {
+      type: DataTypes.STRING(200),
+      allowNull: true,
+    },
+    promptTokens: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      field: 'prompt_tokens',
+    },
+    completionTokens: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      field: 'completion_tokens',
+    },
+    cacheReadTokens: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      field: 'cache_read_tokens',
+    },
+    cacheWriteTokens: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      field: 'cache_write_tokens',
+    },
+    latencyMs: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      field: 'latency_ms',
+    },
+    finishReason: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+      field: 'finish_reason',
     },
     createdAt: {
       type: DataTypes.DATE,

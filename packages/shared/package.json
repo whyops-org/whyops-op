@@ -12,7 +12,10 @@
     "./service-urls": "./src/config/service-urls.ts",
     "./cors": "./src/config/cors.ts",
     "./services": "./src/services/index.ts",
-    "./middleware": "./src/middleware/index.ts"
+    "./middleware": "./src/middleware/index.ts",
+    "./lib/event-normalizer": "./src/lib/event-normalizer.ts",
+    "./lib/content-blob": "./src/lib/content-blob.ts",
+    "./lib/events-payload": "./src/lib/events-payload.ts"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json --noEmit",

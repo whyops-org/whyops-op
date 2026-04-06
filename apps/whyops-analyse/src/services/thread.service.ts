@@ -1,12 +1,16 @@
 import { createServiceLogger } from '@whyops/shared/logger';
 import { Entity, LLMEvent, Trace } from '@whyops/shared/models';
 import { llmCostService } from '@whyops/shared/services';
+import { compressPayload, decompressPayload, toPayloadEvent, type PayloadEvent } from '@whyops/shared/lib/events-payload';
 import { Op, QueryTypes } from 'sequelize';
 
 const logger = createServiceLogger('analyse:thread-service');
 
+// Typed columns are populated at ingestion time (Phase 2 migration).
+// JSONB fallbacks handle rows written before the migration.
 const totalTokensExpr = `
   COALESCE(
+    NULLIF(prompt_tokens, 0) + NULLIF(completion_tokens, 0),
     NULLIF("metadata"->'usage'->>'totalTokens', '')::bigint,
     NULLIF("metadata"->'usage'->>'total_tokens', '')::bigint,
     NULLIF("metadata"->>'totalTokens', '')::bigint,
@@ -20,21 +24,24 @@ const totalTokensExpr = `
 `;
 
 const latencyMsExpr = `
-  NULLIF(
-    REGEXP_REPLACE(
-      COALESCE(
-        "metadata"->>'latencyMs',
-        "metadata"->>'latency_ms',
-        "content"->>'latencyMs',
-        "content"->>'latency_ms',
-        ''
+  COALESCE(
+    latency_ms,
+    NULLIF(
+      REGEXP_REPLACE(
+        COALESCE(
+          "metadata"->>'latencyMs',
+          "metadata"->>'latency_ms',
+          "content"->>'latencyMs',
+          "content"->>'latency_ms',
+          ''
+        ),
+        '[^0-9.]',
+        '',
+        'g'
       ),
-      '[^0-9.]',
-      '',
-      'g'
-    ),
-    ''
-  )::numeric
+      ''
+    )::numeric
+  )
 `;
 
 export interface ThreadListItem {
@@ -88,6 +95,14 @@ export interface EventDetail {
   timestamp: Date;
   content?: any;
   metadata?: any;
+  // Typed fields extracted from metadata at ingestion (Phase 2)
+  model?: string | null;
+  promptTokens?: number | null;
+  completionTokens?: number | null;
+  cacheReadTokens?: number | null;
+  cacheWriteTokens?: number | null;
+  latencyMs?: number | null;
+  finishReason?: string | null;
   duration?: number; // Time from this event to next event in ms
   timeSinceStart?: number; // Time from thread start in ms
   isLateEvent?: boolean; // Event arrived after subsequent events
@@ -438,22 +453,26 @@ export class ThreadService {
         `
           SELECT
             COALESCE(
+              model,
               NULLIF(metadata->>'model', ''),
               NULLIF(metadata->>'modelName', '')
             ) AS model,
             SUM(COALESCE(
+              prompt_tokens,
               NULLIF(metadata->'usage'->>'inputTokens', '')::bigint,
               NULLIF(metadata->'usage'->>'promptTokens', '')::bigint,
               NULLIF(metadata->'usage'->>'input', '')::bigint,
               0
             )) AS "inputTokens",
             SUM(COALESCE(
+              completion_tokens,
               NULLIF(metadata->'usage'->>'outputTokens', '')::bigint,
               NULLIF(metadata->'usage'->>'completionTokens', '')::bigint,
               NULLIF(metadata->'usage'->>'output', '')::bigint,
               0
             )) AS "outputTokens",
             SUM(COALESCE(
+              cache_write_tokens,
               NULLIF(metadata->'usage'->>'cacheWrite5mTokens', '')::bigint,
               0
             )) AS "cacheWrite5mTokens",
@@ -466,12 +485,14 @@ export class ThreadService {
               0
             )) AS "cacheCreationTokens",
             SUM(COALESCE(
+              cache_read_tokens,
               NULLIF(metadata->'usage'->>'cacheReadTokens', '')::bigint,
               NULLIF(metadata->'usage'->>'cachedTokens', '')::bigint,
               NULLIF(metadata->'usage'->>'cacheRead', '')::bigint,
               0
             )) AS "cacheReadTokens",
             SUM(COALESCE(
+              prompt_tokens + completion_tokens,
               NULLIF(metadata->'usage'->>'totalTokens', '')::bigint,
               NULLIF(metadata->'usage'->>'total_tokens', '')::bigint,
               0
@@ -480,6 +501,7 @@ export class ThreadService {
           WHERE trace_id = :traceId
             AND event_type = 'llm_response'
             AND COALESCE(
+              model,
               NULLIF(metadata->>'model', ''),
               NULLIF(metadata->>'modelName', '')
             ) IS NOT NULL
@@ -499,16 +521,19 @@ export class ThreadService {
         `
           SELECT
             COALESCE(
+              model,
               NULLIF(metadata->>'model', ''),
               NULLIF(metadata->>'modelName', '')
             ) AS model,
             COALESCE(
+              prompt_tokens,
               NULLIF(metadata->'usage'->>'inputTokens', '')::bigint,
               NULLIF(metadata->'usage'->>'promptTokens', '')::bigint,
               NULLIF(metadata->'usage'->>'input', '')::bigint,
               0
             ) AS "inputTokens",
             COALESCE(
+              completion_tokens,
               NULLIF(metadata->'usage'->>'outputTokens', '')::bigint,
               NULLIF(metadata->'usage'->>'completionTokens', '')::bigint,
               NULLIF(metadata->'usage'->>'output', '')::bigint,
@@ -714,6 +739,96 @@ export class ThreadService {
       );
       const hasLateEvents = Boolean(lateRows[0]?.hasLate);
 
+      // ---------------------------------------------------------------------------
+      // Phase 4: Compressed payload cache
+      // If eventsPayload is set and still valid (not invalidated by a new write),
+      // serve events from the compressed blob. Otherwise fetch from trace_events,
+      // build the payload, store it, and return.
+      // Pagination is applied after decompression; payload is only used when
+      // fetching all events (offset == 0 and no hard limit).
+      // ---------------------------------------------------------------------------
+      const usePayloadCache = eventIncludeContent && trace.eventsPayload && trace.eventsPayloadAt;
+
+      let cachedPayloadEvents: PayloadEvent[] | null = null;
+      if (usePayloadCache) {
+        try {
+          cachedPayloadEvents = decompressPayload(trace.eventsPayload as Buffer);
+        } catch (decompressError) {
+          logger.warn({ decompressError, threadId }, 'Failed to decompress events payload, falling back to DB');
+          cachedPayloadEvents = null;
+        }
+      }
+
+      let events: LLMEvent[];
+      let builtPayloadFromDb = false;
+
+      if (cachedPayloadEvents && eventOffset === 0) {
+        // Serve page from cached payload
+        const pageSlice = cachedPayloadEvents.slice(eventOffset, eventOffset + eventLimit + 1);
+        const hasMoreEvents = pageSlice.length > eventLimit;
+        const pageEvents = hasMoreEvents ? pageSlice.slice(0, eventLimit) : pageSlice;
+        const nextPayloadEvent = hasMoreEvents ? pageSlice[eventLimit] : undefined;
+
+        let maxStepSeen = Number.MIN_SAFE_INTEGER;
+        const eventDetails: EventDetail[] = pageEvents.map((pe, index) => {
+          const ts = new Date(pe.ts);
+          const timeSinceStart = ts.getTime() - firstEventTimestamp.getTime();
+          const next = index === pageEvents.length - 1 ? nextPayloadEvent : pageEvents[index + 1];
+          const eventDuration = next ? new Date(next.ts).getTime() - ts.getTime() : undefined;
+          const isLateEvent = pe.sid < maxStepSeen;
+          if (pe.sid > maxStepSeen) maxStepSeen = pe.sid;
+          return {
+            id: pe.id,
+            stepId: pe.sid,
+            parentStepId: pe.psid,
+            spanId: pe.spid,
+            eventType: pe.t,
+            timestamp: ts,
+            content: eventIncludeContent ? pe.c : undefined,
+            metadata: eventIncludeMetadata ? { model: pe.model, latencyMs: pe.lat, usage: { promptTokens: pe.pt, completionTokens: pe.ct, cacheReadTokens: pe.crt, cacheWriteTokens: pe.cwt } } : undefined,
+            duration: eventDuration,
+            timeSinceStart,
+            isLateEvent,
+          };
+        });
+
+        return {
+          threadId: trace.id,
+          userId: trace.userId,
+          externalUserId: trace.externalUserId || undefined,
+          providerId: trace.providerId,
+          sampledIn: trace.sampledIn,
+          agentId: (trace as any).entity?.agentId,
+          entityId: trace.entityId,
+          entityName: (trace as any).entity?.name,
+          lastActivity: lastEventTimestamp,
+          model: lastEventModel || trace.model || (trace.metadata as any)?.model,
+          systemPrompt: resolvedSystemPrompt,
+          tools: resolvedTools,
+          metadata: includeMetadata ? trace.metadata : undefined,
+          firstEventTimestamp,
+          lastEventTimestamp,
+          duration,
+          eventCount,
+          totalTokens,
+          totalLatency,
+          avgLatency: eventCount > 0 ? totalLatency / eventCount : 0,
+          errorCount,
+          events: eventDetails,
+          hasLateEvents,
+          eventsPagination: {
+            total: eventCount,
+            limit: eventLimit,
+            offset: eventOffset,
+            hasMore: eventOffset + eventLimit < eventCount,
+          },
+          cost,
+          models,
+          totalCost,
+        };
+      }
+
+      // Cache miss — fetch from trace_events
       const attributes = [
         'id',
         'stepId',
@@ -721,22 +836,57 @@ export class ThreadService {
         'spanId',
         'eventType',
         'timestamp',
+        'model',
+        'promptTokens',
+        'completionTokens',
+        'cacheReadTokens',
+        'cacheWriteTokens',
+        'latencyMs',
+        'finishReason',
       ] as const;
       const eventAttributes = [...attributes] as string[];
       if (eventIncludeContent) eventAttributes.push('content');
       if (eventIncludeMetadata) eventAttributes.push('metadata');
 
-      const events = await LLMEvent.findAll({
-        where: { traceId: threadId },
-        attributes: eventAttributes,
-        order: [['timestamp', 'ASC']],
-        limit: eventLimit + 1,
-        offset: eventOffset,
-      });
+      if (eventOffset === 0) {
+        // Fetch all events to build the payload cache, then page
+        events = await LLMEvent.findAll({
+          where: { traceId: threadId },
+          attributes: eventAttributes,
+          order: [['timestamp', 'ASC']],
+        });
+        builtPayloadFromDb = true;
+      } else {
+        events = await LLMEvent.findAll({
+          where: { traceId: threadId },
+          attributes: eventAttributes,
+          order: [['timestamp', 'ASC']],
+          limit: eventLimit + 1,
+          offset: eventOffset,
+        });
+      }
 
       const hasMoreEvents = events.length > eventLimit;
-      const pageEvents = hasMoreEvents ? events.slice(0, eventLimit) : events;
-      const nextEventForLast = hasMoreEvents ? events[eventLimit] : undefined;
+      const pageEvents = builtPayloadFromDb
+        ? (events.length > eventLimit ? events.slice(0, eventLimit) : events)
+        : (hasMoreEvents ? events.slice(0, eventLimit) : events);
+      const nextEventForLast = builtPayloadFromDb
+        ? (events.length > eventLimit ? events[eventLimit] : undefined)
+        : (hasMoreEvents ? events[eventLimit] : undefined);
+
+      // Build and store compressed payload on cache miss (only for full fetches)
+      if (builtPayloadFromDb && eventIncludeContent) {
+        try {
+          const payloadEvents = events.map((e) => toPayloadEvent(e as any));
+          const compressed = compressPayload(payloadEvents);
+          await Trace.update(
+            { eventsPayload: compressed, eventsPayloadAt: new Date() },
+            { where: { id: threadId } }
+          );
+        } catch (compressError) {
+          logger.warn({ compressError, threadId }, 'Failed to build events payload cache; continuing without cache');
+        }
+      }
 
       let maxStepSeen = Number.MIN_SAFE_INTEGER;
       if (eventOffset > 0) {
@@ -782,6 +932,13 @@ export class ThreadService {
           timestamp: event.timestamp,
           content: eventIncludeContent ? (event as any).content : undefined,
           metadata: eventIncludeMetadata ? (event as any).metadata : undefined,
+          model: (event as any).model ?? null,
+          promptTokens: (event as any).promptTokens ?? null,
+          completionTokens: (event as any).completionTokens ?? null,
+          cacheReadTokens: (event as any).cacheReadTokens ?? null,
+          cacheWriteTokens: (event as any).cacheWriteTokens ?? null,
+          latencyMs: (event as any).latencyMs ?? null,
+          finishReason: (event as any).finishReason ?? null,
           duration: eventDuration,
           timeSinceStart,
           isLateEvent,

@@ -9,9 +9,13 @@ export interface TraceAttributes {
   entityId?: string;
   sampledIn?: boolean;
   model?: string;
-  systemMessage?: string;
-  tools?: any; // JSON array of tool definitions
-  metadata?: Record<string, any>; // generic metadata
+  systemMessage?: string;          // kept for backward compat; prefer systemMessageHash for new rows
+  systemMessageHash?: string;      // FK → content_blobs.hash (Phase 3)
+  tools?: any;                     // kept for backward compat; prefer toolsHash for new rows
+  toolsHash?: string;              // FK → content_blobs.hash (Phase 3)
+  metadata?: Record<string, any>;
+  eventsPayload?: Buffer | null;   // brotli-compressed JSON array of normalized events (Phase 4)
+  eventsPayloadAt?: Date | null;   // when the payload was last built
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -25,8 +29,12 @@ export class Trace extends Model<TraceAttributes> implements TraceAttributes {
   declare sampledIn?: boolean;
   declare model?: string;
   declare systemMessage?: string;
+  declare systemMessageHash?: string;
   declare tools?: any;
+  declare toolsHash?: string;
   declare metadata?: Record<string, any>;
+  declare eventsPayload?: Buffer | null;
+  declare eventsPayloadAt?: Date | null;
   declare createdAt: Date;
   declare updatedAt: Date;
 }
@@ -77,9 +85,29 @@ Trace.init(
       allowNull: true,
       field: 'system_message',
     },
+    systemMessageHash: {
+      type: DataTypes.STRING(64),
+      allowNull: true,
+      field: 'system_message_hash',
+    },
     tools: {
       type: DataTypes.JSONB,
       allowNull: true,
+    },
+    toolsHash: {
+      type: DataTypes.STRING(64),
+      allowNull: true,
+      field: 'tools_hash',
+    },
+    eventsPayload: {
+      type: DataTypes.BLOB,
+      allowNull: true,
+      field: 'events_payload',
+    },
+    eventsPayloadAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: 'events_payload_at',
     },
     metadata: {
       type: DataTypes.JSONB,

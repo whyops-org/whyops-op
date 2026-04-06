@@ -95,16 +95,26 @@ function JsonSection({ label, value }: JsonSectionProps) {
 
 interface EventMetaSummaryProps {
   metadata: Record<string, unknown>;
+  event?: TraceDetail["events"][number];
 }
 
-function EventMetaSummary({ metadata }: EventMetaSummaryProps) {
-  const model = typeof metadata.model === "string" ? metadata.model : null;
+function EventMetaSummary({ metadata, event }: EventMetaSummaryProps) {
+  // Prefer typed columns (Phase 2); fall back to metadata JSONB for old events
+  const model = event?.model ?? (typeof metadata.model === "string" ? metadata.model : null);
   const provider = typeof metadata.provider === "string" ? metadata.provider : null;
   const tool = typeof metadata.tool === "string" ? metadata.tool : null;
-  const latencyMs = typeof metadata.latencyMs === "number" ? metadata.latencyMs : null;
+  const latencyMs = event?.latencyMs ?? (typeof metadata.latencyMs === "number" ? metadata.latencyMs : null);
   const totalRecords = typeof metadata.totalRecords === "number" ? metadata.totalRecords : null;
+
+  // Total tokens: typed columns first, then metadata.usage
+  const promptTokens = event?.promptTokens ?? null;
+  const completionTokens = event?.completionTokens ?? null;
+  const typedTotal = (promptTokens != null && completionTokens != null)
+    ? promptTokens + completionTokens
+    : null;
   const usage = isRecord(metadata.usage) ? metadata.usage : null;
-  const totalTokens = typeof usage?.totalTokens === "number" ? usage.totalTokens : null;
+  const metaTotal = typeof usage?.totalTokens === "number" ? usage.totalTokens : null;
+  const totalTokens = typedTotal ?? metaTotal;
 
   if (!model && !provider && !tool && latencyMs === null && totalRecords === null && totalTokens === null) {
     return null;
@@ -158,7 +168,7 @@ function EventCard({ event, index, expanded, onToggle }: EventCardProps) {
 
           {metadata ? (
             <>
-              <EventMetaSummary metadata={metadata} />
+              <EventMetaSummary metadata={metadata} event={event} />
               <JsonSection label="Metadata" value={metadata} />
             </>
           ) : null}

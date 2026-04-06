@@ -17,6 +17,21 @@ type Usage = {
 };
 
 function getUsage(event: TraceEvent): Usage | null {
+  // Phase 2: prefer typed columns on the event (always populated for new events)
+  const hasTypedTokens =
+    (event.promptTokens != null && event.promptTokens > 0) ||
+    (event.completionTokens != null && event.completionTokens > 0);
+
+  if (hasTypedTokens) {
+    return {
+      promptTokens: event.promptTokens ?? undefined,
+      completionTokens: event.completionTokens ?? undefined,
+      cacheReadTokens: event.cacheReadTokens ?? undefined,
+      cacheWrite5mTokens: event.cacheWriteTokens ?? undefined,
+    };
+  }
+
+  // Fallback: read from metadata.usage (old events pre-migration)
   if (!event.metadata || typeof event.metadata !== "object") {
     return null;
   }

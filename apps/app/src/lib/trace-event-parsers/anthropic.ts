@@ -46,6 +46,8 @@ export const anthropicTraceEventParser: TraceEventParser = {
     return false;
   },
   parse: (event) => {
+    // Content already normalized at ingestion time — plain strings need no further work
+    if (typeof event.content === "string") return event;
     switch (event.eventType) {
       case "user_message":
       case "system_message":

@@ -1,5 +1,6 @@
 import { createServiceLogger } from '@whyops/shared/logger';
 import { Provider, Trace } from '@whyops/shared/models';
+import { upsertBlob } from '@whyops/shared/lib/content-blob';
 import { ParserFactory } from '../parsers';
 import { EntityService } from './entity.service';
 
@@ -97,10 +98,12 @@ export class TraceService {
 
       if (!trace.systemMessage && fallbackMetadata.systemMessage) {
         trace.systemMessage = fallbackMetadata.systemMessage;
+        trace.systemMessageHash = await upsertBlob(fallbackMetadata.systemMessage);
       }
 
       if (!trace.tools && fallbackMetadata.tools) {
         trace.tools = fallbackMetadata.tools;
+        trace.toolsHash = await upsertBlob(JSON.stringify(fallbackMetadata.tools));
       }
 
       if (trace.changed()) {
@@ -128,6 +131,10 @@ export class TraceService {
     const parser = ParserFactory.getParser(providerType);
     const metadata = parser.extract(data.content, data.metadata);
 
+    // Hash system message and tools for deduplication across traces
+    const systemMessageHash = metadata.systemMessage ? await upsertBlob(metadata.systemMessage) : undefined;
+    const toolsHash = metadata.tools ? await upsertBlob(JSON.stringify(metadata.tools)) : undefined;
+
     // 5. Create Trace (using findOrCreate for safety)
     const [newTrace, created] = await Trace.findOrCreate({
       where: { id: data.traceId },
@@ -140,7 +147,9 @@ export class TraceService {
         sampledIn: data.sampledIn ?? true,
         model: metadata.model,
         systemMessage: metadata.systemMessage,
+        systemMessageHash,
         tools: metadata.tools,
+        toolsHash,
         metadata: data.metadata,
         createdAt: data.timestamp ? new Date(data.timestamp) : new Date(),
       },

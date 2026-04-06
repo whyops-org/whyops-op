@@ -67,8 +67,9 @@ export const AgentMessageHandler: EventHandler = {
       metrics.push({ label: "Duration", value: `${event.duration}ms` });
     }
 
-    if (event.metadata?.latencyMs) {
-      metrics.push({ label: "Latency", value: `${event.metadata.latencyMs}ms` });
+    const latencyMs = event.latencyMs ?? event.metadata?.latencyMs;
+    if (latencyMs) {
+      metrics.push({ label: "Latency", value: `${latencyMs}ms` });
     }
 
     const sections = [];

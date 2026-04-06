@@ -115,24 +115,28 @@ export const LlmResponseHandler: EventHandler = {
   getSidebarData(event: TraceEvent): SidebarData {
     const typedContent = event.content as LlmResponseContent;
     const { text } = extractResponseText(event.content);
-    const usage = event.metadata?.usage as { totalTokens?: number; promptTokens?: number; completionTokens?: number } | undefined;
+
+    // Phase 2: prefer typed columns on event, fall back to metadata.usage for old events
+    const promptTokens = event.promptTokens ?? event.metadata?.usage?.promptTokens;
+    const completionTokens = event.completionTokens ?? event.metadata?.usage?.completionTokens;
+    const totalTokens = (promptTokens != null && completionTokens != null)
+      ? promptTokens + completionTokens
+      : event.metadata?.usage?.totalTokens;
+    const latencyMs = event.latencyMs ?? event.metadata?.latencyMs;
 
     const metrics: SidebarMetric[] = [];
 
-    if (usage) {
-      if (usage.totalTokens) {
-        metrics.push({ label: "Total Tokens", value: usage.totalTokens.toLocaleString() });
-      }
-      if (usage.promptTokens) {
-        metrics.push({ label: "Prompt Tokens", value: usage.promptTokens.toLocaleString() });
-      }
-      if (usage.completionTokens) {
-        metrics.push({ label: "Completion Tokens", value: usage.completionTokens.toLocaleString() });
-      }
+    if (totalTokens) {
+      metrics.push({ label: "Total Tokens", value: totalTokens.toLocaleString() });
     }
-
-    if (event.metadata?.latencyMs) {
-      metrics.push({ label: "Latency", value: `${event.metadata.latencyMs}ms` });
+    if (promptTokens) {
+      metrics.push({ label: "Prompt Tokens", value: promptTokens.toLocaleString() });
+    }
+    if (completionTokens) {
+      metrics.push({ label: "Completion Tokens", value: completionTokens.toLocaleString() });
+    }
+    if (latencyMs) {
+      metrics.push({ label: "Latency", value: `${latencyMs}ms` });
     }
 
     const sections = [];
@@ -195,15 +199,16 @@ export const LlmResponseHandler: EventHandler = {
 
     return {
       title: "LLM Response",
-      subtitle: `${event.metadata?.model || "Unknown Model"} • Step ${event.stepId}`,
+      subtitle: `${event.model || event.metadata?.model || "Unknown Model"} • Step ${event.stepId}`,
       sections,
     };
   },
 
   getTimelineData(event: TraceEvent): TimelineData {
     const typedContent = event.content as LlmResponseContent;
-    const usage = event.metadata?.usage as { totalTokens?: number } | undefined;
-    const tokens = usage?.totalTokens;
+    const totalTokens = (event.promptTokens != null && event.completionTokens != null)
+      ? event.promptTokens + event.completionTokens
+      : event.metadata?.usage?.totalTokens;
 
     let description = "";
     if (typedContent?.finishReason === TOOL_CALL_MARKER) {
@@ -218,11 +223,11 @@ export const LlmResponseHandler: EventHandler = {
       icon: "sparkles",
       status: event.isLateEvent ? "error" : "completed",
       timestamp: event.timestamp,
-      duration: event.metadata?.latencyMs,
+      duration: event.latencyMs ?? event.metadata?.latencyMs,
       metadata: {
-        model: event.metadata?.model,
-        tokens,
-        finishReason: typedContent?.finishReason,
+        model: event.model ?? event.metadata?.model,
+        tokens: totalTokens,
+        finishReason: event.finishReason ?? typedContent?.finishReason,
       },
     };
   },

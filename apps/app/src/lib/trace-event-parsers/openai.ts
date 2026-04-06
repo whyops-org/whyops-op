@@ -231,6 +231,50 @@ function extractToolCallFromContent(content: unknown, toolCallId?: string): Norm
   return null;
 }
 
+/**
+ * Returns true if the event content is already in normalized canonical form
+ * (written by the server-side event-normalizer after Phase 1). These events
+ * have already been parsed at ingestion time and need no further transformation.
+ */
+function isAlreadyNormalized(event: TraceEvent): boolean {
+  const { eventType, content } = event;
+
+  // user_message and system_message normalize to plain strings
+  if (eventType === "user_message" || eventType === "system_message") {
+    return typeof content === "string";
+  }
+
+  // llm_response normalizes to { text?, toolCalls?, finishReason? }
+  if (eventType === "llm_response" || eventType === "agent_message") {
+    if (!isRecord(content)) return false;
+    const hasRawApiMarkers =
+      "object" in content ||
+      "choices" in content ||
+      "messages" in content ||
+      "input" in content ||
+      (typeof content.type === "string" && content.type.startsWith("response."));
+    return !hasRawApiMarkers;
+  }
+
+  // tool_call_request normalizes to { id?, name, arguments? }
+  if (eventType === "tool_call_request" || eventType === "tool_call") {
+    if (!isRecord(content)) return false;
+    return "name" in content && !("type" in content) && !("tool_calls" in content);
+  }
+
+  // tool_call_response normalizes to { tool_call_id?, content? } or { callId?, result? }
+  if (eventType === "tool_call_response" || eventType === "tool_result") {
+    if (!isRecord(content)) return false;
+    return (
+      ("tool_call_id" in content || "callId" in content || "output" in content) &&
+      !(content.type === "function_call_output") &&
+      !("role" in content)
+    );
+  }
+
+  return false;
+}
+
 function mergeMetadata(base: TraceEvent["metadata"], patch: Record<string, unknown>): Record<string, unknown> {
   const metadataBase = base && isRecord(base) ? base : {};
   return { ...metadataBase, ...patch };
@@ -554,6 +598,8 @@ export const openAiTraceEventParser: TraceEventParser = {
     return false;
   },
   parse: (event) => {
+    // Content normalized at ingestion time (Phase 1) — no re-parsing needed
+    if (isAlreadyNormalized(event)) return event;
     switch (event.eventType) {
       case "user_message":
         return parseUserEvent(event);

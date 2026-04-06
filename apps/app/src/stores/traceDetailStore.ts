@@ -13,6 +13,14 @@ export interface TraceEvent {
   timestamp: string;
   content: TraceEventContent;
   metadata?: TraceEventMetadata | null;
+  // Typed fields from Phase 2 backend columns (null = old event pre-migration)
+  model?: string | null;
+  promptTokens?: number | null;
+  completionTokens?: number | null;
+  cacheReadTokens?: number | null;
+  cacheWriteTokens?: number | null;
+  latencyMs?: number | null;
+  finishReason?: string | null;
   duration?: number;
   timeSinceStart?: number;
   isLateEvent?: boolean;
