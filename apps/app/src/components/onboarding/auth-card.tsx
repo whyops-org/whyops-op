@@ -132,8 +132,6 @@ export function AuthCard({ onGithubClick }: AuthCardProps) {
               </Button>
             </div>
             <div className="flex items-center justify-center gap-4 border-t border-border/50 pt-5 text-sm text-muted-foreground">
-              <span>SOC 2 compliant</span>
-              <span>•</span>
               <span>End-to-end encrypted</span>
             </div>
           </CardContent>
