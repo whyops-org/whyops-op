@@ -8,11 +8,19 @@
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-14%2B-4169E1?style=flat&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Redis](https://img.shields.io/badge/Redis-7%2B-DC382D?style=flat&logo=redis&logoColor=white)](https://redis.io/)
 
-**Monitor, analyze, and improve your AI agents with LLM-powered evaluation**
+**Trace every agent run, inspect failures, and turn production traffic into better prompts, tests, and shipping decisions.**
 
-[Getting Started](#-quick-start) · [Architecture](#-architecture) · [API Reference](#-api-reference) · [Deployment](#-deployment)
+[Getting Started](#-quick-start) · [Product Preview](#-product-preview) · [Architecture](#-architecture) · [License](#-license)
 
 </div>
+
+<p align="center">
+  <img src=".github/assets/readme/analysis-hero.webp" alt="WhyOps analysis dashboard showing dimension scores, findings, and issue severity" width="100%" />
+</p>
+
+<p align="center">
+  <sub>Use WhyOps with direct event ingestion or via an OpenAI and Anthropic compatible proxy.</sub>
+</p>
 
 ---
 
@@ -22,18 +30,20 @@
 <summary><strong>Click to expand/collapse</strong></summary>
 
 1. [Overview](#-overview)
-2. [Architecture](#-architecture)
-3. [Quick Start](#-quick-start)
-4. [Project Structure](#-project-structure)
-5. [Backend Services](#-backend-services)
-6. [Frontend Application](#-frontend-application)
-7. [Database Schema](#-database-schema)
-8. [API Reference](#-api-reference)
-9. [Event System](#-event-system)
-10. [LLM Judge System](#-llm-judge-system)
-11. [Configuration](#-configuration)
-12. [Deployment](#-deployment)
-13. [Development](#-development)
+2. [Product Preview](#-product-preview)
+3. [Architecture](#-architecture)
+4. [Quick Start](#-quick-start)
+5. [Project Structure](#-project-structure)
+6. [Backend Services](#-backend-services)
+7. [Frontend Application](#-frontend-application)
+8. [Database Schema](#-database-schema)
+9. [API Reference](#-api-reference)
+10. [Event System](#-event-system)
+11. [LLM Judge System](#-llm-judge-system)
+12. [Configuration](#-configuration)
+13. [Deployment](#-deployment)
+14. [Development](#-development)
+15. [License](#-license)
 
 </details>
 
@@ -50,6 +60,35 @@ WhyOps is a comprehensive observability platform for AI agents that provides:
 | **LLM-Powered Analysis** | Multi-dimensional evaluation using GPT-4/Claude judges |
 | **Eval Generation** | Automatically generate test cases from production traces |
 | **Cost Tracking** | Token usage and latency metrics per agent/version |
+
+## ✨ Product Preview
+
+<table>
+  <tr>
+    <td width="68%">
+      <img src=".github/assets/readme/analysis-dashboard.png" alt="WhyOps analysis dashboard with scores, issue counts, and findings strips" width="100%" />
+    </td>
+    <td width="32%">
+      <img src=".github/assets/readme/settings-api-keys.webp" alt="WhyOps settings screen showing API keys and ingestion endpoints" width="100%" />
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+      <strong>Inspect what actually broke.</strong><br />
+      Review step correctness, tool choice, prompt quality, cost efficiency, and findings from one analysis view instead of jumping between logs.
+    </td>
+    <td valign="top">
+      <strong>Onboard agents quickly.</strong><br />
+      Generate API keys, copy ingestion endpoints, and connect SDKs without leaving the dashboard.
+    </td>
+  </tr>
+</table>
+
+### Why Teams Fork WhyOps
+
+- Run it as a full stack observability workspace instead of stitching together proxy logs, evals, and dashboards by hand.
+- Ingest data through manual events or through the WhyOps proxy, depending on how invasive you want instrumentation to be.
+- Extend one monorepo that already contains the web app, backend services, and SDK packages for TypeScript, Python, and Go.
 
 ### Key Capabilities
 
@@ -164,8 +203,8 @@ redis-cli --version # v7+
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/whyops.git
-cd whyops
+git clone https://github.com/whyops-org/whyops-op.git
+cd whyops-op
 
 # Install dependencies (uses nested install strategy)
 npm ci
@@ -1433,7 +1472,11 @@ export async function down(queryInterface: QueryInterface): Promise<void> {
 
 ## 📝 License
 
-MIT
+WhyOps is available under **Apache License 2.0 with Commons Clause**.
+
+You can fork, study, modify, and redistribute this repository, but you may not sell WhyOps itself or a lightly rebranded copy of it without separate written permission from the licensor.
+
+This is a **source-available** license, not an OSI open-source license. See [LICENSE](LICENSE) for the full legal text.
 
 ---
 
