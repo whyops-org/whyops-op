@@ -2,7 +2,7 @@
   "name": "@whyops/vercel-ai-sdk",
   "version": "0.1.1",
   "description": "WhyOps observability integration for the Vercel AI SDK",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/whyops-org/whyops-op.git",

@@ -10,7 +10,7 @@
 
 **Trace every agent run, inspect failures, and turn production traffic into better prompts, tests, and shipping decisions.**
 
-[Getting Started](#-quick-start) · [Product Preview](#-product-preview) · [Architecture](#-architecture) · [License](#-license)
+[Getting Started](#-quick-start) · [Product Preview](#-product-preview) · [Contributing](#-contributing) · [License](#-license)
 
 </div>
 
@@ -43,7 +43,8 @@
 12. [Configuration](#-configuration)
 13. [Deployment](#-deployment)
 14. [Development](#-development)
-15. [License](#-license)
+15. [Contributing](#-contributing)
+16. [License](#-license)
 
 </details>
 
@@ -63,26 +64,11 @@ WhyOps is a comprehensive observability platform for AI agents that provides:
 
 ## ✨ Product Preview
 
-<table>
-  <tr>
-    <td width="68%">
-      <img src=".github/assets/readme/analysis-dashboard.png" alt="WhyOps analysis dashboard with scores, issue counts, and findings strips" width="100%" />
-    </td>
-    <td width="32%">
-      <img src=".github/assets/readme/settings-api-keys.webp" alt="WhyOps settings screen showing API keys and ingestion endpoints" width="100%" />
-    </td>
-  </tr>
-  <tr>
-    <td valign="top">
-      <strong>Inspect what actually broke.</strong><br />
-      Review step correctness, tool choice, prompt quality, cost efficiency, and findings from one analysis view instead of jumping between logs.
-    </td>
-    <td valign="top">
-      <strong>Onboard agents quickly.</strong><br />
-      Generate API keys, copy ingestion endpoints, and connect SDKs without leaving the dashboard.
-    </td>
-  </tr>
-</table>
+<p align="center">
+  <img src=".github/assets/readme/analysis-dashboard.png" alt="WhyOps analysis dashboard with scores, issue counts, and findings strips" width="100%" />
+</p>
+
+Review step correctness, tool choice, prompt quality, cost efficiency, and findings from one analysis view instead of jumping between logs.
 
 ### Why Teams Fork WhyOps
 
@@ -284,6 +270,12 @@ curl http://localhost:8082/health  # Auth
 # Open dashboard
 open http://localhost:3000
 ```
+
+<p align="center">
+  <img src=".github/assets/readme/settings-api-keys.webp" alt="WhyOps settings screen showing API keys and ingestion endpoints" width="720" />
+</p>
+
+Once the stack is running, create an API key in the dashboard and point your SDK or event pipeline at the displayed ingestion endpoints.
 
 ---
 
@@ -631,6 +623,8 @@ export const useAgentsStore = create<AgentsState>()(
 | `/agents/[agentId]/traces/[traceId]` | `TraceDetailsPageContent` | Trace visualization |
 | `/settings` | `SettingsPage` | Provider & API key config |
 | `/traces` | `TracesPage` | All traces view |
+
+The settings flow is intentionally simple: generate keys, copy endpoints, then instrument with direct events or route calls through the proxy depending on your setup.
 
 ### Trace Visualization
 
@@ -1470,13 +1464,19 @@ export async function down(queryInterface: QueryInterface): Promise<void> {
 
 ---
 
+## 🤝 Contributing
+
+Contributions are welcome. For local setup, branch/PR workflow, code quality expectations, and submission checklist, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+If you ship a fork, use your own branding and make it clear that it is not the official WhyOps project. Brand usage guidance lives in [TRADEMARKS.md](TRADEMARKS.md).
+
+---
+
 ## 📝 License
 
-WhyOps is available under **Apache License 2.0 with Commons Clause**.
+The code in this repository is licensed under **Apache License 2.0**. See [LICENSE](LICENSE).
 
-You can fork, study, modify, and redistribute this repository, but you may not sell WhyOps itself or a lightly rebranded copy of it without separate written permission from the licensor.
-
-This is a **source-available** license, not an OSI open-source license. See [LICENSE](LICENSE) for the full legal text.
+The **WhyOps** name, logo, and other brand assets are not licensed under Apache-2.0. If you run a fork, publish it under your own branding and follow [TRADEMARKS.md](TRADEMARKS.md).
 
 ---
 

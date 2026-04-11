@@ -2,7 +2,7 @@
   "name": "@whyops/sdk",
   "version": "0.1.1",
   "description": "WhyOps SDK for AI agent observability — TypeScript/JavaScript",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/whyops-org/whyops-op.git",

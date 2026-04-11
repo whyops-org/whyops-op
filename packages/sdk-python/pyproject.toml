@@ -7,11 +7,11 @@ name = "whyops"
 version = "0.1.1"
 description = "WhyOps SDK — AI agent observability"
 readme = "README.md"
-license = { text = "MIT" }
+license = { text = "Apache-2.0" }
 requires-python = ">=3.9"
 keywords = ["whyops", "observability", "ai", "agents", "llm", "tracing"]
 classifiers = [
-    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",

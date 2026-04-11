@@ -2,7 +2,7 @@
   "name": "@whyops/langchain-js",
   "version": "0.1.0",
   "description": "WhyOps observability integration for LangChain.js",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/whyops-org/whyops-op.git",
