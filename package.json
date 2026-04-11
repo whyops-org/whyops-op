@@ -12,6 +12,7 @@
     "packages/*"
   ],
   "scripts": {
+    "hooks:install": "git config core.hooksPath .githooks",
     "env-add": "node scripts/env-add.js",
     "env-gh-secret-sync": "node scripts/env-gh-secret-sync.js",
     "deploy:all": "node scripts/deploy-gh.js all",

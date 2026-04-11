@@ -14,12 +14,12 @@ export function AgentPreview({ direction = "vertical", className }: AgentPreview
   return (
     <Card
       className={cn(
-        "w-full border-border/50 bg-card",
-        isVertical ? "min-h-[420px]" : "min-h-[360px]",
+        "h-full w-full border-border/50 p-0 bg-card",
+        isVertical ? "min-h-0" : "min-h-[360px]",
         className
       )}
     >
-      <div className="flex h-full flex-col px-6 py-6">
+      <div className="flex h-full p-6 flex-col">
         <div className="border-b border-border/50 pb-4">
           <p className="text-sm font-medium text-foreground">What happens after setup</p>
           <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
@@ -27,7 +27,7 @@ export function AgentPreview({ direction = "vertical", className }: AgentPreview
           </p>
         </div>
 
-        <div className="grid flex-1 gap-3 py-5">
+        <div className="grid flex-1 gap-2 py-4">
           {[
             {
               icon: Radio,
@@ -45,7 +45,10 @@ export function AgentPreview({ direction = "vertical", className }: AgentPreview
               description: "Sampling, provider configuration, and project limits apply to new traffic immediately.",
             },
           ].map((item) => (
-            <div key={item.title} className="grid grid-cols-[40px_minmax(0,1fr)] gap-3 border border-border/50 bg-surface-2/20 p-4">
+            <div
+              key={item.title}
+              className="grid grid-cols-[40px_minmax(0,1fr)] gap-3 border border-border/50 bg-surface-2/20 p-4"
+            >
               <div className="flex h-10 w-10 items-center justify-center border border-border/60 bg-background text-muted-foreground">
                 <item.icon className="h-4 w-4" />
               </div>

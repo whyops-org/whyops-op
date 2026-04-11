@@ -4,19 +4,17 @@ import { ReactNode } from "react";
 interface StepContainerProps {
   children: ReactNode;
   className?: string;
-  maxHeight?: string;
+  bodyClassName?: string;
 }
 
-export function StepContainer({ children, className, maxHeight = "70vh" }: StepContainerProps) {
+export function StepContainer({
+  children,
+  className,
+  bodyClassName,
+}: StepContainerProps) {
   return (
-    <div
-      className={cn(
-        "flex w-full flex-col overflow-hidden rounded-sm border border-border/50 bg-card",
-        className
-      )}
-      style={{ maxHeight }}
-    >
-      <div className="flex-1 space-y-7 overflow-y-auto p-6 pb-28 lg:p-8 lg:pb-32 scrollbar-thin scrollbar-thumb-border/50 scrollbar-track-transparent">
+    <div className={cn("flex h-full w-full flex-col overflow-hidden rounded-md border border-border/60 bg-card", className)}>
+      <div className={cn("flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto p-6 lg:p-7", bodyClassName)}>
         {children}
       </div>
     </div>

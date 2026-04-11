@@ -1,28 +1,18 @@
 import { create } from "zustand";
 
 import { apiRequest } from "@/lib/api-client";
-
-type AuthStatus = "idle" | "loading" | "sent" | "error";
-type SocialProvider = "github" | "google";
+import type {
+  AuthStatus,
+  AuthUser,
+  MagicLinkResponse,
+  OnboardingProgress,
+  SessionContextResponse,
+  SocialProvider,
+  SocialSignInResponse,
+} from "@/stores/authStoreTypes";
 
 const RESEND_COOLDOWN_MS = 60_000;
-
-export type OnboardingStep = "welcome" | "provider" | "workspace" | "complete";
-
-export interface OnboardingProgress {
-  hasProvider: boolean;
-  hasProject: boolean;
-  onboardingComplete: boolean;
-  currentStep: OnboardingStep;
-}
-
-interface AuthUser {
-  id: string;
-  email: string;
-  name?: string | null;
-  image?: string | null;
-  onboardingComplete?: boolean;
-}
+export type { AuthUser, OnboardingProgress } from "@/stores/authStoreTypes";
 
 interface AuthState {
   user: AuthUser | null;
@@ -42,22 +32,6 @@ interface AuthState {
   fetchOnboardingProgress: () => Promise<void>;
   signOut: () => Promise<void>;
   completeOnboarding: () => Promise<void>;
-}
-
-interface MagicLinkResponse {
-  status?: string;
-  data?: unknown;
-}
-
-interface SocialSignInResponse {
-  url?: string;
-  redirect?: boolean;
-}
-
-interface SessionContextResponse {
-  session?: unknown | null;
-  user?: AuthUser | null;
-  authContext?: unknown | null;
 }
 
 const defaultCallbacks = {

@@ -1,5 +1,5 @@
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ChevronRight } from "lucide-react";
 
 interface StepNavigationProps {
   onBack?: () => void;
@@ -26,7 +26,8 @@ export function StepNavigation({
           onClick={onBack}
           type="button"
         >
-          ← {backLabel}
+          <ChevronLeft className="h-4 w-4" />
+          {backLabel}
         </button>
       ) : <div />}
       

@@ -23,7 +23,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  ArrowRight,
   ChevronLeft,
   ChevronRight,
   ListRestart,
@@ -74,8 +73,7 @@ export function TracesPageContent() {
     router.push(`/agents/${resolvedAgentId}/traces/${thread.threadId}`);
   };
 
-  const shouldShowInitialLoader =
-    !hasAttemptedInitialLoad || isLoading || (config?.analyseBaseUrl && threads.length === 0 && !isRefetching);
+  const shouldShowInitialLoader = !hasAttemptedInitialLoad || isLoading;
 
   const currentLoading = shouldShowInitialLoader || localIsLoading;
 
@@ -192,7 +190,7 @@ export function TracesPageContent() {
                           size="sm"
                           className="h-8 gap-1 text-muted-foreground hover:text-primary"
                         >
-                          View <ArrowRight className="h-3.5 w-3.5" />
+                          View <ChevronRight className="h-3.5 w-3.5" />
                         </Button>
                       </TableCell>
                     </TableRow>

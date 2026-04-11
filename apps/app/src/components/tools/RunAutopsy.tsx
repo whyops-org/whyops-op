@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 const TraceCanvas = dynamic(
   () => import("@/components/traces/trace-canvas").then((m) => m.TraceCanvas),
@@ -194,7 +195,8 @@ export function RunAutopsy() {
               loading={loading}
               size="sm"
             >
-              Visualize run →
+              Visualize run
+              <ChevronRight className="h-4 w-4" />
             </Button>
             <p className="text-xs text-muted-foreground">
               Your data never leaves your server session.
@@ -253,7 +255,8 @@ export function RunAutopsy() {
                 setParseInfo(null);
               }}
             >
-              ← Paste new run
+              <ChevronLeft className="h-4 w-4" />
+              Paste new run
             </Button>
           </div>
 

@@ -25,7 +25,12 @@ export function CodeBlock({ code, language = "python", showCopy = true, classNam
 
   // Map language ids to syntax highlighter languages
   const languageMap: Record<string, string> = {
+    bash: "bash",
+    go: "go",
+    http: "bash",
     python: "python",
+    sh: "bash",
+    shell: "bash",
     javascript: "javascript",
     typescript: "typescript",
     js: "javascript",
@@ -49,7 +54,7 @@ export function CodeBlock({ code, language = "python", showCopy = true, classNam
           )}
         </button>
       )}
-      <div className="overflow-x-auto">
+      <div className="max-h-[240px] overflow-auto">
         <SyntaxHighlighter
           language={hlLanguage}
           style={vscDarkPlus}

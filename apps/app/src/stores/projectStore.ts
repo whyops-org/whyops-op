@@ -11,9 +11,11 @@ export interface Environment {
 
 export interface MasterKey {
   id: string;
-  key: string;
+  environmentId: string;
   name: string;
   prefix: string;
+  key?: string;
+  canReveal?: boolean;
   createdAt: string;
 }
 
@@ -25,12 +27,28 @@ export interface Project {
   createdAt: string;
 }
 
-// Backend returns different field names
 interface BackendMasterKey {
   keyId: string;
   apiKey: string;
+  environmentId: string;
   environmentName: string;
   keyPrefix: string;
+}
+
+interface ProjectWithEnvironments extends Project {
+  environments?: Environment[];
+}
+
+interface PersistedApiKey {
+  id: string;
+  projectId: string;
+  environmentId: string;
+  stage: string;
+  keyPrefix: string;
+  canReveal: boolean;
+  isMaster: boolean;
+  isActive: boolean;
+  createdAt: string;
 }
 
 export interface ProjectInput {
@@ -49,12 +67,36 @@ interface ProjectState {
 
   fetchProjects: () => Promise<void>;
   createProject: (data: ProjectInput) => Promise<{ masterKeys: MasterKey[] }>;
+  createApiKey: (input: { projectId: string; environmentId: string; environmentName: string }) => Promise<MasterKey>;
   setCurrentApiKey: (key: string) => void;
   clearMasterKeys: () => void;
   clearError: () => void;
 }
 
-export const useProjectStore = create<ProjectState>((set) => ({
+function mapNewMasterKey(key: BackendMasterKey): MasterKey {
+  return {
+    id: key.keyId,
+    environmentId: key.environmentId,
+    key: key.apiKey,
+    name: `${key.environmentName} Master Key`,
+    prefix: key.keyPrefix,
+    canReveal: true,
+    createdAt: new Date().toISOString(),
+  };
+}
+
+function mapPersistedKey(key: PersistedApiKey): MasterKey {
+  return {
+    id: key.id,
+    environmentId: key.environmentId,
+    name: `${key.stage} ${key.isMaster ? "Master Key" : "API Key"}`,
+    prefix: key.keyPrefix,
+    canReveal: key.canReveal,
+    createdAt: key.createdAt,
+  };
+}
+
+export const useProjectStore = create<ProjectState>((set, get) => ({
   projects: [],
   currentProject: null,
   currentEnvironments: [],
@@ -66,8 +108,23 @@ export const useProjectStore = create<ProjectState>((set) => ({
   fetchProjects: async () => {
     set({ isLoading: true, error: null });
     try {
-      const response = await apiClient.get<{ projects: Project[] }>("/api/projects");
-      set({ projects: response.data.projects, isLoading: false });
+      const [projectsResponse, apiKeysResponse] = await Promise.all([
+        apiClient.get<{ projects: ProjectWithEnvironments[] }>("/api/projects"),
+        apiClient.get<{ apiKeys: PersistedApiKey[] }>("/api/api-keys/stages"),
+      ]);
+      const projects = (projectsResponse.data.projects || []).filter((project) => project.isActive);
+      const existingProjectId = get().currentProject?.id;
+      const currentProject =
+        projects.find((project) => project.id === existingProjectId) || projects[0] || null;
+      const currentEnvironments = (currentProject?.environments || []).filter((env) => env.isActive);
+      const masterKeys = currentProject
+        ? (apiKeysResponse.data.apiKeys || [])
+            .filter((key) => key.projectId === currentProject.id && key.isActive)
+            .sort((left, right) => Number(right.isMaster) - Number(left.isMaster))
+            .map(mapPersistedKey)
+        : [];
+
+      set({ projects, currentProject, currentEnvironments, masterKeys, isLoading: false });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to fetch projects";
       set({ error: message, isLoading: false });
@@ -84,15 +141,7 @@ export const useProjectStore = create<ProjectState>((set) => ({
         warning: string;
       }>("/api/projects", data);
       const result = response.data;
-
-      // Map backend response to frontend format
-      const mappedMasterKeys: MasterKey[] = result.masterKeys.map((key) => ({
-        id: key.keyId,
-        key: key.apiKey,
-        name: `${key.environmentName} Master Key`,
-        prefix: key.keyPrefix,
-        createdAt: new Date().toISOString(),
-      }));
+      const mappedMasterKeys = result.masterKeys.map(mapNewMasterKey);
 
       set((state) => ({
         projects: [...state.projects, result.project],
@@ -105,6 +154,39 @@ export const useProjectStore = create<ProjectState>((set) => ({
       return { masterKeys: mappedMasterKeys };
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to create project";
+      set({ error: message, isLoading: false });
+      throw error;
+    }
+  },
+  createApiKey: async ({ projectId, environmentId, environmentName }) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await apiClient.post<{
+        id: string;
+        apiKey: string;
+        keyPrefix: string;
+        createdAt: string;
+      }>("/api/api-keys", {
+        projectId,
+        environmentId,
+        name: `${environmentName} Onboarding Key`,
+      });
+      const nextKey: MasterKey = {
+        id: response.data.id,
+        environmentId,
+        key: response.data.apiKey,
+        name: `${environmentName} Onboarding Key`,
+        prefix: response.data.keyPrefix,
+        canReveal: true,
+        createdAt: response.data.createdAt,
+      };
+      set((state) => ({
+        masterKeys: [...state.masterKeys.filter((key) => key.id !== nextKey.id), nextKey],
+        isLoading: false,
+      }));
+      return nextKey;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to create API key";
       set({ error: message, isLoading: false });
       throw error;
     }

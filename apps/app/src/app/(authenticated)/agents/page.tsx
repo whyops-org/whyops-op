@@ -130,7 +130,7 @@ export default function AgentsPage() {
 
   if (shouldShowInitialLoader) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex h-full min-h-0 items-center justify-center">
         <Spinner className="h-8 w-8 border-4 text-primary" />
       </div>
     );
@@ -139,7 +139,7 @@ export default function AgentsPage() {
   // Keep empty state stable while polling when no agents exist.
   if (displayAgents.length === 0) {
     return (
-      <div className="min-h-screen">
+      <div className="h-full min-h-0">
         <EmptyState />
       </div>
     );

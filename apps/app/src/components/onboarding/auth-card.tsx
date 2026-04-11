@@ -1,4 +1,4 @@
-import { ArrowRight, Github, MailCheck, RotateCcw } from "lucide-react";
+import { ChevronRight, Github, MailCheck, RotateCcw } from "lucide-react";
 import * as React from "react";
 
 import { Button } from "@/components/ui/button";
@@ -128,7 +128,7 @@ export function AuthCard({ onGithubClick }: AuthCardProps) {
               </div>
               <Button size="lg" className="w-full" onClick={handleSubmit} disabled={!canSubmit || isBusy} loading={isLoading}>
                 Email me a sign-in link
-                <ArrowRight className="h-4 w-4" />
+                <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
             <div className="flex items-center justify-center gap-4 border-t border-border/50 pt-5 text-sm text-muted-foreground">

@@ -16,7 +16,7 @@ export function StepIndicator({ steps, currentStep, className }: StepIndicatorPr
   const progress = ((currentStep + 1) / steps.length) * 100;
 
   return (
-    <div className={cn("sticky top-0 z-10 w-full space-y-4 bg-background py-4", className)}>
+    <div className={cn("w-full space-y-3 border-b border-border/50 pb-5", className)}>
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           {steps.map((step, index) => (
@@ -40,7 +40,7 @@ export function StepIndicator({ steps, currentStep, className }: StepIndicatorPr
           {Math.round(progress)}% Complete
         </span>
       </div>
-      <Progress value={progress} className="h-1.5" />
+      <Progress value={progress} className="h-1" />
     </div>
   );
 }

@@ -13,7 +13,7 @@ export interface OnboardingProgress {
   hasProvider: boolean;
   hasProject: boolean;
   onboardingComplete: boolean;
-  currentStep: 'welcome' | 'provider' | 'workspace' | 'complete';
+  currentStep: 'welcome' | 'workspace' | 'complete';
 }
 
 export class UserController {
@@ -46,11 +46,9 @@ export class UserController {
         ProjectService.hasProjects(user.id),
       ]);
 
-      // Determine current onboarding step
+      // Provider setup is optional because users can ingest manual events directly.
       let currentStep: OnboardingProgress['currentStep'] = 'welcome';
-      if (!hasProvider) {
-        currentStep = 'provider';
-      } else if (!hasProject) {
+      if (!hasProject) {
         currentStep = 'workspace';
       } else if (!onboardingComplete) {
         currentStep = 'complete';
@@ -60,7 +58,7 @@ export class UserController {
         hasProvider,
         hasProject,
         onboardingComplete,
-        currentStep: hasProvider && hasProject && onboardingComplete ? 'complete' : currentStep,
+        currentStep: onboardingComplete ? 'complete' : currentStep,
       };
 
       onboardingProgressCache.set(cacheKey, {

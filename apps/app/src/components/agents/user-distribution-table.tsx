@@ -22,7 +22,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  ArrowRight,
   ChevronLeft,
   ChevronRight,
   Users
@@ -177,7 +176,7 @@ export function UserDistributionTable({ agentId }: UserDistributionTableProps) {
                   className="h-8 gap-1 text-muted-foreground hover:text-foreground"
                   onClick={() => viewUserAnalytics(user.externalUserId)}
                 >
-                  View Analytics <ArrowRight className="h-3.5 w-3.5" />
+                  View Analytics <ChevronRight className="h-3.5 w-3.5" />
                 </Button>
               </TableCell>
             </TableRow>

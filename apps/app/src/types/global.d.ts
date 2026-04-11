@@ -120,7 +120,7 @@ export interface DashboardState {
 
 // ============ Auth Types ============
 
-export type OnboardingStep = "welcome" | "provider" | "workspace" | "complete";
+export type OnboardingStep = "welcome" | "workspace" | "complete";
 
 export interface OnboardingProgress {
   hasProvider: boolean;

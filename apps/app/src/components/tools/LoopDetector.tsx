@@ -15,6 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { ChevronRight } from "lucide-react";
 
 interface LoopEntry {
   tool: string;
@@ -233,7 +234,8 @@ export function LoopDetector() {
             disabled={validRuns.length === 0}
             loading={loading}
           >
-            Detect loops →
+            Detect loops
+            <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
         {error && <p className="text-sm text-destructive">{error}</p>}

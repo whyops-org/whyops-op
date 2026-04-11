@@ -45,47 +45,55 @@ app.get('/', (c) => {
     ],
     // Supported SDK languages
     sdkLanguages: [
-      { id: 'python', label: 'Python', icon: '🐍', installCommand: 'pip install whyops' },
-      { id: 'javascript', label: 'JavaScript', icon: '⚡', installCommand: 'npm install whyops' },
-      { id: 'typescript', label: 'TypeScript', icon: '📘', installCommand: 'npm install whyops' },
+      { id: 'python', label: 'Python', icon: '/assets/languages/python.svg?v=2', installCommand: 'pip install whyops' },
+      { id: 'typescript', label: 'TypeScript', icon: '/assets/languages/typescript.svg?v=3', installCommand: 'npm install @whyops/sdk openai' },
+      { id: 'go', label: 'Go', icon: '/assets/languages/go.svg?v=2', installCommand: 'go get github.com/whyops-org/whyops-op/packages/sdk-go@latest' },
+      { id: 'http', label: 'HTTP API', icon: '/assets/languages/http-api.svg?v=2', installCommand: 'curl -X POST https://a.whyops.com/api/events/ingest' },
     ],
     // Onboarding checklist steps
     onboardingSteps: [
       { id: 'welcome', label: 'Welcome', order: 0 },
-      { id: 'provider', label: 'Provider', order: 1 },
-      { id: 'workspace', label: 'Workspace', order: 2 },
-      { id: 'complete', label: 'Complete', order: 3 },
+      { id: 'workspace', label: 'Workspace', order: 1 },
+      { id: 'complete', label: 'Complete', order: 2 },
     ],
     // Onboarding checklist items
     onboardingChecklist: [
-      { id: 'connect-provider', text: 'Connect your LLM Provider', icon: 'Link' },
-      { id: 'store-keys', text: 'Securely store API keys', icon: 'Key' },
+      { id: 'create-workspace', text: 'Create your workspace and API key', icon: 'Key' },
+      { id: 'choose-ingestion', text: 'Choose manual events or the proxy', icon: 'Link' },
       { id: 'capture-trace', text: 'Capture your first trace', icon: 'Activity' },
     ],
     // SDK initialization template
     sdkConfig: {
       python: {
-        decorator: '@whyops.trace',
-        initFunction: 'whyops.init',
+        decorator: 'trace.user_message_sync',
+        initFunction: 'WhyOps(...)',
         initParams: {
           api_key: 'string',
           environment: 'string',
         },
       },
-      javascript: {
-        decorator: 'whyops.trace',
-        initFunction: 'whyops.init',
+      typescript: {
+        decorator: 'trace.userMessage',
+        initFunction: 'new WhyOps(...)',
         initParams: {
           apiKey: 'string',
           environment: 'string',
         },
       },
-      typescript: {
-        decorator: 'whyops.trace',
-        initFunction: 'whyops.init',
+      go: {
+        decorator: 'trace.UserMessage',
+        initFunction: 'whyops.New(...)',
         initParams: {
-          apiKey: 'string',
-          environment: 'string',
+          APIKey: 'string',
+          AgentName: 'string',
+        },
+      },
+      http: {
+        decorator: 'Authorization: Bearer',
+        initFunction: 'POST /api/events/ingest',
+        initParams: {
+          traceId: 'string',
+          agentName: 'string',
         },
       },
     },

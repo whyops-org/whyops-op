@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface TurnAnalysis {
   turnIndex: number;
@@ -149,7 +150,8 @@ export function ContextRotDetector() {
               loading={loading}
               size="sm"
             >
-              {loading ? "Analyzing (20–40s)…" : "Detect context rot →"}
+              {loading ? "Analyzing (20–40s)..." : "Detect context rot"}
+              {!loading ? <ChevronRight className="h-4 w-4" /> : null}
             </Button>
             <p className="text-xs text-muted-foreground">
               Limited to 5 analyses/hour. Format auto-detected.
@@ -201,7 +203,8 @@ export function ContextRotDetector() {
                 setRaw("");
               }}
             >
-              ← New conversation
+              <ChevronLeft className="h-4 w-4" />
+              New conversation
             </Button>
           </div>
 
