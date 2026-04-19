@@ -164,12 +164,23 @@ function formatTraceSteps(events: LLMEvent[]): string {
 }
 
 function formatToolCallSteps(events: LLMEvent[]): string {
-  const toolEvents = events.filter(
+  // Primary: llm_response events with embedded toolCalls (OpenAI-style)
+  let toolEvents = events.filter(
     (e) =>
       e.eventType === 'llm_response' &&
       (Array.isArray((e.content as any)?.toolCalls) ||
         Array.isArray((e.content as any)?.tool_calls))
   );
+
+  // Fallback: tool_call_request events (OpenCode/claude-code style)
+  if (toolEvents.length === 0) {
+    toolEvents = events.filter(
+      (e) =>
+        e.eventType === 'tool_call_request' &&
+        (Array.isArray((e.content as any)?.toolCalls) ||
+          Array.isArray((e.content as any)?.tool_calls))
+    );
+  }
 
   if (toolEvents.length === 0) return '(No tool call steps in trace)';
 
@@ -321,13 +332,28 @@ function sampleResponseFocusedEvents(events: LLMEvent[], maxResponses?: number):
 }
 
 function sampleToolCallEvents(events: LLMEvent[], maxToolCallSteps?: number): LLMEvent[] {
-  const toolCallEvents = events.filter((e) => {
+  // Primary: llm_response events with embedded toolCalls (OpenAI-style)
+  const embeddedToolCallEvents = events.filter((e) => {
     if (e.eventType !== 'llm_response') return false;
     const content = e.content as any;
     const tc = content?.toolCalls || content?.tool_calls;
     return Array.isArray(tc) && tc.length > 0;
   });
-  return sampleEvenly(toolCallEvents, maxToolCallSteps);
+
+  if (embeddedToolCallEvents.length > 0) {
+    return sampleEvenly(embeddedToolCallEvents, maxToolCallSteps);
+  }
+
+  // Fallback: tool_call_request events (OpenCode/claude-code style — tool calls
+  // are emitted as separate events rather than embedded in llm_response content)
+  const requestEvents = events.filter((e) => {
+    if (e.eventType !== 'tool_call_request') return false;
+    const content = e.content as any;
+    const tc = content?.toolCalls || content?.tool_calls;
+    return Array.isArray(tc) && tc.length > 0;
+  });
+
+  return sampleEvenly(requestEvents, maxToolCallSteps);
 }
 
 function extractUsedToolNames(events: LLMEvent[]): string[] {
