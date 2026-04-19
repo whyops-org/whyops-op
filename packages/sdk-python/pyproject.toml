@@ -1,0 +1,49 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "whyops"
+version = "0.1.1"
+description = "WhyOps SDK — AI agent observability"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.9"
+keywords = ["whyops", "observability", "ai", "agents", "llm", "tracing"]
+classifiers = [
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "httpx>=0.27",
+    "typing_extensions>=4.0",
+]
+
+[project.urls]
+Homepage = "https://whyops.com"
+Repository = "https://github.com/whyops-org/whyops-op"
+Issues = "https://github.com/whyops-org/whyops-op/issues"
+
+[project.optional-dependencies]
+dev = [
+    "mypy>=1.8",
+    "ruff>=0.4",
+    "pytest>=8",
+    "pytest-asyncio>=0.23",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["whyops"]
+
+[tool.mypy]
+strict = true
+python_version = "3.9"
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"

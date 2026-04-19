@@ -18,7 +18,8 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "paths": {
-      "@shared/*": ["./shared/src/*"]
+      "@shared/*": ["./packages/shared/src/*"]
     }
-  }
+  },
+  "exclude": ["apps/app/**", "node_modules", "packages/sdk-vercel-ai/**"]
 }

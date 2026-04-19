@@ -1,0 +1,54 @@
+{
+  "_comment": "Master SDK config — source of truth. Run `npm run sync:sdk-config` to propagate changes to all SDK packages.",
+  "version": "0.1.1",
+
+  "defaults": {
+    "proxyUrl": "https://proxy.whyops.com",
+    "analyseUrl": "https://a.whyops.com/api"
+  },
+
+  "http": {
+    "timeoutMs": 15000,
+    "retry": {
+      "delaysMs": [200, 400, 800],
+      "retryableStatusCodes": [429, 500, 502, 503, 504]
+    }
+  },
+
+  "endpoints": {
+    "agentInitPrimary": "/entities/init",
+    "agentInitFallback": "/v1/agents/init",
+    "eventsIngest": "/events/ingest"
+  },
+
+  "headers": {
+    "agentName": "X-Agent-Name",
+    "apiKeyAnthropic": "x-api-key",
+    "contentTypeName": "Content-Type",
+    "contentTypeValue": "application/json"
+  },
+
+  "logging": {
+    "prefix": "[whyops]"
+  },
+
+  "eventTypes": [
+    "user_message",
+    "llm_response",
+    "llm_thinking",
+    "embedding_request",
+    "embedding_response",
+    "tool_call",
+    "tool_call_request",
+    "tool_call_response",
+    "tool_result",
+    "error"
+  ],
+
+  "requiredMetadata": {
+    "llm_response": ["model", "provider"],
+    "embedding_response": ["model", "provider"],
+    "tool_call_request": ["tool"],
+    "tool_call_response": ["tool"]
+  }
+}

@@ -1,0 +1,77 @@
+name: Deploy to VM
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/whyops-**/**'
+      - 'packages/shared/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.json'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Deploy to VM
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: whyops
+          key: ${{ secrets.VM_SSH_KEY }}
+          command_timeout: 15m
+          script: |
+            set -e
+
+            # Stash any local drift from previous hotfixes or install side effects so pulls don't fail.
+            cd /app
+            if ! git diff --quiet || ! git diff --cached --quiet || [ -n "$(git ls-files --others --exclude-standard)" ]; then
+              git stash push --include-untracked -m "pre-deploy $(date -u +%Y%m%dT%H%M%SZ)" || true
+            fi
+
+            # Pull latest code
+            git pull https://${{ secrets.GH_PAT }}@github.com/whyops-org/whyops-op.git main
+
+            # Write env file
+            cat > .env.production << 'ENVEOF'
+            ${{ secrets.ENV_FILE }}
+            ENVEOF
+
+            # Install all workspace deps (frontend tar warnings are non-fatal)
+            npm ci --install-strategy=nested
+            # Build backend only
+            npm run build:shared
+            npm run build:proxy
+            npm run build:analyse
+            npm run build:auth
+
+            # Load env vars into shell so PM2 processes inherit them
+            set -a
+            source /app/.env.production
+            set +a
+
+            # Start or reload PM2 processes
+            _pm2() {
+              local name=$1 dir=$2 file=$3
+              pm2 describe $name > /dev/null 2>&1 \
+                && pm2 reload $name --update-env \
+                || pm2 start $file --name $name \
+                     --interpreter node \
+                     --interpreter-args "--import tsx" \
+                     --cwd $dir
+            }
+
+            _pm2 proxy   /app/apps/whyops-proxy   /app/apps/whyops-proxy/src/index.ts
+            _pm2 analyse /app/apps/whyops-analyse /app/apps/whyops-analyse/src/index.ts
+            _pm2 auth    /app/apps/whyops-auth    /app/apps/whyops-auth/src/index.ts
+
+            # Persist process list so PM2 restores on reboot
+            pm2 save
+
+            echo "Deploy complete"
+            pm2 ls

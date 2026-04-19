@@ -11,4 +11,4 @@ build/
 coverage/
 .nyc_output/
 *.tsbuildinfo
-bun.lockb
+.vercel

@@ -1,0 +1,44 @@
+{
+  "name": "@whyops/sdk",
+  "version": "0.1.1",
+  "description": "WhyOps SDK for AI agent observability — TypeScript/JavaScript",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/whyops-org/whyops-op.git",
+    "directory": "packages/sdk-typescript"
+  },
+  "homepage": "https://whyops.com",
+  "bugs": {
+    "url": "https://github.com/whyops-org/whyops-op/issues"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "node ../../node_modules/typescript/bin/tsc -p tsconfig.json",
+    "typecheck": "node ../../node_modules/typescript/bin/tsc --noEmit",
+    "prepack": "npm run build"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "keywords": ["whyops", "observability", "ai", "agents", "llm", "tracing"],
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

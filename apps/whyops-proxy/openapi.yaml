@@ -1,0 +1,206 @@
+openapi: 3.0.3
+info:
+  title: WhyOps Proxy API
+  version: 1.0.0
+  description: Ultra-low latency LLM proxy with shadow telemetry
+  
+servers:
+  - url: http://localhost:8080
+    description: Development server
+  - url: https://proxy.whyops.com
+    description: Production server
+
+security:
+  - BearerAuth: []
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      tags: [Health]
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  service:
+                    type: string
+                  version:
+                    type: string
+                  timestamp:
+                    type: string
+
+  /v1/chat/completions:
+    post:
+      summary: OpenAI chat completions
+      tags: [OpenAI]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - model
+                - messages
+              properties:
+                model:
+                  type: string
+                  example: gpt-4
+                messages:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      role:
+                        type: string
+                        enum: [system, user, assistant]
+                      content:
+                        type: string
+                temperature:
+                  type: number
+                  minimum: 0
+                  maximum: 2
+                max_tokens:
+                  type: integer
+                stream:
+                  type: boolean
+                tools:
+                  type: array
+                  items:
+                    type: object
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          description: Unauthorized
+        '429':
+          description: Rate limit exceeded
+        '500':
+          description: Server error
+
+  /v1/embeddings:
+    post:
+      summary: OpenAI embeddings
+      tags: [OpenAI]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - model
+                - input
+              properties:
+                model:
+                  type: string
+                  example: text-embedding-3-small
+                input:
+                  oneOf:
+                    - type: string
+                    - type: array
+                      items:
+                        type: string
+                    - type: array
+                      items:
+                        type: number
+                    - type: array
+                      items:
+                        type: array
+                        items:
+                          type: number
+                dimensions:
+                  type: integer
+                encoding_format:
+                  type: string
+                  enum: [float, base64]
+                user:
+                  type: string
+      responses:
+        '200':
+          description: Successful embeddings response
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          description: Unauthorized
+        '429':
+          description: Rate limit exceeded
+        '500':
+          description: Server error
+
+  /v1/models:
+    get:
+      summary: List available models
+      tags: [OpenAI]
+      responses:
+        '200':
+          description: List of models
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /v1/messages:
+    post:
+      summary: Anthropic messages
+      tags: [Anthropic]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - model
+                - messages
+                - max_tokens
+              properties:
+                model:
+                  type: string
+                  example: claude-3-opus-20240229
+                messages:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      role:
+                        type: string
+                        enum: [user, assistant]
+                      content:
+                        type: string
+                max_tokens:
+                  type: integer
+                system:
+                  type: string
+                temperature:
+                  type: number
+                stream:
+                  type: boolean
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '429':
+          description: Rate limit exceeded
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: API Key
+      description: WhyOps API key (format whyops_...)

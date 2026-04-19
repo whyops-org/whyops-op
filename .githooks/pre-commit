@@ -1,0 +1,8 @@
+#!/bin/sh
+set -eu
+
+repo_root=$(git rev-parse --show-toplevel)
+cd "$repo_root"
+
+npm run bump --workspace @whyops/app
+git add apps/app/src/constants/web-version.ts

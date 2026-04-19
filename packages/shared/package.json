@@ -1,0 +1,40 @@
+{
+  "name": "@whyops/shared",
+  "version": "1.0.0",
+  "type": "module",
+  "exports": {
+    "./database": "./src/database/index.ts",
+    "./models": "./src/models/index.ts",
+    "./types": "./src/types/index.ts",
+    "./utils": "./src/utils/index.ts",
+    "./logger": "./src/utils/logger.ts",
+    "./env": "./src/config/env.ts",
+    "./service-urls": "./src/config/service-urls.ts",
+    "./cors": "./src/config/cors.ts",
+    "./services": "./src/services/index.ts",
+    "./middleware": "./src/middleware/index.ts",
+    "./lib/event-normalizer": "./src/lib/event-normalizer.ts",
+    "./lib/content-blob": "./src/lib/content-blob.ts",
+    "./lib/events-payload": "./src/lib/events-payload.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json --noEmit",
+    "db:migrate": "node --import tsx src/database/migrate.ts",
+    "db:seed": "node --import tsx src/database/seed.ts"
+  },
+  "dependencies": {
+    "sequelize": "^6.37.5",
+    "pg": "^8.18.0",
+    "pg-hstore": "^2.3.4",
+    "redis": "^4.7.0",
+    "zod": "^3.24.1",
+    "pino": "^9.6.0",
+    "pino-pretty": "^13.0.0",
+    "dotenv": "^16.4.7",
+    "nanoid": "^5.0.9",
+    "hono": "^4.7.9"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}
