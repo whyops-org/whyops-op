@@ -19,6 +19,8 @@ import RequestLog from './RequestLog';
 import Trace from './Trace';
 import TraceAnalysis from './TraceAnalysis';
 import TraceAnalysisFinding from './TraceAnalysisFinding';
+import TraceReplayRun from './TraceReplayRun';
+export type { ReplayEvent, ReplayComparison, ReplayVariantConfig, TraceReplayRunStatus } from './TraceReplayRun';
 import User from './User';
 
 // Define associations
@@ -72,6 +74,12 @@ LLMEvent.belongsTo(Trace, { foreignKey: 'traceId', targetKey: 'id', as: 'trace' 
 
 Trace.hasMany(TraceAnalysis, { foreignKey: 'traceId', sourceKey: 'id', as: 'analyses' });
 TraceAnalysis.belongsTo(Trace, { foreignKey: 'traceId', targetKey: 'id', as: 'trace' });
+
+Trace.hasMany(TraceReplayRun, { foreignKey: 'traceId', sourceKey: 'id', as: 'replayRuns' });
+TraceReplayRun.belongsTo(Trace, { foreignKey: 'traceId', targetKey: 'id', as: 'trace' });
+
+TraceAnalysis.hasMany(TraceReplayRun, { foreignKey: 'analysisId', as: 'replayRuns' });
+TraceReplayRun.belongsTo(TraceAnalysis, { foreignKey: 'analysisId', as: 'analysis' });
 
 TraceAnalysis.hasMany(TraceAnalysisFinding, { foreignKey: 'analysisId', as: 'findings' });
 TraceAnalysisFinding.belongsTo(TraceAnalysis, { foreignKey: 'analysisId', as: 'analysis' });
@@ -163,6 +171,7 @@ export {
   Trace,
   TraceAnalysis,
   TraceAnalysisFinding,
+  TraceReplayRun,
   User,
 };
 
@@ -182,6 +191,7 @@ export const models = {
   Trace,
   TraceAnalysis,
   TraceAnalysisFinding,
+  TraceReplayRun,
   Entity,
   EvalCase,
   EvalConfig,

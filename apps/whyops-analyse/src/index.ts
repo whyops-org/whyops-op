@@ -12,6 +12,7 @@ import analyticsRouter from './routes/analytics';
 import agentAnalysesRouter from './routes/agent-analyses';
 import agentSettingsRouter from './routes/agent-settings';
 import evalGenerationRouter from './routes/eval-generation';
+import traceReplayRouter from './routes/trace-replay';
 import analysesRouter from './routes/analyses';
 import entitiesRouter from './routes/entities';
 import eventsRouter from './routes/events';
@@ -84,6 +85,7 @@ app.route('/api/agent-settings', agentSettingsRouter);
 app.route('/api/llm-costs', llmCostsRouter);
 app.route('/api/agent-analyses', agentAnalysesRouter);
 app.route('/api/evals', evalGenerationRouter);
+app.route('/api/trace-replay', traceReplayRouter);
 
 app.notFound((c) => {
   return c.json({ error: 'Not Found' }, 404);
