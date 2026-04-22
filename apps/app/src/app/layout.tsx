@@ -1,18 +1,7 @@
 import { AuthGate } from "@/components/auth/auth-gate";
 import { Toaster } from "@/components/ui/sonner";
 import type { Metadata } from "next";
-import { Manrope, Sora } from "next/font/google";
 import "./globals.css";
-
-const bodyFont = Manrope({
-  variable: "--font-body",
-  subsets: ["latin"],
-});
-
-const displayFont = Sora({
-  variable: "--font-display",
-  subsets: ["latin"],
-});
 
 const APP_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://app.whyops.com";
 const APP_NAME = "WhyOps App";
@@ -96,7 +85,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      <body className={`${bodyFont.variable} ${displayFont.variable} antialiased`}>
+      <body className="antialiased">
         <AuthGate>{children}</AuthGate>
         <Toaster />
       </body>
