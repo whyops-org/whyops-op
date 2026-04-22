@@ -24,8 +24,8 @@ import * as React from "react";
 
 interface TraceHeaderProps {
   trace: TraceDetail;
-  view: "graph" | "timeline" | "judge";
-  onViewChange: (view: "graph" | "timeline" | "judge") => void;
+  view: "graph" | "timeline" | "judge" | "replay";
+  onViewChange: (view: "graph" | "timeline" | "judge" | "replay") => void;
   agentId?: string;
 }
 
@@ -194,12 +194,8 @@ export function TraceHeader({ trace, view, onViewChange, agentId }: TraceHeaderP
           <ViewToggleButton active={view === "graph"} onClick={() => onViewChange("graph")} label="Graph" icon={<GitGraph className="h-3.5 w-3.5" />} />
           <ViewToggleButton active={view === "timeline"} onClick={() => onViewChange("timeline")} label="Timeline" icon={<List className="h-3.5 w-3.5" />} />
           <ViewToggleButton active={view === "judge"} onClick={() => onViewChange("judge")} label="Judge" icon={<Scale className="h-3.5 w-3.5" />} />
+          <ViewToggleButton active={view === "replay"} onClick={() => onViewChange("replay")} label="Replay" icon={<RefreshCw className="h-3.5 w-3.5" />} />
         </div>
-
-        <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs">
-          <RefreshCw className="h-3 w-3" />
-          Replay
-        </Button>
       </div>
     </div>
   );

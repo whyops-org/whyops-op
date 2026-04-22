@@ -30,6 +30,18 @@ interface ExtractProfileInput {
   environmentId: string;
 }
 
+interface ToolLikeRecord extends Record<string, any> {
+  name?: unknown;
+  description?: unknown;
+  parameters?: unknown;
+  input_schema?: unknown;
+  function?: {
+    name?: unknown;
+    description?: unknown;
+    parameters?: unknown;
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Constraint extraction patterns
 // ---------------------------------------------------------------------------
@@ -107,7 +119,8 @@ function extractCapabilities(tools: ToolDefinition[], promptSegments: PromptBloc
   const capabilities: string[] = [];
 
   for (const tool of tools) {
-    const desc = tool.description || tool.name.replace(/[_-]/g, ' ');
+    const safeName = typeof tool.name === 'string' && tool.name.trim() ? tool.name.trim() : 'tool';
+    const desc = tool.description || safeName.replace(/[_-]/g, ' ');
     capabilities.push(`Can ${desc.charAt(0).toLowerCase()}${desc.slice(1)}`);
   }
 
@@ -124,6 +137,46 @@ function extractCapabilities(tools: ToolDefinition[], promptSegments: PromptBloc
   }
 
   return capabilities.slice(0, 30);
+}
+
+function normalizeToolDefinition(tool: unknown): ToolDefinition | null {
+  if (!tool || typeof tool !== 'object') return null;
+
+  const raw = tool as ToolLikeRecord;
+  const fn = raw.function && typeof raw.function === 'object' ? raw.function : undefined;
+  const nameCandidate = typeof raw.name === 'string' && raw.name.trim()
+    ? raw.name.trim()
+    : typeof fn?.name === 'string' && fn.name.trim()
+      ? fn.name.trim()
+      : '';
+  const descriptionCandidate = typeof raw.description === 'string' && raw.description.trim()
+    ? raw.description.trim()
+    : typeof fn?.description === 'string' && fn.description.trim()
+      ? fn.description.trim()
+      : '';
+
+  if (!nameCandidate && !descriptionCandidate) return null;
+
+  return {
+    ...raw,
+    name: nameCandidate || descriptionCandidate.replace(/\s+/g, '_').toLowerCase(),
+    description: descriptionCandidate || undefined,
+    parameters:
+      raw.parameters && typeof raw.parameters === 'object'
+        ? raw.parameters
+        : fn?.parameters && typeof fn.parameters === 'object'
+          ? fn.parameters
+          : raw.input_schema && typeof raw.input_schema === 'object'
+            ? raw.input_schema
+            : undefined,
+  };
+}
+
+function normalizeTools(input: unknown): ToolDefinition[] {
+  if (!Array.isArray(input)) return [];
+  return input
+    .map(normalizeToolDefinition)
+    .filter((tool): tool is ToolDefinition => Boolean(tool));
 }
 
 // ---------------------------------------------------------------------------
@@ -152,7 +205,7 @@ export async function extractAgentProfile(input: ExtractProfileInput): Promise<A
 
   if (entity?.metadata) {
     systemPromptText = entity.metadata.systemPrompt || entity.metadata.system_prompt || '';
-    tools = entity.metadata.tools || [];
+    tools = normalizeTools(entity.metadata.tools);
   }
 
   // Fallback: check latest trace for system prompt + tools if entity metadata is sparse
@@ -167,7 +220,7 @@ export async function extractAgentProfile(input: ExtractProfileInput): Promise<A
         systemPromptText = latestTrace.systemMessage;
       }
       if (tools.length === 0 && latestTrace.tools) {
-        tools = Array.isArray(latestTrace.tools) ? latestTrace.tools : [];
+        tools = normalizeTools(latestTrace.tools);
       }
     }
   }

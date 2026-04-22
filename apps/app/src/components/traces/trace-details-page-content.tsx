@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { JudgePanel } from "@/components/traces/judge-panel";
+import { ReplayPanel } from "@/components/traces/replay/ReplayPanel";
 import { TraceCanvas } from "@/components/traces/trace-canvas";
 import { TraceHeader } from "@/components/traces/trace-header";
 import { TraceSidebarLeft } from "@/components/traces/trace-sidebar-left";
@@ -22,9 +23,9 @@ export function TraceDetailsPageContent() {
 
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [rightCollapsed, setRightCollapsed] = useState(false);
-  const [view, setView] = useState<"graph" | "timeline" | "judge">("graph");
+  const [view, setView] = useState<"graph" | "timeline" | "judge" | "replay">("graph");
   const [hasAttemptedLoad, setHasAttemptedLoad] = useState(false);
-  const isJudgeView = view === "judge";
+  const isFullscreenView = view === "judge" || view === "replay";
 
   const config = useConfigStore((state) => state.config);
   const { trace, isLoading, fetchTrace } = useTraceDetailStore();
@@ -66,7 +67,7 @@ export function TraceDetailsPageContent() {
       />
 
       <div className="flex flex-1 overflow-hidden">
-        {!isJudgeView ? (
+        {!isFullscreenView ? (
           <TraceSidebarLeft
             trace={trace}
             isCollapsed={leftCollapsed}
@@ -77,21 +78,21 @@ export function TraceDetailsPageContent() {
         <div
           className={cn(
             "relative flex-1 overflow-hidden",
-            !isJudgeView && "border-x border-border/50"
+            !isFullscreenView && "border-x border-border/50"
           )}
         >
           {view === "graph" ? (
             <ReactFlowProvider>
               <TraceCanvas trace={trace} />
             </ReactFlowProvider>
-          ) : view === "timeline" ? (
-            <TraceTimeline trace={trace} />
-          ) : (
+          ) : view === "judge" ? (
             <JudgePanel traceId={traceId} />
+          ) : (
+            <ReplayPanel traceId={traceId} />
           )}
         </div>
 
-        {!isJudgeView ? (
+        {!isFullscreenView ? (
           <TraceSidebarRight
             trace={trace}
             isCollapsed={rightCollapsed}
