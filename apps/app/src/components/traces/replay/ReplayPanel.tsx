@@ -22,12 +22,10 @@ export function ReplayPanel({ traceId }: ReplayPanelProps) {
     currentRun,
     pastRuns,
     isRunning,
-    isLoading,
     error,
     runReplay,
     fetchPastRuns,
     fetchRunDetail,
-    setCurrentRun,
     reset,
   } = useReplayStore();
 
@@ -215,5 +213,4 @@ function RunStatusBadge({ status }: { status: string }) {
           : "border-border/60 bg-surface-2/30 text-muted-foreground";
   return <Badge className={cn("text-[10px]", classes)}>{status}</Badge>;
 }
-
 

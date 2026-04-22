@@ -9,7 +9,6 @@ import { TraceCanvas } from "@/components/traces/trace-canvas";
 import { TraceHeader } from "@/components/traces/trace-header";
 import { TraceSidebarLeft } from "@/components/traces/trace-sidebar-left";
 import { TraceSidebarRight } from "@/components/traces/trace-sidebar-right";
-import { TraceTimeline } from "@/components/traces/trace-timeline";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import { useConfigStore } from "@/stores/configStore";
@@ -31,6 +30,20 @@ export function TraceDetailsPageContent() {
   const { trace, isLoading, fetchTrace } = useTraceDetailStore();
 
   useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 1279px)");
+    const syncCollapsedPanels = () => {
+      if (mediaQuery.matches) {
+        setLeftCollapsed(true);
+        setRightCollapsed(true);
+      }
+    };
+
+    syncCollapsedPanels();
+    mediaQuery.addEventListener("change", syncCollapsedPanels);
+    return () => mediaQuery.removeEventListener("change", syncCollapsedPanels);
+  }, []);
+
+  useEffect(() => {
     if (traceId && config?.analyseBaseUrl) {
       fetchTrace(traceId).finally(() => {
         setHasAttemptedLoad(true);
@@ -43,7 +56,7 @@ export function TraceDetailsPageContent() {
 
   if (shouldShowInitialLoader) {
     return (
-      <div className="flex h-[calc(100vh-56px)] items-center justify-center bg-background">
+      <div className="flex h-[calc(100dvh-4rem)] items-center justify-center bg-background">
         <Spinner className="h-8 w-8 border-2 border-border border-t-foreground" />
       </div>
     );
@@ -51,14 +64,14 @@ export function TraceDetailsPageContent() {
 
   if (!trace) {
     return (
-      <div className="flex h-[calc(100vh-56px)] items-center justify-center bg-background">
+      <div className="flex h-[calc(100dvh-4rem)] items-center justify-center bg-background">
         <p className="text-muted-foreground">Trace not found</p>
       </div>
     );
   }
 
   return (
-    <div className="flex h-[calc(100vh-56px)] flex-col overflow-hidden bg-background text-foreground">
+    <div className="flex h-[calc(100dvh-4rem)] flex-col overflow-hidden bg-background text-foreground">
       <TraceHeader
         trace={trace}
         view={view}

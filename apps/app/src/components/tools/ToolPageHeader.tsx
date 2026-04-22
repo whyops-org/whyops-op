@@ -13,8 +13,8 @@ export function ToolPageHeader({
 }: ToolPageHeaderProps) {
   return (
     <div className="border-b border-border/50 pb-5">
-      <h1 className="text-3xl font-semibold text-foreground">{title}</h1>
-      <p className="mt-2 max-w-3xl text-base leading-relaxed text-muted-foreground">
+      <h1 className="text-2xl font-semibold text-foreground sm:text-3xl">{title}</h1>
+      <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base">
         {description}
       </p>
       {tags.length > 0 ? (

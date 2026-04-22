@@ -25,7 +25,7 @@ export function StatCard({
   return (
     <Card
       className={cn(
-        "flex items-start justify-between gap-4 border-border/40 bg-card p-5",
+        "flex flex-col gap-4 border-border/40 bg-card p-4 sm:flex-row sm:items-start sm:justify-between sm:p-5",
         className
       )}
       {...props}
@@ -34,8 +34,8 @@ export function StatCard({
         <p className="text-sm font-medium text-muted-foreground">
           {title}
         </p>
-        <div className="flex items-baseline gap-2">
-          <h3 className="text-2xl font-semibold tabular-nums text-foreground">{value}</h3>
+        <div className="flex flex-wrap items-baseline gap-2">
+          <h3 className="text-xl font-semibold tabular-nums text-foreground sm:text-2xl">{value}</h3>
           {trend && (
             <span
               className={cn(
@@ -52,7 +52,7 @@ export function StatCard({
         )}
       </div>
       {icon && (
-        <div className="flex h-10 w-10 items-center justify-center border border-border/50 bg-surface-2/30 [&_svg]:text-muted-foreground">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center border border-border/50 bg-surface-2/30 [&_svg]:text-muted-foreground">
           {icon}
         </div>
       )}

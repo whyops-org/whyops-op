@@ -58,7 +58,7 @@ export function ProviderList({ providers, variant = "compact", className }: Prov
               <div className="grid gap-3 text-sm text-muted-foreground">
                 <div>
                   <p className="text-xs font-medium text-muted-foreground">Base URL</p>
-                  <p className="font-mono text-sm text-foreground/80">{provider.baseUrl}</p>
+                  <p className="break-all font-mono text-xs text-foreground/80 sm:text-sm">{provider.baseUrl}</p>
                 </div>
                 <div>
                   <p className="text-xs font-medium text-muted-foreground">Last updated</p>

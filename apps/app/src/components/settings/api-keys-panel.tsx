@@ -232,13 +232,13 @@ export function ApiKeysPanel({ className }: ApiKeysPanelProps) {
 
   return (
     <div className={cn("space-y-6", className)}>
-      <div className="rounded-sm border border-border/50 bg-card p-6">
-        <div className="flex items-start justify-between gap-4">
+      <div className="rounded-sm border border-border/50 bg-card p-4 sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 className="text-lg font-semibold text-foreground">{SETTINGS_COPY.apiKeysTitle}</h2>
-            <p className="mt-1 text-base leading-relaxed text-muted-foreground">{SETTINGS_COPY.apiKeysSubtitle}</p>
+            <p className="mt-1 text-sm leading-relaxed text-muted-foreground sm:text-base">{SETTINGS_COPY.apiKeysSubtitle}</p>
           </div>
-          <Button variant="primary" size="sm" className="gap-2" onClick={() => setIsCreateDialogOpen(true)}>
+          <Button variant="primary" size="sm" className="w-full gap-2 sm:w-auto" onClick={() => setIsCreateDialogOpen(true)}>
             <Plus className="h-4 w-4" />
             New API Key
           </Button>
@@ -265,7 +265,7 @@ export function ApiKeysPanel({ className }: ApiKeysPanelProps) {
                   <TableHead>Key</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead>Monthly Usage</TableHead>
-                  <TableHead className="w-[19rem]">Actions</TableHead>
+                  <TableHead className="min-w-[15rem]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -288,12 +288,12 @@ export function ApiKeysPanel({ className }: ApiKeysPanelProps) {
                     <TableCell className="py-4 text-sm text-muted-foreground">
                       {SETTINGS_COPY.apiKeysUsagePlaceholder}
                     </TableCell>
-                    <TableCell className="w-[19rem] py-4">
-                      <div className="flex items-center gap-2">
+                    <TableCell className="min-w-[15rem] py-4">
+                      <div className="flex flex-wrap items-center gap-2">
                         <Button
                           variant="outline"
                           size="sm"
-                          className="w-36 justify-center whitespace-nowrap"
+                          className="min-w-32 justify-center whitespace-nowrap"
                           onClick={() => handleRegenerateKey(key)}
                           disabled={regeneratingKeyId === key.id}
                         >
@@ -308,7 +308,7 @@ export function ApiKeysPanel({ className }: ApiKeysPanelProps) {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="w-32 justify-center whitespace-nowrap"
+                          className="min-w-28 justify-center whitespace-nowrap"
                           onClick={() => handleCopyKey(key)}
                           disabled={
                             revealingKeyId === key.id ||
@@ -335,10 +335,10 @@ export function ApiKeysPanel({ className }: ApiKeysPanelProps) {
         )}
       </div>
 
-      <div className="rounded-sm border border-border/50 bg-card p-6">
+      <div className="rounded-sm border border-border/50 bg-card p-4 sm:p-6">
         <div>
           <h3 className="text-lg font-semibold text-foreground">{SETTINGS_COPY.endpointsTitle}</h3>
-          <p className="mt-1 text-base leading-relaxed text-muted-foreground">{SETTINGS_COPY.endpointsSubtitle}</p>
+          <p className="mt-1 text-sm leading-relaxed text-muted-foreground sm:text-base">{SETTINGS_COPY.endpointsSubtitle}</p>
         </div>
 
         <div className="mt-4 grid gap-4 lg:grid-cols-2">
@@ -446,7 +446,7 @@ function EndpointCard({ label, description, value }: EndpointCardProps) {
 
   return (
     <div className="rounded-sm border border-border/50 bg-surface-2/30 p-5">
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-sm font-medium text-foreground">{label}</p>
           <p className="text-sm leading-relaxed text-muted-foreground">{description}</p>
@@ -454,7 +454,7 @@ function EndpointCard({ label, description, value }: EndpointCardProps) {
         <Button
           variant="outline"
           size="sm"
-          className="min-w-24 justify-center"
+          className="min-w-24 justify-center self-start"
           onClick={handleCopy}
           disabled={value === "-"}
         >

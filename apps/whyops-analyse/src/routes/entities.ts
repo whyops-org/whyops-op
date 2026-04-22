@@ -117,6 +117,90 @@ interface UserCostUsageRow {
   totalTokens: string | number;
 }
 
+async function findAgentInScopeWithFallback(input: {
+  agentId: string;
+  userId: string;
+  projectId: string;
+  environmentId: string;
+}) {
+  let agent = await Agent.findOne({
+    where: {
+      id: input.agentId,
+      userId: input.userId,
+      projectId: input.projectId,
+      environmentId: input.environmentId,
+    },
+  });
+
+  if (agent) return agent;
+
+  const fallbackAgent = await Agent.findOne({
+    where: {
+      id: input.agentId,
+      userId: input.userId,
+    },
+  });
+
+  if (fallbackAgent) {
+    logger.warn(
+      {
+        userId: input.userId,
+        projectId: input.projectId,
+        environmentId: input.environmentId,
+        agentId: input.agentId,
+        fallbackProjectId: fallbackAgent.projectId,
+        fallbackEnvironmentId: fallbackAgent.environmentId,
+      },
+      'Agent not found in scoped project/environment; falling back to user scope'
+    );
+    agent = fallbackAgent;
+  }
+
+  return agent;
+}
+
+async function findVersionInScopeWithFallback(input: {
+  versionId: string;
+  userId: string;
+  projectId: string;
+  environmentId: string;
+}) {
+  let version = await Entity.findOne({
+    where: {
+      id: input.versionId,
+      userId: input.userId,
+      projectId: input.projectId,
+      environmentId: input.environmentId,
+    },
+  });
+
+  if (version) return version;
+
+  const fallbackVersion = await Entity.findOne({
+    where: {
+      id: input.versionId,
+      userId: input.userId,
+    },
+  });
+
+  if (fallbackVersion) {
+    logger.warn(
+      {
+        userId: input.userId,
+        projectId: input.projectId,
+        environmentId: input.environmentId,
+        versionId: input.versionId,
+        fallbackProjectId: fallbackVersion.projectId,
+        fallbackEnvironmentId: fallbackVersion.environmentId,
+      },
+      'Entity version not found in scoped project/environment; falling back to user scope'
+    );
+    version = fallbackVersion;
+  }
+
+  return version;
+}
+
 function calculateUsageCost(
   usage: Pick<UserCostUsageRow, 'inputTokens' | 'outputTokens' | 'cachedTokens' | 'totalTokens'>,
   costRecord: any
@@ -588,14 +672,11 @@ app.get('/:id/version-ids', zValidator('param', agentIdParamsSchema), async (c) 
   try {
     const { id } = c.req.valid('param');
 
-    const agent = await Agent.findOne({
-      where: {
-        id,
-        userId: auth.userId,
-        projectId: auth.projectId,
-        environmentId: auth.environmentId,
-      },
-      attributes: ['id', 'name'],
+    const agent = await findAgentInScopeWithFallback({
+      agentId: id,
+      userId: auth.userId,
+      projectId: auth.projectId,
+      environmentId: auth.environmentId,
     });
 
     if (!agent) {
@@ -606,8 +687,8 @@ app.get('/:id/version-ids', zValidator('param', agentIdParamsSchema), async (c) 
       where: {
         agentId: agent.id,
         userId: auth.userId,
-        projectId: auth.projectId,
-        environmentId: auth.environmentId,
+        projectId: agent.projectId,
+        environmentId: agent.environmentId,
       },
       attributes: ['id', 'hash', 'createdAt', 'updatedAt'],
       order: [['createdAt', 'DESC']],
@@ -641,14 +722,11 @@ app.get('/versions/:versionId', zValidator('param', versionIdParamsSchema), asyn
   try {
     const { versionId } = c.req.valid('param');
 
-    const version = await Entity.findOne({
-      where: {
-        id: versionId,
-        userId: auth.userId,
-        projectId: auth.projectId,
-        environmentId: auth.environmentId,
-      },
-      attributes: ['id', 'agentId', 'name', 'hash', 'metadata', 'samplingRate', 'createdAt', 'updatedAt'],
+    const version = await findVersionInScopeWithFallback({
+      versionId,
+      userId: auth.userId,
+      projectId: auth.projectId,
+      environmentId: auth.environmentId,
     });
 
     if (!version) {

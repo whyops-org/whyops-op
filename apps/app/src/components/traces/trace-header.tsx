@@ -1,7 +1,6 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { formatCostUsd, getPrimaryCostRate, getTraceTotalCost } from "@/lib/trace-cost";
 import { formatDuration } from "@/lib/trace-format";
@@ -75,11 +74,11 @@ export function TraceHeader({ trace, view, onViewChange, agentId }: TraceHeaderP
     lastBreakdown?.model ?? modelBreakdowns[0]?.model ?? trace.model ?? null;
 
   return (
-    <div className="flex h-11 items-center justify-between border-b border-border bg-background px-4 lg:px-5">
+    <div className="flex min-h-11 flex-wrap items-center justify-between gap-2 border-b border-border bg-background px-3 py-2 sm:px-4 lg:px-5">
 
       {/* Left: breadcrumb + status */}
       <div className="flex min-w-0 items-center gap-2.5">
-        <nav className="flex min-w-0 items-center text-sm text-muted-foreground">
+        <nav className="flex min-w-0 items-center text-xs text-muted-foreground sm:text-sm">
           <Link href="/agents" className="shrink-0 transition-colors hover:text-foreground">
             Agents
           </Link>
@@ -88,7 +87,7 @@ export function TraceHeader({ trace, view, onViewChange, agentId }: TraceHeaderP
             {trace.entityName || "Agent"}
           </Link>
           <span className="mx-1.5 text-border/80">/</span>
-          <span className="shrink-0 text-foreground font-mono text-xs">
+          <span className="hidden shrink-0 font-mono text-xs text-foreground sm:inline">
             {trace.threadId.substring(0, 14)}
           </span>
         </nav>
@@ -189,8 +188,8 @@ export function TraceHeader({ trace, view, onViewChange, agentId }: TraceHeaderP
       </div>
 
       {/* Right: view toggle + replay */}
-      <div className="flex items-center gap-2">
-        <div className="flex items-center rounded border border-border bg-card p-0.5">
+      <div className="flex min-w-0 items-center gap-2">
+        <div className="flex max-w-full items-center overflow-x-auto rounded border border-border bg-card p-0.5">
           <ViewToggleButton active={view === "graph"} onClick={() => onViewChange("graph")} label="Graph" icon={<GitGraph className="h-3.5 w-3.5" />} />
           <ViewToggleButton active={view === "timeline"} onClick={() => onViewChange("timeline")} label="Timeline" icon={<List className="h-3.5 w-3.5" />} />
           <ViewToggleButton active={view === "judge"} onClick={() => onViewChange("judge")} label="Judge" icon={<Scale className="h-3.5 w-3.5" />} />
@@ -330,14 +329,14 @@ function ViewToggleButton({ active, onClick, label, icon }: ViewToggleButtonProp
     <button
       onClick={onClick}
       className={cn(
-        "flex h-7 items-center gap-1.5 rounded-sm px-2.5 text-xs font-medium transition-colors",
+        "flex h-7 shrink-0 items-center gap-1.5 rounded-sm px-2 text-xs font-medium transition-colors sm:px-2.5",
         active
           ? "bg-background text-foreground shadow-sm"
           : "text-muted-foreground hover:text-foreground"
       )}
     >
       {icon}
-      {label}
+      <span className="hidden sm:inline">{label}</span>
     </button>
   );
 }

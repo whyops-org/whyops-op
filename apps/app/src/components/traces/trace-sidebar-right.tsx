@@ -203,7 +203,7 @@ export function TraceSidebarRight({ trace, isCollapsed, onToggle }: TraceSidebar
 
   if (isCollapsed) {
     return (
-      <div className="flex w-[52px] flex-col items-center border-l border-border/50 bg-background py-4 transition-all duration-300">
+      <div className="flex w-11 flex-col items-center border-l border-border/50 bg-background py-4 transition-all duration-300 sm:w-[52px]">
         <Button
           variant="ghost"
           size="sm"
@@ -220,7 +220,7 @@ export function TraceSidebarRight({ trace, isCollapsed, onToggle }: TraceSidebar
   }
 
   return (
-      <div className="flex w-[380px] flex-col border-l border-border/50 bg-background transition-all duration-300 xl:w-[400px]">
+      <div className="flex w-[min(19rem,82vw)] flex-col border-l border-border/50 bg-background transition-all duration-300 lg:w-[340px] xl:w-[400px]">
       <div className="flex h-12 items-center justify-between border-b border-border/50 px-4">
         <h3 className="text-sm font-medium text-muted-foreground">Events</h3>
         <Button

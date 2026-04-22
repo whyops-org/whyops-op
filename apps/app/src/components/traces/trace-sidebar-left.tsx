@@ -519,7 +519,7 @@ export function TraceSidebarLeft({ trace, isCollapsed, onToggle }: TraceSidebarL
     ];
 
     return (
-      <div className="flex w-[52px] flex-col items-center border-r border-border/50 bg-background py-4 transition-all duration-300">
+      <div className="flex w-11 flex-col items-center border-r border-border/50 bg-background py-4 transition-all duration-300 sm:w-[52px]">
         <Button
           variant="ghost"
           size="sm"
@@ -538,7 +538,7 @@ export function TraceSidebarLeft({ trace, isCollapsed, onToggle }: TraceSidebarL
   }
 
   return (
-    <div className="w-72 overflow-y-auto border-r border-border/50 bg-background transition-all duration-300">
+    <div className="w-[min(18rem,78vw)] overflow-y-auto border-r border-border/50 bg-background transition-all duration-300 lg:w-72">
       <div className="flex h-11 items-center justify-between border-b border-border/50 px-4">
         <h3 className="text-xs font-medium text-muted-foreground">
           Agent Info

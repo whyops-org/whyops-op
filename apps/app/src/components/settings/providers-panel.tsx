@@ -39,15 +39,15 @@ export function ProvidersPanel({ className }: ProvidersPanelProps) {
 
   return (
     <div className={cn("space-y-6", className)}>
-      <div className="flex flex-col gap-4 rounded-sm border border-border/50 bg-card p-6 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 rounded-sm border border-border/50 bg-card p-4 sm:p-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-lg font-semibold text-foreground">{SETTINGS_COPY.providersTitle}</h2>
-          <p className="mt-1 text-base leading-relaxed text-muted-foreground">{subtitle}</p>
+          <p className="mt-1 text-sm leading-relaxed text-muted-foreground sm:text-base">{subtitle}</p>
         </div>
         <Button
           variant="primary"
           size="sm"
-          className="gap-2"
+          className="w-full gap-2 sm:w-auto"
           onClick={() => setIsModalOpen(true)}
         >
           <Plus className="h-4 w-4" />

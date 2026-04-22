@@ -11,6 +11,14 @@ interface ReplayComparisonProps {
   originalEventCount: number;
 }
 
+type EventContentRecord = Record<string, unknown>;
+
+function asEventContentRecord(value: unknown): EventContentRecord | null {
+  return typeof value === "object" && value !== null
+    ? (value as EventContentRecord)
+    : null;
+}
+
 function ScoreBadge({ score }: { score: number }) {
   const pct = Math.round(score * 100);
   return (
@@ -72,6 +80,9 @@ export function ReplayComparisonView({
         <div className="space-y-1">
           <p className="text-sm font-semibold text-foreground">Replay result</p>
           <p className="text-sm text-muted-foreground">{comparison.summary}</p>
+          <p className="text-xs text-muted-foreground">
+            Original trace: {originalEventCount} events
+          </p>
         </div>
         <ScoreBadge score={comparison.score} />
       </section>
@@ -147,14 +158,15 @@ function ReplayEventRow({ event }: { event: ReplayEvent }) {
   const isError = event.eventType === "error";
   const isLLM = event.eventType === "llm_response";
   const isTool = event.eventType.includes("tool");
+  const content = asEventContentRecord(event.content);
 
   const previewText = (() => {
-    const c = event.content as any;
-    if (!c) return "";
-    if (isLLM) return String(c?.content ?? c?.text ?? "").slice(0, 120);
-    if (isTool) return String(c?.toolName ?? JSON.stringify(c)).slice(0, 80);
-    if (isError) return String(c?.error ?? JSON.stringify(c)).slice(0, 100);
-    return String(typeof c === "string" ? c : JSON.stringify(c)).slice(0, 80);
+    if (!event.content) return "";
+    if (typeof event.content === "string") return event.content.slice(0, 80);
+    if (isLLM) return String(content?.content ?? content?.text ?? "").slice(0, 120);
+    if (isTool) return String(content?.toolName ?? JSON.stringify(event.content)).slice(0, 80);
+    if (isError) return String(content?.error ?? JSON.stringify(event.content)).slice(0, 100);
+    return JSON.stringify(event.content).slice(0, 80);
   })();
 
   return (

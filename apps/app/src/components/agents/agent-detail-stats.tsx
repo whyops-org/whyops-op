@@ -38,26 +38,26 @@ export function AgentDetailStats({ agent }: AgentDetailStatsProps) {
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       {/* Total Traces */}
-      <Card className="bg-card border-border/30 p-6 relative overflow-hidden">
-        <div className="flex items-start justify-between mb-4">
+      <Card className="relative overflow-hidden border-border/30 bg-card p-4 sm:p-6">
+        <div className="mb-4 flex items-start justify-between">
           <span className="text-sm font-medium text-muted-foreground">Total Traces</span>
           <Activity className="h-5 w-5 text-muted-foreground/50" />
         </div>
         <div className="flex items-baseline gap-2">
-          <span className="text-4xl font-bold text-foreground">
+          <span className="text-3xl font-bold text-foreground sm:text-4xl">
             {agent.traceCount?.toLocaleString() ?? 0}
           </span>
         </div>
       </Card>
 
       {/* Success Rate */}
-      <Card className="bg-card border-border/30 p-6 relative overflow-hidden">
-        <div className="flex items-start justify-between mb-4">
+      <Card className="relative overflow-hidden border-border/30 bg-card p-4 sm:p-6">
+        <div className="mb-4 flex items-start justify-between">
           <span className="text-sm font-medium text-muted-foreground">Success Rate</span>
           <CheckCircle className="h-5 w-5 text-muted-foreground/50" />
         </div>
-        <div className="flex items-baseline gap-2 mb-2">
-          <span className="text-4xl font-bold text-primary">
+        <div className="mb-2 flex items-baseline gap-2">
+          <span className="text-3xl font-bold text-primary sm:text-4xl">
             {successPercentage}%
           </span>
         </div>
@@ -70,26 +70,26 @@ export function AgentDetailStats({ agent }: AgentDetailStatsProps) {
       </Card>
 
       {/* Last Active */}
-      <Card className="bg-card border-border/30 p-6 relative overflow-hidden">
-        <div className="flex items-start justify-between mb-4">
+      <Card className="relative overflow-hidden border-border/30 bg-card p-4 sm:p-6">
+        <div className="mb-4 flex items-start justify-between">
           <span className="text-sm font-medium text-muted-foreground">Last Active</span>
           <Clock className="h-5 w-5 text-muted-foreground/50" />
         </div>
         <div className="flex items-baseline gap-2">
-          <span className="text-4xl font-bold text-foreground">
+          <span className="text-3xl font-bold text-foreground sm:text-4xl">
             {agent.lastActive ? formatTimeAgo(agent.lastActive) : "Never"}
           </span>
         </div>
       </Card>
 
       {/* Status */}
-      <Card className="bg-card border-border/30 p-6 relative overflow-hidden">
-        <div className="flex items-start justify-between mb-4">
+      <Card className="relative overflow-hidden border-border/30 bg-card p-4 sm:p-6">
+        <div className="mb-4 flex items-start justify-between">
           <span className="text-sm font-medium text-muted-foreground">Status</span>
           <AlertTriangle className="h-5 w-5 text-muted-foreground/50" />
         </div>
         <div className="flex items-baseline gap-2">
-          <span className="text-4xl font-bold text-foreground capitalize">
+          <span className="text-3xl font-bold text-foreground capitalize sm:text-4xl">
             {status}
           </span>
         </div>

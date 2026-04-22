@@ -192,18 +192,18 @@ export function AgentDetailHeader({ agent }: AgentDetailHeaderProps) {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center text-sm font-medium text-muted-foreground mb-4">
+    <div className="space-y-3 sm:space-y-4">
+      <div className="mb-3 flex flex-wrap items-center text-sm font-medium text-muted-foreground sm:mb-4">
         <Link href="/agents" className="hover:text-foreground transition-colors">
           Agents
         </Link>
         <span className="mx-2 text-border">/</span>
-        <span className="text-foreground">{agent.name}</span>
+        <span className="break-all text-foreground">{agent.name}</span>
       </div>
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold text-foreground">{agent.name}</h1>
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+        <div className="min-w-0 space-y-2">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <h1 className="break-words text-2xl font-bold text-foreground sm:text-3xl">{agent.name}</h1>
             <Badge className="border-primary/20 bg-primary/10 text-primary normal-case px-2 py-0.5">
               <span className="mr-1.5 h-1.5 w-1.5 bg-primary" />
               {status === "active" ? "Active" : "Inactive"}
@@ -213,20 +213,23 @@ export function AgentDetailHeader({ agent }: AgentDetailHeaderProps) {
               Sampling {currentSamplingPercent}% · {currentSamplingModeLabel}
             </Badge>
           </div>
-          <div className="flex items-center text-sm text-muted-foreground">
+          <div className="flex min-w-0 items-start gap-2 text-xs text-muted-foreground sm:text-sm">
             <Fingerprint className="mr-2 h-4 w-4" />
-            <span className="font-mono">ID: {agent.id}</span>
+            <span className="break-all font-mono">ID: {agent.id}</span>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
           <Popover open={isSamplingPopoverOpen} onOpenChange={setIsSamplingPopoverOpen}>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="gap-2">
+              <Button variant="outline" className="w-full gap-2 sm:w-auto">
                 <Settings className="h-4 w-4" />
                 Configure
               </Button>
             </PopoverTrigger>
-            <PopoverContent align="end" className="w-[22rem] space-y-4">
+            <PopoverContent
+              align="end"
+              className="w-[min(22rem,calc(100vw-2rem))] space-y-4"
+            >
               <div className="space-y-1">
                 <p className="text-sm font-semibold text-foreground">Trace Sampling</p>
                 <p className="text-xs text-muted-foreground">
@@ -253,7 +256,7 @@ export function AgentDetailHeader({ agent }: AgentDetailHeaderProps) {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label className="text-xs text-muted-foreground">Max Traces (Agent)</Label>
                   <Input

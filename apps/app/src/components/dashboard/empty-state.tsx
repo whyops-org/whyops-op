@@ -56,8 +56,8 @@ export function EmptyState({ className, ...props }: EmptyStateProps) {
       >
         <div className="flex w-full max-w-4xl flex-col items-center gap-8">
           <div className="max-w-2xl space-y-3 text-center">
-            <h1 className="text-3xl font-semibold text-foreground">No agents detected yet</h1>
-            <p className="text-base leading-relaxed text-muted-foreground">
+            <h1 className="text-2xl font-semibold text-foreground sm:text-3xl">No agents detected yet</h1>
+            <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">
               Connect a provider or send a single test event to start populating the agents dashboard
               with real traces.
             </p>

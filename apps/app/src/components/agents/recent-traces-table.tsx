@@ -84,8 +84,8 @@ export function RecentTracesTable({
 
   return (
     <Card className="border-border/30 bg-card">
-      <div className="flex items-center justify-between border-b border-border/30 px-6 py-4 flex-wrap gap-3">
-        <div className="flex items-center gap-4 min-w-0">
+      <div className="flex flex-col gap-3 border-b border-border/30 px-4 py-4 sm:px-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 flex-wrap items-center gap-3 sm:gap-4">
           <h2 className="text-lg font-semibold text-foreground shrink-0">Recent Traces</h2>
           {externalUserId && (
             <div className="flex items-center gap-2 rounded-sm border border-border/60 bg-surface-2/30 px-3 py-1 min-w-0">
@@ -102,22 +102,22 @@ export function RecentTracesTable({
             </div>
           )}
         </div>
-        <div className="flex items-center gap-3 shrink-0">
-          <div className="relative">
+        <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
+          <div className="relative min-w-0 flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="text"
               placeholder="Search trace ID..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-9 w-48 pl-9 pr-4 sm:w-64"
+              className="h-9 w-full pl-9 pr-4 sm:w-64"
             />
           </div>
           <Select
             value={pagination.count.toString()}
             onValueChange={(value) => handleCountChange(parseInt(value, 10))}
           >
-            <SelectTrigger className="h-9 w-[110px]">
+            <SelectTrigger className="h-9 w-full sm:w-[110px]">
               <SelectValue placeholder="Per page" />
             </SelectTrigger>
             <SelectContent>
@@ -155,7 +155,7 @@ export function RecentTracesTable({
         />
       ) : (
         <>
-          <Table className="min-w-[760px]">
+          <Table className="min-w-[720px]">
             <TableHeader>
               <TableRow className="bg-surface-2/50 hover:bg-surface-2/50">
                 <TableHead className="px-6 py-3">Status</TableHead>
@@ -208,13 +208,13 @@ export function RecentTracesTable({
           </Table>
 
           {/* Pagination */}
-          <div className="flex items-center justify-between border-t border-border/30 px-6 py-4">
+          <div className="flex flex-col gap-3 border-t border-border/30 px-4 py-4 sm:px-6 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-4">
               <p className="text-xs text-muted-foreground">
                 Showing {filteredThreads.length} of {pagination.total} traces
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 self-start sm:self-auto">
               <Button
                 variant="outline"
                 size="sm"

@@ -23,15 +23,15 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="mx-auto w-full max-w-[1280px] space-y-7 p-6 lg:p-8">
+    <div className="min-h-full bg-background">
+      <div className="mx-auto w-full max-w-[1280px] space-y-6 p-4 sm:p-6 lg:space-y-7 lg:p-8">
         <div>
-          <h1 className="text-3xl font-semibold text-foreground">{SETTINGS_COPY.title}</h1>
-          <p className="mt-2 max-w-2xl text-base leading-relaxed text-muted-foreground">{SETTINGS_COPY.subtitle}</p>
+          <h1 className="text-2xl font-semibold text-foreground sm:text-3xl">{SETTINGS_COPY.title}</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">{SETTINGS_COPY.subtitle}</p>
         </div>
 
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-5">
-          <TabsList variant="line" className="border-b border-border/50 pb-1">
+          <TabsList variant="line" className="w-full border-b border-border/50">
             {SETTINGS_TABS.map((tab) => (
               <TabsTrigger key={tab.id} value={tab.id} className="px-2.5">
                 {tab.label}

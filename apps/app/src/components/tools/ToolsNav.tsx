@@ -10,7 +10,7 @@ export function ToolsNav() {
 
   return (
     <nav className="border-t border-border/50">
-      <div className="mx-auto flex max-w-[1280px] gap-1 overflow-x-auto px-6 py-2">
+      <div className="mx-auto flex max-w-[1280px] gap-1 overflow-x-auto px-4 py-2 sm:px-6">
         <Link
           href="/tools"
           className={cn(

@@ -25,10 +25,10 @@ export default function ToolsIndexPage() {
   return (
     <div className="space-y-8">
       <div className="border-b border-border/50 pb-5">
-        <h1 className="text-3xl font-semibold text-foreground">
+        <h1 className="text-2xl font-semibold text-foreground sm:text-3xl">
           Free tools
         </h1>
-        <p className="mt-2 max-w-3xl text-base leading-relaxed text-muted-foreground">
+        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base">
           Public tools for inspecting runs, checking drift, pricing models, and
           finding loops. They run inside the same WhyOps app surface and use the
           same parsing and analysis pipeline as the product.
@@ -47,7 +47,7 @@ export default function ToolsIndexPage() {
           {TOOL_DEFINITIONS.map((tool, index) => (
             <div key={tool.href}>
               {index > 0 ? <Separator /> : null}
-              <div className="grid gap-4 py-5 lg:grid-cols-[220px_minmax(0,1fr)_260px]">
+              <div className="grid gap-4 py-5 lg:grid-cols-[220px_minmax(0,1fr)_240px]">
                 <div className="space-y-1">
                   <Link
                     href={tool.href}
@@ -60,7 +60,7 @@ export default function ToolsIndexPage() {
                 <div className="text-sm leading-6 text-muted-foreground">
                   {tool.useCase}
                 </div>
-                <div className="flex items-start justify-between gap-4 lg:justify-end">
+                <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-start sm:justify-between lg:justify-end">
                   <p className="max-w-[220px] text-sm leading-6 text-muted-foreground">
                     {tool.output}
                   </p>

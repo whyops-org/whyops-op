@@ -89,13 +89,13 @@ export function AuthCard({ onGithubClick }: AuthCardProps) {
             isSent ? "pointer-events-none opacity-0" : ""
           )}
         >
-          <CardHeader className="space-y-3">
-            <CardTitle className="text-2xl">Sign in to WhyOps</CardTitle>
-            <p className="text-base leading-relaxed text-muted-foreground">
+          <CardHeader className="space-y-3 px-5 pt-5 sm:px-6 sm:pt-6">
+            <CardTitle className="text-xl sm:text-2xl">Sign in to WhyOps</CardTitle>
+            <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">
               Continue with GitHub or request a sign-in link for your work email.
             </p>
           </CardHeader>
-          <CardContent className="space-y-7">
+          <CardContent className="space-y-6 px-5 pb-5 sm:px-6 sm:pb-6 sm:space-y-7">
             <div className="space-y-3">
               <Button
                 variant="muted"
@@ -147,10 +147,10 @@ export function AuthCard({ onGithubClick }: AuthCardProps) {
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-sm border border-primary/20 bg-primary/10 text-primary">
             <MailCheck className="h-6 w-6" />
           </div>
-          <h3 className="text-2xl font-semibold text-foreground">
+          <h3 className="text-xl font-semibold text-foreground sm:text-2xl">
             Magic link sent
           </h3>
-          <p className="mt-3 text-base leading-relaxed text-muted-foreground">
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
             We sent a secure sign-in link to {email || "your email"}. Use that
             link to finish signing in.
           </p>

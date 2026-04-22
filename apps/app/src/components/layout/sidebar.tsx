@@ -17,14 +17,30 @@ import * as React from "react";
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
   defaultCollapsed?: boolean;
+  lockExpanded?: boolean;
+  onNavigate?: () => void;
 }
 
-export function Sidebar({ className, defaultCollapsed = false, ...props }: SidebarProps) {
+export function Sidebar({
+  className,
+  defaultCollapsed = false,
+  lockExpanded = false,
+  onNavigate,
+  ...props
+}: SidebarProps) {
   const router = useRouter();
-  const [isCollapsed, setIsCollapsed] = React.useState(defaultCollapsed);
+  const [isCollapsed, setIsCollapsed] = React.useState(
+    lockExpanded ? false : defaultCollapsed
+  );
   const [isMounted, setIsMounted] = React.useState(false);
 
   React.useEffect(() => {
+    if (lockExpanded) {
+      setIsCollapsed(false);
+      setTimeout(() => setIsMounted(true), 100);
+      return;
+    }
+
     const match = document.cookie.match(new RegExp("(^| )sidebar:state=([^;]+)"));
     if (match) {
       const cookieValue = match[2] === "true";
@@ -32,11 +48,13 @@ export function Sidebar({ className, defaultCollapsed = false, ...props }: Sideb
     }
 
     setTimeout(() => setIsMounted(true), 100);
-  }, []);
+  }, [lockExpanded]);
 
   const transitionDuration = isMounted ? "duration-200" : "duration-0";
 
   const toggleSidebar = () => {
+    if (lockExpanded) return;
+
     const newState = !isCollapsed;
     setIsCollapsed(newState);
     document.cookie = `sidebar:state=${newState}; path=/; max-age=31536000; SameSite=Lax`;
@@ -45,14 +63,17 @@ export function Sidebar({ className, defaultCollapsed = false, ...props }: Sideb
 
   const handleAddProviderClick = () => {
     router.push("/settings?tab=providers");
+    onNavigate?.();
   };
 
   const handleApiKeysClick = () => {
     router.push("/settings?tab=api-keys");
+    onNavigate?.();
   };
 
   const handleDocumentationClick = () => {
     goToDocumentation();
+    onNavigate?.();
   };
 
   const navItems = [
@@ -79,9 +100,9 @@ export function Sidebar({ className, defaultCollapsed = false, ...props }: Sideb
   return (
     <aside
       className={cn(
-        "relative flex h-screen flex-col border-r border-border/50 bg-card transition-all ease-in-out",
+        "relative flex h-full min-h-0 flex-col border-r border-border/50 bg-card transition-all ease-in-out",
         transitionDuration,
-        isCollapsed ? "w-[72px]" : "w-64",
+        isCollapsed ? "w-[68px] sm:w-[72px]" : "w-[min(18rem,100vw)] lg:w-64",
         className
       )}
       {...props}
@@ -93,7 +114,12 @@ export function Sidebar({ className, defaultCollapsed = false, ...props }: Sideb
           isCollapsed ? "justify-center px-0" : "justify-between px-4"
         )}
       >
-        <Link href="/agents" className="flex min-w-0 items-center gap-3" aria-label="Go to agents">
+        <Link
+          href="/agents"
+          className="flex min-w-0 items-center gap-3"
+          aria-label="Go to agents"
+          onClick={() => onNavigate?.()}
+        >
           <LogoMark size="sm" />
           <span
             className={cn(
@@ -106,16 +132,18 @@ export function Sidebar({ className, defaultCollapsed = false, ...props }: Sideb
           </span>
         </Link>
 
-        <button
-          onClick={toggleSidebar}
-          className={cn(
-            "grid h-7 w-7 place-items-center rounded-sm text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground",
-            isCollapsed && "hidden"
-          )}
-          aria-label="Collapse sidebar"
-        >
-          <PanelLeftClose className="h-4 w-4" />
-        </button>
+        {!lockExpanded ? (
+          <button
+            onClick={toggleSidebar}
+            className={cn(
+              "grid h-7 w-7 place-items-center rounded-sm text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground",
+              isCollapsed && "hidden"
+            )}
+            aria-label="Collapse sidebar"
+          >
+            <PanelLeftClose className="h-4 w-4" />
+          </button>
+        ) : null}
       </div>
 
       <div className="flex-1 overflow-hidden px-3 py-6">
@@ -145,7 +173,7 @@ export function Sidebar({ className, defaultCollapsed = false, ...props }: Sideb
       </div>
 
       <div className="overflow-hidden border-t border-border/40 px-3 py-3">
-        {isCollapsed ? (
+        {isCollapsed && !lockExpanded ? (
           <button
             onClick={toggleSidebar}
             className="mx-auto grid h-9 w-9 place-items-center rounded-sm text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground"

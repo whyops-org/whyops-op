@@ -22,25 +22,25 @@ export const metadata: Metadata = {
 
 export default function ToolsLayout({ children }: PropsWithChildren) {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-dvh bg-background">
       <header className="border-b border-border/50 bg-background">
-        <div className="mx-auto flex h-14 max-w-[1280px] items-center justify-between px-6">
+        <div className="mx-auto flex min-h-14 max-w-[1280px] flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <Link
             href="/tools"
             className="text-sm font-semibold text-foreground"
           >
             WhyOps
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
             <Link
               href="/"
-              className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
+              className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "flex-1 sm:flex-none")}
             >
               Sign in
             </Link>
             <Link
               href="/"
-              className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+              className={cn(buttonVariants({ variant: "outline", size: "sm" }), "flex-1 sm:flex-none")}
             >
               Open WhyOps
             </Link>
@@ -48,7 +48,7 @@ export default function ToolsLayout({ children }: PropsWithChildren) {
         </div>
         <ToolsNav />
       </header>
-      <main className="mx-auto w-full max-w-[1280px] px-6 py-8">{children}</main>
+      <main className="mx-auto w-full max-w-[1280px] px-4 py-6 sm:px-6 sm:py-8">{children}</main>
     </div>
   );
 }

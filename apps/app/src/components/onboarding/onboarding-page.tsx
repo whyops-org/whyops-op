@@ -121,11 +121,18 @@ export function OnboardingPage() {
   const activeStepIndex = Math.min(currentStep, steps.length - 1);
   const activeStep = steps[activeStepIndex];
   const sharedTitle = (
-    <div className={cn("space-y-4", activeStepIndex !== 0 && "mx-auto max-w-[620px] text-center")}>
-      <h2 className="text-3xl font-semibold leading-tight text-foreground sm:text-4xl">
+    <div
+      className={cn(
+        "space-y-3 sm:space-y-4",
+        activeStepIndex !== 0 && "mx-auto max-w-[620px] text-center"
+      )}
+    >
+      <h2 className="text-2xl font-semibold leading-tight text-foreground sm:text-4xl">
         {activeStep.title}
       </h2>
-      <p className="text-lg leading-relaxed text-muted-foreground">{activeStep.subtitle}</p>
+      <p className="text-base leading-relaxed text-muted-foreground sm:text-lg">
+        {activeStep.subtitle}
+      </p>
       {activeStep.content ? (
         <div className="space-y-4 text-sm text-muted-foreground">{activeStep.content}</div>
       ) : null}
@@ -134,28 +141,30 @@ export function OnboardingPage() {
 
   return (
     <OnboardingPageFrame>
-      <div className="mx-auto flex h-full max-w-6xl flex-col py-6">
+      <div className="mx-auto flex h-full min-h-0 max-w-6xl flex-col py-4 sm:py-6">
         <StepIndicator steps={stepDefinitions} currentStep={activeStepIndex} />
-        <div className="min-h-0 flex-1 pt-8">
+        <div className="min-h-0 flex-1 pt-6 sm:pt-8">
           <div
             className={cn(
-              "h-full",
+              "h-full min-h-0",
               activeStepIndex === 0
-                ? "grid gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(460px,560px)] lg:items-center"
-                : "mx-auto flex max-w-[760px] flex-col justify-center gap-8 pb-24"
+                ? "grid gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(360px,560px)] xl:items-center"
+                : "mx-auto flex max-w-[760px] flex-col justify-center gap-6 pb-12 sm:gap-8 sm:pb-24"
             )}
           >
             {activeStepIndex === 0 ? (
               <>
                 <div className="flex max-w-2xl flex-col justify-center gap-6">{sharedTitle}</div>
-                <div className="flex h-[560px] w-full items-stretch justify-self-stretch">
+                <div className="flex h-[clamp(320px,50vh,560px)] min-h-[320px] w-full items-stretch justify-self-stretch">
                   {activeStep.preview}
                 </div>
               </>
             ) : (
               <>
                 {sharedTitle}
-                <div className="h-[min(560px,100%)] w-full">{activeStep.preview}</div>
+                <div className="h-[clamp(320px,56vh,560px)] min-h-[320px] w-full">
+                  {activeStep.preview}
+                </div>
               </>
             )}
           </div>

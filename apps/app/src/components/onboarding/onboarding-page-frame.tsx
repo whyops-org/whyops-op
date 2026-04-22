@@ -7,11 +7,11 @@ interface OnboardingPageFrameProps {
 
 export function OnboardingPageFrame({
   children,
-  mainClassName = "flex-1 overflow-hidden px-5 lg:px-10",
+  mainClassName = "flex-1 min-h-0 overflow-auto px-4 sm:px-5 lg:px-10",
 }: OnboardingPageFrameProps) {
   return (
-    <div className="min-h-screen bg-grid">
-      <div className="flex h-screen flex-col">
+    <div className="min-h-dvh bg-grid">
+      <div className="flex min-h-dvh flex-col">
         <SiteHeader actionLabel="Log out" />
         <main className={mainClassName}>{children}</main>
       </div>
